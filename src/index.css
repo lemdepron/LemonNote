@@ -1,0 +1,501 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Width the page shell leaves free for the fixed tab rail. Set by SpaceRail. */
+html[data-rail="expanded"] {
+  --rail-w: 12.5rem;
+}
+html[data-rail="collapsed"] {
+  --rail-w: 3.75rem;
+}
+@media (max-width: 640px) {
+  html[data-rail="expanded"] {
+    --rail-w: 3.75rem;
+  }
+}
+
+/* Light is the default palette; `.dark` overrides every token for the dark theme. */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    --background: 41 36% 96%;
+    --foreground: 24 26% 12%;
+    --card: 39 28% 92%;
+    --card-foreground: 24 26% 12%;
+    --popover: 43 46% 99%;
+    --popover-foreground: 24 26% 12%;
+    --primary: 24 70% 36%;
+    --primary-foreground: 42 46% 98%;
+    --secondary: 39 22% 88%;
+    --secondary-foreground: 24 22% 17%;
+    --muted: 39 18% 90%;
+    --muted-foreground: 26 12% 38%;
+    --accent: 37 26% 85%;
+    --accent-foreground: 24 22% 14%;
+    --destructive: 4 64% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 55%;
+    --input: 30 15% 48%;
+    --ring: 24 70% 38%;
+    --radius: 0.7rem;
+    --link: 188 76% 23%;
+
+    --chart-1: 24 70% 38%;
+    --chart-2: 188 70% 26%;
+    --chart-3: 276 42% 44%;
+    --chart-4: 208 55% 38%;
+    --chart-5: 10 62% 44%;
+
+    --shadow: 24 34% 22%;
+    --scrim: 22 28% 16%;
+
+    --canvas: 40 22% 91%;
+    --canvas-dot: 26 14% 44%;
+    --edge: 188 68% 26%;
+    --node: 40 30% 96%;
+    --node-ring: 24 70% 38%;
+    --ink: 24 30% 12%;
+    --ink-light: 42 44% 88%;
+    --paper-outside: 40 18% 87%;
+    --paper-page-slate: 30 18% 13%;
+    --paper-page-paper: 42 48% 95%;
+
+    /* Surface texture hues — a preset overrides these. */
+    --surface-a: 24 62% 60%;
+    --surface-b: 188 54% 52%;
+    --surface-c: 44 62% 70%;
+
+    --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 220 18% 6%;
+    --foreground: 40 14% 92%;
+    --card: 220 15% 8.5%;
+    --card-foreground: 40 14% 92%;
+    --popover: 220 16% 10%;
+    --popover-foreground: 40 14% 92%;
+    --primary: 36 58% 70%;
+    --primary-foreground: 220 30% 8%;
+    --secondary: 220 12% 13%;
+    --secondary-foreground: 40 12% 90%;
+    --muted: 220 12% 12%;
+    --muted-foreground: 220 9% 61%;
+    --accent: 220 12% 15%;
+    --accent-foreground: 40 12% 92%;
+    --destructive: 4 62% 58%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 11% 41%;
+    --input: 220 11% 43%;
+    --ring: 36 58% 70%;
+    --link: 173 42% 63%;
+
+    --chart-1: 36 58% 70%;
+    --chart-2: 173 42% 63%;
+    --chart-3: 265 30% 68%;
+    --chart-4: 200 40% 62%;
+    --chart-5: 12 55% 65%;
+
+    --shadow: 220 40% 2%;
+    --scrim: 220 30% 2%;
+
+    --canvas: 220 18% 5%;
+    --canvas-dot: 220 10% 22%;
+    --edge: 173 42% 63%;
+    --node: 220 12% 17%;
+    --node-ring: 36 58% 70%;
+    --ink: 222 26% 14%;
+    --ink-light: 40 40% 88%;
+    --paper-outside: 220 20% 4%;
+    --paper-page-slate: 220 17% 9%;
+    --paper-page-paper: 40 45% 94%;
+
+    --surface-a: 36 58% 58%;
+    --surface-b: 174 44% 54%;
+    --surface-c: 268 44% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+    color: hsl(var(--foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border) / 0.7);
+    border-radius: 999px;
+    border: 3px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--border));
+  }
+}
+
+@layer components {
+  .nb-shell {
+    background-image:
+      radial-gradient(900px 480px at 12% -12%, hsl(var(--primary) / 0.055), transparent 70%),
+      radial-gradient(760px 420px at 92% 4%, hsl(var(--link) / 0.05), transparent 72%);
+    /* The tab rail is fixed, so the page shell reserves exactly its width. */
+    padding-left: var(--rail-w, 0px);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .nb-shell {
+      transition: padding-left 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  }
+
+  .nb-label {
+    @apply font-mono text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .nb-wikilink {
+    color: hsl(var(--link));
+    text-decoration: none;
+    border-bottom: 1px dashed hsl(var(--link) / 0.45);
+    border-radius: 2px;
+    padding: 0 1px;
+    transition: background 150ms ease, border-color 150ms ease;
+    cursor: pointer;
+  }
+  .nb-wikilink:hover {
+    background: hsl(var(--link) / 0.12);
+    border-bottom-color: hsl(var(--link) / 0.8);
+  }
+  .nb-wikilink-missing {
+    color: hsl(var(--muted-foreground));
+    border-bottom: 1px dashed hsl(var(--muted-foreground) / 0.5);
+  }
+  .nb-wikilink-missing::after {
+    content: " +";
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    opacity: 0.8;
+  }
+
+  .nb-code-comment {
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+  .nb-code-string {
+    color: hsl(var(--link));
+  }
+  .nb-code-keyword {
+    color: hsl(var(--primary));
+  }
+  .nb-code-number {
+    color: hsl(var(--chart-3));
+  }
+  .nb-code-tag {
+    color: hsl(var(--chart-2));
+  }
+  .nb-code-key {
+    color: hsl(var(--chart-4));
+  }
+
+  .nb-prose {
+    @apply text-foreground;
+    font-size: 1.0125rem;
+    line-height: 1.78;
+    letter-spacing: -0.003em;
+  }
+  .nb-prose > * + * {
+    margin-top: 1.05em;
+  }
+  .nb-prose h1,
+  .nb-prose h2,
+  .nb-prose h3,
+  .nb-prose h4 {
+    @apply font-heading font-medium tracking-tight text-foreground;
+    line-height: 1.25;
+  }
+  .nb-prose h1 {
+    font-size: 1.7rem;
+  }
+  .nb-prose h2 {
+    font-size: 1.32rem;
+    margin-top: 2em;
+  }
+  .nb-prose h3 {
+    font-size: 1.08rem;
+    margin-top: 1.7em;
+  }
+  .nb-prose h4 {
+    font-size: 1rem;
+  }
+  .nb-prose p {
+    margin-top: 0.95em;
+  }
+  .nb-prose ul,
+  .nb-prose ol {
+    padding-left: 1.25rem;
+  }
+  .nb-prose ul {
+    list-style: disc;
+  }
+  .nb-prose ol {
+    list-style: decimal;
+  }
+  .nb-prose li {
+    margin-top: 0.35em;
+    padding-left: 0.2rem;
+  }
+  .nb-prose li::marker {
+    color: hsl(var(--muted-foreground) / 0.7);
+  }
+  .nb-prose a {
+    color: hsl(var(--link));
+    text-decoration: none;
+    border-bottom: 1px solid hsl(var(--link) / 0.35);
+  }
+  .nb-prose a:hover {
+    border-bottom-color: hsl(var(--link));
+  }
+  .nb-prose strong {
+    @apply font-medium text-foreground;
+  }
+  .nb-prose em {
+    font-family: var(--font-display);
+    font-size: 1.06em;
+    font-style: italic;
+  }
+  .nb-prose blockquote {
+    border-left: 2px solid hsl(var(--primary) / 0.5);
+    padding-left: 1rem;
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+  .nb-prose code {
+    font-family: var(--font-mono);
+    font-size: 0.83em;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border) / 0.55);
+    border-radius: 5px;
+    padding: 0.12em 0.38em;
+    color: hsl(var(--foreground));
+  }
+  .nb-prose pre {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: 0.7rem;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-size: 0.86rem;
+    line-height: 1.65;
+  }
+  .nb-prose pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: hsl(var(--foreground));
+    font-size: inherit;
+  }
+  .nb-prose hr {
+    border: 0;
+    border-top: 1px solid hsl(var(--border) / 0.8);
+    margin: 2em 0;
+  }
+  .nb-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .nb-prose th,
+  .nb-prose td {
+    border-bottom: 1px solid hsl(var(--border) / 0.8);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+  }
+  .nb-prose th {
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+  }
+  .nb-prose img {
+    border-radius: 0.6rem;
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .nb-fade {
+    animation: nb-fade 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .nb-rise {
+    animation: nb-rise 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* Docked panel engine: transform/opacity only, so collapsing stays on the compositor. */
+[data-dock] {
+  backface-visibility: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-dock] {
+    transition-duration: 1ms !important;
+  }
+}
+
+@keyframes nb-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- theme surfaces ---------- */
+/* Painted on <body> so no element needs a stacking context of its own. */
+
+html[data-surface="waves"] body {
+  background-image:
+    repeating-linear-gradient(118deg, hsl(var(--surface-a) / 0.1) 0 2px, transparent 2px 24px),
+    repeating-radial-gradient(circle at 18% 0%, hsl(var(--surface-b) / 0.08) 0 1px, transparent 1px 30px);
+  background-attachment: fixed;
+}
+
+html[data-surface="blend"] body {
+  background-image:
+    radial-gradient(70% 55% at 12% -5%, hsl(var(--surface-a) / 0.17), transparent 70%),
+    radial-gradient(65% 50% at 90% 8%, hsl(var(--surface-b) / 0.15), transparent 72%),
+    radial-gradient(60% 60% at 50% 105%, hsl(var(--surface-c) / 0.13), transparent 70%);
+  background-attachment: fixed;
+}
+
+html[data-surface="gradient"] body {
+  background-image: linear-gradient(
+    165deg,
+    hsl(var(--surface-a) / 0.17) 0%,
+    transparent 42%,
+    hsl(var(--surface-b) / 0.15) 100%
+  );
+  background-attachment: fixed;
+}
+
+html[data-surface="stars"] body {
+  background-image:
+    radial-gradient(1.1px 1.1px at 22px 30px, hsl(var(--surface-a) / 0.85), transparent 60%),
+    radial-gradient(0.9px 0.9px at 68px 74px, hsl(var(--surface-b) / 0.72), transparent 60%),
+    radial-gradient(1.5px 1.5px at 118px 46px, hsl(var(--surface-c) / 0.66), transparent 60%),
+    radial-gradient(55% 40% at 50% -8%, hsl(var(--surface-a) / 0.13), transparent 70%);
+  background-size: 160px 160px, 200px 200px, 260px 260px, 100% 100%;
+  background-attachment: fixed;
+}
+
+html[data-surface="aurora"] body {
+  background-image:
+    radial-gradient(58% 46% at 18% -6%, hsl(var(--surface-a) / 0.23), transparent 66%),
+    radial-gradient(52% 42% at 92% 10%, hsl(var(--surface-b) / 0.21), transparent 68%),
+    radial-gradient(64% 50% at 50% 108%, hsl(var(--surface-c) / 0.19), transparent 70%);
+  background-attachment: fixed;
+}
+
+html[data-surface="grain"] body {
+  background-image: radial-gradient(hsl(var(--surface-a) / 0.16) 0.6px, transparent 0.7px);
+  background-size: 5px 5px;
+}
+
+html[data-surface="rings"] body {
+  background-image: repeating-radial-gradient(
+    circle at 82% 12%,
+    hsl(var(--surface-a) / 0.12) 0 1px,
+    transparent 1px 28px
+  );
+  background-attachment: fixed;
+}
+
+html[data-surface="mesh"] body {
+  background-image:
+    radial-gradient(46% 42% at 10% 6%, hsl(var(--surface-a) / 0.32), transparent 68%),
+    radial-gradient(42% 38% at 88% 14%, hsl(var(--surface-b) / 0.28), transparent 66%),
+    radial-gradient(50% 44% at 66% 96%, hsl(var(--surface-c) / 0.26), transparent 68%),
+    radial-gradient(44% 40% at 18% 88%, hsl(var(--surface-b) / 0.2), transparent 66%);
+  background-attachment: fixed;
+}
+
+html[data-surface="dots"] body {
+  background-image: radial-gradient(hsl(var(--surface-a) / 0.34) 1px, transparent 1.1px);
+  background-size: 18px 18px;
+}
+
+html[data-surface="topo"] body {
+  background-image:
+    repeating-radial-gradient(circle at 22% 10%, hsl(var(--surface-a) / 0.18) 0 1px, transparent 1px 20px),
+    repeating-radial-gradient(circle at 84% 78%, hsl(var(--surface-b) / 0.15) 0 1px, transparent 1px 26px);
+  background-attachment: fixed;
+}
+
+html[data-surface="paper"] body {
+  background-image:
+    repeating-linear-gradient(0deg, hsl(var(--surface-a) / 0.09) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, hsl(var(--surface-b) / 0.07) 0 1px, transparent 1px 6px);
+}
+
+html[data-surface="noise"] body {
+  background-image: repeating-conic-gradient(
+    from 18deg at 40% 60%,
+    hsl(var(--surface-a) / 0.12) 0 1deg,
+    transparent 1deg 3deg,
+    hsl(var(--surface-b) / 0.09) 3deg 4deg,
+    transparent 4deg 7deg
+  );
+  background-size: 7px 7px;
+}
+
+/* ---------- light mode character ---------- */
+html[data-theme="light"] .nb-shell {
+  background-image:
+    radial-gradient(900px 480px at 12% -12%, hsl(var(--primary) / 0.08), transparent 70%),
+    radial-gradient(760px 420px at 92% 4%, hsl(var(--link) / 0.06), transparent 72%);
+}
+
+html[data-theme="light"][data-surface="plain"] .nb-shell {
+  background-image:
+    radial-gradient(900px 480px at 12% -12%, hsl(var(--primary) / 0.08), transparent 70%),
+    radial-gradient(760px 420px at 92% 4%, hsl(var(--link) / 0.06), transparent 72%),
+    radial-gradient(hsl(var(--foreground) / 0.05) 0.5px, transparent 0.6px);
+  background-size: auto, auto, 22px 22px;
+}

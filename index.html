@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#0d0f13" />
+    <script>
+      // Applies the saved theme before first paint so no wrong-theme flash appears.
+      (function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem("notecraft:prefs") || "{}") || {};
+          var mode = stored.theme;
+          if (mode !== "light" && mode !== "dark" && mode !== "system") mode = "system";
+          var dark =
+            mode === "dark" ||
+            (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.classList.toggle("dark", dark);
+          root.dataset.theme = dark ? "dark" : "light";
+          root.style.colorScheme = dark ? "dark" : "light";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#0d0f13" : "#f9f7f2");
+        } catch (error) {
+          /* storage blocked — the app still applies the theme on boot */
+        }
+      })();
+    </script>
+    <title>LemonNote — local-first knowledge workspace</title>
+    <meta name="description" content="LemonNote is a local-first knowledge workspace: plain markdown notes connected by wiki-links, backlinks, tags and instant full-text search." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
