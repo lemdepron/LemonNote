@@ -1,15 +1,16 @@
 {
   "name": "LemonNote",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
-  "scripts": {
+    "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+   "preview": "vite preview",
+   "tauri": "tauri"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
