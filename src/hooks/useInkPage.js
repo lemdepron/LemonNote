@@ -1,35 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  Brush,
-  Layers,
-  Lasso,
-  Mic,
-  Palette,
-  PanelRightClose,
-  PanelRightOpen,
-  ScanText,
-} from "lucide-react";
 import { db } from "@/api/localDb";
-import VaultHeader from "@/components/vault/VaultHeader";
-import InkBoard from "@/components/ink/InkBoard";
-import InkToolbar from "@/components/ink/InkToolbar";
-import BrushStudio from "@/components/ink/BrushStudio";
-import AssistStudio from "@/components/ink/AssistStudio";
-import ColorStudio from "@/components/ink/ColorStudio";
-import SelectionStudio from "@/components/ink/SelectionStudio";
-import PaperStudio from "@/components/ink/PaperStudio";
-import SmartInkStudio from "@/components/ink/SmartInkStudio";
-import AudioStudio from "@/components/ink/AudioStudio";
-import EdgeDock from "@/components/shell/EdgeDock";
-import FocusToggle from "@/components/shell/FocusToggle";
-import { useFocusMode } from "@/lib/focusMode";
 import { rememberColor } from "@/lib/ink/palette";
 import { loadPage, savePage } from "@/lib/ink/store";
 import { tokenColor, useTheme } from "@/lib/theme";
 import { escapeRegExp } from "@/lib/vault";
-import { cn } from "@/lib/utils";
 
 const DEFAULT_TOOL = {
   mode: "draw",
@@ -51,17 +25,18 @@ const inkForTone = (tone) =>
   (tone === "light" ? tokenColor("--ink") : tokenColor("--ink-light")) || tokenColor("--ink-light");
 const EMPTY_RECOGNITION = { busy: null, mode: null, text: "", latex: "", error: "" };
 
-export default function InkPage() {
-  const { id } = useParams();
+/**
+ * Everything one ink page needs: loading and saving through the ink store, the pen
+ * settings, undo/redo, recognition, handwriting search and audio replay.
+ * `id` is the InkPage record to open (null = nothing attached yet). `active` turns
+ * the keyboard shortcuts on only while the Ink tab is showing.
+ */
+export default function useInkPage(id, { active = true, onOpenPage } = {}) {
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("idle");
   const [tool, setTool] = useState(() => ({ ...DEFAULT_TOOL, color: inkForTone("dark") }));
   const [selection, setSelection] = useState({ ids: [], bounds: null });
-  // Studio panel: open on desktop, collapsed on phones so the canvas keeps its width.
-  const [panelOpen, setPanelOpen] = useState(
-    () => typeof window === "undefined" || window.innerWidth >= 768
-  );
   const [zoom, setZoom] = useState(1);
   const [pageIndex, setPageIndex] = useState(0);
   const [recognition, setRecognition] = useState(EMPTY_RECOGNITION);
@@ -85,7 +60,6 @@ export default function InkPage() {
   const cameraTimer = useRef(null);
   const replayFrame = useRef(0);
   const zoomRef = useRef(1);
-  const { focus } = useFocusMode();
   const { resolved: themeMode } = useTheme();
   const themeRef = useRef(themeMode);
   themeRef.current = themeMode;
@@ -116,11 +90,24 @@ export default function InkPage() {
   persistRef.current = persist;
 
   useEffect(() => {
-    let active = true;
+    let alive = true;
+    pastRef.current = [];
+    futureRef.current = [];
+    dirtyRef.current = false;
+    setSelection({ ids: [], bounds: null });
+    setRecognition(EMPTY_RECOGNITION);
+    setHandwriting({ query: "", matches: [], searching: false });
+    if (!id) {
+      registryRef.current = new Map();
+      latestRef.current = null;
+      setPage(null);
+      setLoading(false);
+      return undefined;
+    }
     setLoading(true);
     loadPage(id)
       .then(({ page: record, strokes, registry }) => {
-        if (!active) return;
+        if (!alive) return;
         registryRef.current = registry;
         const paper = {
           ...DEFAULT_PAPER,
@@ -130,22 +117,22 @@ export default function InkPage() {
         const next = { ...record, strokes, paper };
         setTool((current) => ({ ...current, color: inkForTone(paper.tone) }));
         latestRef.current = next;
-        pastRef.current = [];
-        futureRef.current = [];
-        dirtyRef.current = false;
         setPage(next);
         setStatus("idle");
         setLoading(false);
       })
       .catch(() => {
-        if (!active) return;
+        if (!alive) return;
         registryRef.current = new Map();
         latestRef.current = null;
         setPage(null);
         setLoading(false);
       });
     return () => {
-      active = false;
+      alive = false;
+      // Switching notes: write the page we are leaving before it is replaced.
+      const snapshot = latestRef.current;
+      if (snapshot && dirtyRef.current) savePage(snapshot, registryRef.current).catch(() => {});
     };
   }, [id]);
 
@@ -277,6 +264,7 @@ export default function InkPage() {
   }, [markDirty]);
 
   useEffect(() => {
+    if (!active) return undefined;
     const onKey = (event) => {
       const target = event.target;
       const typing =
@@ -294,7 +282,7 @@ export default function InkPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, selection.ids.length]);
+  }, [active, undo, redo, selection.ids.length]);
 
   const clearPage = () => {
     if (!latestRef.current?.strokes.length) return;
@@ -482,219 +470,56 @@ export default function InkPage() {
     patch({ audio: null });
   }, [patch]);
 
-  if (loading) {
-    return (
-      <div className="nb-shell min-h-screen">
-        <VaultHeader />
-        <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6">
-          <div className="h-[58vh] animate-pulse rounded-xl border border-border/60 bg-card/30" />
-        </div>
-      </div>
-    );
-  }
+  const strokes = page?.strokes || [];
 
-  if (!page) {
-    return (
-      <div className="nb-shell min-h-screen">
-        <VaultHeader />
-        <div className="mx-auto max-w-xl px-5 py-24 text-center">
-          <p className="font-display text-[26px]">This page is gone.</p>
-          <Link to="/ink" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
-            back to ink
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const ink = page
+    ? {
+        tool,
+        onTool: updateTool,
+        page,
+        pageIndex,
+        zoom,
+        selection,
+        engine: () => engineRef.current,
+        canUndo: pastRef.current.length > 0,
+        canRedo: futureRef.current.length > 0,
+        onUndo: undo,
+        onRedo: redo,
+        onZoom: (factor) => engineRef.current?.zoomBy(factor),
+        onFit: () => engineRef.current?.fit(),
+        onClear: clearPage,
+        onPickColor: handlePickColor,
+        onPaper: updatePaper,
+        onPage: goPage,
+        recognition,
+        onRecognize: recognize,
+        onInsertText: insertText,
+        handwriting,
+        onSearch: searchHandwriting,
+        recording,
+        replay,
+        onRecord: startRecording,
+        onStop: stopRecording,
+        onPlay: togglePlay,
+        onReplayInk: replayInk,
+        onScrub: scrub,
+        onClearAudio: clearAudio,
+        onOpenPage,
+      }
+    : null;
 
-  const strokes = page.strokes || [];
+  const board = {
+    strokes,
+    paper: page?.paper,
+    tool,
+    initialCamera: page?.camera,
+    onCommit: handleCommit,
+    onReplace: handleReplace,
+    onSelection: handleSelection,
+    onCamera: handleCamera,
+    onPickColor: handlePickColor,
+    onEngine: handleEngine,
+  };
 
-  const toolbar = (
-    <InkToolbar
-      tool={tool}
-      onTool={updateTool}
-      zoom={zoom}
-      onZoom={(factor) => engineRef.current?.zoomBy(factor)}
-      onFit={() => engineRef.current?.fit()}
-      onUndo={undo}
-      onRedo={redo}
-      canUndo={pastRef.current.length > 0}
-      canRedo={futureRef.current.length > 0}
-      onClear={clearPage}
-    />
-  );
-
-  const dockPanels = [
-    {
-      id: "ink-brush",
-      label: "Brush engine",
-      icon: Brush,
-      content: (
-        <div className="space-y-4">
-          <BrushStudio tool={tool} onTool={updateTool} />
-          <div className="h-px bg-border/60" />
-          <AssistStudio tool={tool} onTool={updateTool} />
-        </div>
-      ),
-    },
-    {
-      id: "ink-color",
-      label: "Colour studio",
-      icon: Palette,
-      content: (
-        <ColorStudio
-          color={tool.color}
-          alpha={tool.alpha}
-          eyedropper={tool.mode === "eyedropper"}
-          onEyedropper={() => updateTool({ mode: tool.mode === "eyedropper" ? "draw" : "eyedropper" })}
-          onChange={({ color, alpha }) => updateTool({ color, alpha })}
-        />
-      ),
-    },
-    {
-      id: "ink-select",
-      label: "Selection",
-      icon: Lasso,
-      content: (
-        <SelectionStudio
-          selection={selection}
-          color={tool.color}
-          alpha={tool.alpha}
-          onTransform={(transform) => engineRef.current?.setSelectionTransform(transform)}
-          onCommit={() => engineRef.current?.commitSelection()}
-          onRecolor={() => engineRef.current?.recolorSelection(tool.color, tool.alpha)}
-          onDelete={() => engineRef.current?.deleteSelection()}
-          onClear={() => engineRef.current?.setSelection([])}
-        />
-      ),
-    },
-    {
-      id: "ink-paper",
-      label: "Paper & pages",
-      icon: Layers,
-      content: (
-        <PaperStudio paper={page.paper} onPaper={updatePaper} pageIndex={pageIndex} onPage={goPage} onClear={clearPage} />
-      ),
-    },
-    {
-      id: "ink-smart",
-      label: "Smart ink",
-      icon: ScanText,
-      content: (
-        <SmartInkStudio
-          recognition={recognition}
-          onRecognize={recognize}
-          onInsert={insertText}
-          search={handwriting.query}
-          onSearch={searchHandwriting}
-          matches={handwriting.matches}
-          searching={handwriting.searching}
-          onOpenPage={(pageId) => (window.location.href = `/ink/${pageId}`)}
-        />
-      ),
-    },
-    {
-      id: "ink-audio",
-      label: "Audio sync",
-      icon: Mic,
-      content: (
-        <AudioStudio
-          recording={recording}
-          audio={page.audio}
-          playing={replay.playing}
-          time={replay.time}
-          syncing={replay.syncing}
-          onRecord={startRecording}
-          onStop={stopRecording}
-          onPlay={togglePlay}
-          onReplayInk={replayInk}
-          onScrub={scrub}
-          onClear={clearAudio}
-        />
-      ),
-    },
-  ];
-
-  return (
-    <div className="nb-shell flex h-screen flex-col overflow-hidden">
-      <VaultHeader />
-      <main className="flex min-h-0 flex-1 flex-col px-4 pb-2 pt-4 sm:px-6">
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
-          <Link
-            to="/ink"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to ink pages"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <input
-            value={page.name || ""}
-            onChange={(event) => patch({ name: event.target.value })}
-            aria-label="Page name"
-            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[18px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
-          />
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {strokes.length} marks · {page.paper?.size === "infinite" ? "infinite" : `page ${pageIndex + 1}`} ·{" "}
-            {status === "saving" ? "saving…" : status === "saved" ? "saved" : "autosave on"}
-          </span>
-          {!focus && (
-            <button
-              type="button"
-              onClick={() => setPanelOpen((open) => !open)}
-              aria-expanded={panelOpen}
-              aria-controls="ink-studio"
-              aria-label={panelOpen ? "Hide the studio panel" : "Show the studio panel"}
-              title={panelOpen ? "Hide the studio panel" : "Show the studio panel"}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border/70 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            >
-              {panelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-            </button>
-          )}
-          <FocusToggle />
-        </div>
-
-        <div className="mt-3 shrink-0">{toolbar}</div>
-
-        <div className={cn("relative mt-3 flex min-h-0 flex-1 gap-3", focus && "pr-12 sm:pr-14")}>
-          <InkBoard
-            strokes={strokes}
-            paper={page.paper}
-            tool={tool}
-            initialCamera={page.camera}
-            onCommit={handleCommit}
-            onReplace={handleReplace}
-            onSelection={handleSelection}
-            onCamera={handleCamera}
-            onPickColor={handlePickColor}
-            onEngine={handleEngine}
-            autoFit
-            className="min-h-0 flex-1"
-          />
-          {!focus && panelOpen && (
-            <aside
-              id="ink-studio"
-              className={cn(
-                "absolute inset-y-0 right-0 z-20 w-[272px] max-w-[85vw] space-y-4 overflow-y-auto rounded-xl border border-border/70 bg-card/30 p-3 shadow-2xl shadow-[hsl(var(--shadow)/0.45)] backdrop-blur-md",
-                "md:static md:z-auto md:w-[272px] md:max-w-none md:shrink-0 md:shadow-none md:backdrop-blur-none"
-              )}
-            >
-              <BrushStudio tool={tool} onTool={updateTool} />
-              <div className="h-px bg-border/60" />
-              <ColorStudio
-                color={tool.color}
-                alpha={tool.alpha}
-                eyedropper={tool.mode === "eyedropper"}
-                onEyedropper={() => updateTool({ mode: tool.mode === "eyedropper" ? "draw" : "eyedropper" })}
-                onChange={({ color, alpha }) => updateTool({ color, alpha })}
-              />
-              <div className="h-px bg-border/60" />
-              <AssistStudio tool={tool} onTool={updateTool} />
-            </aside>
-          )}
-        </div>
-
-        <EdgeDock panels={dockPanels} />
-      </main>
-    </div>
-  );
+  return { loading, page, status, ink, board, markCount: strokes.length, pageIndex, patch };
 }

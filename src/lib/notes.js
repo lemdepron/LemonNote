@@ -1,4 +1,5 @@
 import { db } from "@/api/localDb";
+import { deletePage } from "@/lib/ink/store";
 
 /** Soft-delete lifecycle for notes: trash → restore, or permanent delete. */
 export const TRASH_RETENTION_DAYS = 60;
@@ -25,13 +26,23 @@ export function restoreNote(id) {
   return db.entities.Note.update(id, { trashed: false, trashed_date: null });
 }
 
-export function deleteNoteForever(id) {
+/** The handwriting of a note goes with it; a missing ink page is not an error. */
+const dropInk = async (note) => {
+  if (note?.ink_page_id) await deletePage(note.ink_page_id).catch(() => {});
+};
+
+export async function deleteNoteForever(id) {
+  const note = await db.entities.Note.get(id).catch(() => null);
+  await dropInk(note);
   return db.entities.Note.delete(id);
 }
 
 /** Anything past the 60-day window is removed on the next trash visit. */
-export function purgeExpiredNotes() {
-  return db.entities.Note.deleteMany({ trashed: true, trashed_date: { $lt: cutoffIso() } });
+export async function purgeExpiredNotes() {
+  const query = { trashed: true, trashed_date: { $lt: cutoffIso() } };
+  const expired = await db.entities.Note.filter(query, { limit: 500 });
+  for (const note of expired?.items ?? []) await dropInk(note);
+  return db.entities.Note.deleteMany(query);
 }
 
 export function daysRemaining(trashedDate) {

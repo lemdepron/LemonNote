@@ -254,7 +254,50 @@ html[data-rail="collapsed"] {
     font-size: 1rem;
   }
   .nb-prose p {
-    margin-top: 0.95em;
+    margin-top: var(--nt-gap, 0.95em);
+  }
+  .nb-prose h1,
+  .nb-prose h2,
+  .nb-prose h3,
+  .nb-prose h4 {
+    font-family: var(--nt-heading, var(--font-heading));
+  }
+  .nb-prose.nt-indent p {
+    text-indent: 1.6em;
+  }
+  .nb-prose.nt-dropcap > p:first-of-type::first-letter {
+    float: left;
+    font-size: 3.1em;
+    line-height: 0.85;
+    padding: 0.06em 0.1em 0 0;
+    font-family: var(--font-display);
+  }
+  .nb-prose mark {
+    color: inherit;
+  }
+  .nb-prose u {
+    text-underline-offset: 3px;
+  }
+  .nb-prose kbd {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    border: 1px solid hsl(var(--border));
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 0.05em 0.4em;
+    background: hsl(var(--muted));
+  }
+  .nb-prose details {
+    border: 1px solid hsl(var(--border) / 0.7);
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.9rem;
+  }
+  .nb-prose summary {
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .nb-prose del {
+    opacity: 0.65;
   }
   .nb-prose ul,
   .nb-prose ol {
@@ -330,11 +373,19 @@ html[data-rail="collapsed"] {
     border-collapse: collapse;
     font-size: 0.92rem;
   }
+  .nb-prose th[align="center"],
+  .nb-prose td[align="center"] {
+    text-align: center;
+  }
+  .nb-prose th[align="right"],
+  .nb-prose td[align="right"] {
+    text-align: right;
+  }
   .nb-prose th,
   .nb-prose td {
     border-bottom: 1px solid hsl(var(--border) / 0.8);
     padding: 0.5rem 0.7rem;
-    text-align: left;
+    text-align: start;
   }
   .nb-prose th {
     color: hsl(var(--muted-foreground));

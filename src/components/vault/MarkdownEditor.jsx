@@ -14,7 +14,7 @@ function optionsFor(suggest, titles) {
   return rows;
 }
 
-export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles }) {
+export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles, style, spellCheck = true }) {
   const [suggest, setSuggest] = useState(null);
   const [active, setActive] = useState(0);
   const areaRef = useRef(null);
@@ -150,7 +150,8 @@ export default function MarkdownEditor({ value, onChange, titles = [], onCreateN
           syncEditor();
           setTimeout(() => setSuggest(null), 150);
         }}
-        spellCheck
+        spellCheck={spellCheck}
+        style={style}
         placeholder={"Start writing in markdown…\n\nType [[ to link another note, or #tag to label it."}
         className="min-h-[46vh] w-full resize-none bg-transparent font-mono text-[13.5px] leading-[1.95] text-foreground/90 outline-none placeholder:text-muted-foreground/35"
       />

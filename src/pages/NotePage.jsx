@@ -9,12 +9,17 @@ import MarkdownView from "@/components/vault/MarkdownView";
 import FormatEditor from "@/components/vault/FormatEditor";
 import FormatPreview from "@/components/vault/FormatPreview";
 import { isMarkdown } from "@/lib/note-formats";
+import { editorProps, normalizeStyle } from "@/lib/text-style";
+import { writePref } from "@/lib/preferences";
 import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
 import MacroBar from "@/components/macros/MacroBar";
 import ExtensionPanels from "@/components/extensions/ExtensionPanels";
 import ExtensionBanners from "@/components/extensions/ExtensionBanners";
-import NoteRibbon from "@/components/ribbon/NoteRibbon";
+import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
+import NoteInkSurface from "@/components/ink/NoteInkSurface";
+import useInkPage from "@/hooks/useInkPage";
+import { deletePage } from "@/lib/ink/store";
 import useNoteImages from "@/hooks/useNoteImages";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
@@ -53,6 +58,10 @@ export default function NotePage() {
   const [body, setBody] = useState("");
   const [tags, setTags] = useState([]);
   const [format, setFormat] = useState("markdown");
+  const [ribbonTab, setRibbonTab] = useState(initialRibbonTab);
+  const [inkId, setInkId] = useState(null);
+  const [startingInk, setStartingInk] = useState(false);
+  const [typography, setTypography] = useState({});
   const [meta, setMeta] = useState({});
   const [tagDraft, setTagDraft] = useState("");
   const [mode, setMode] = useState("split");
@@ -64,8 +73,8 @@ export default function NotePage() {
   const createdIdRef = useRef(isNew ? null : id);
   const loadedIdRef = useRef(null);
   const savePending = useRef(false);
-  const latestRef = useRef({ title, body, tags, format });
-  latestRef.current = { title, body, tags, format };
+  const latestRef = useRef({ title, body, tags, format, typography, inkId });
+  latestRef.current = { title, body, tags, format, typography, inkId };
 
   useEffect(() => {
     if (isNew) {
@@ -75,6 +84,8 @@ export default function NotePage() {
       setBody("");
       setTags([]);
       setFormat("markdown");
+      setTypography({});
+      setInkId(null);
       setMeta({});
       setStatus("idle");
       setMissing(false);
@@ -99,6 +110,8 @@ export default function NotePage() {
         setBody(note.body || "");
         setTags(Array.isArray(note.tags) ? note.tags : []);
         setFormat(note.format || "markdown");
+        setTypography(normalizeStyle(note.style));
+        setInkId(note.ink_page_id || null);
         setMeta({ created_date: note.created_date, updated_date: note.updated_date });
         setStatus("idle");
         setRevision(0);
@@ -120,7 +133,11 @@ export default function NotePage() {
     setStatus("saving");
     savePending.current = true;
     const timer = setTimeout(async () => {
-      const payload = runHook("note:before-save", { title: title.trim() || "Untitled note", body, tags, format });
+      const payload = {
+        ...runHook("note:before-save", { title: title.trim() || "Untitled note", body, tags, format }),
+        style: normalizeStyle(typography),
+        ink_page_id: inkId || null,
+      };
       let noteId = createdIdRef.current;
       if (noteId) {
         await db.entities.Note.update(noteId, payload);
@@ -138,7 +155,7 @@ export default function NotePage() {
       reload();
     }, 800);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [revision]);
 
   // Flush an edit that is still waiting on the debounce if the editor goes away.
@@ -146,12 +163,16 @@ export default function NotePage() {
     () => () => {
       if (!savePending.current) return;
       const latest = latestRef.current;
-      const payload = runHook("note:before-save", {
-        title: String(latest.title || "").trim() || "Untitled note",
-        body: latest.body || "",
-        tags: latest.tags || [],
-        format: latest.format || "markdown",
-      });
+      const payload = {
+        ...runHook("note:before-save", {
+          title: String(latest.title || "").trim() || "Untitled note",
+          body: latest.body || "",
+          tags: latest.tags || [],
+          format: latest.format || "markdown",
+        }),
+        style: normalizeStyle(latest.typography),
+        ink_page_id: latest.inkId || null,
+      };
       const noteId = createdIdRef.current;
       if (noteId) db.entities.Note.update(noteId, payload).catch(() => {});
       else db.entities.Note.create(payload).catch(() => {});
@@ -179,6 +200,78 @@ export default function NotePage() {
     touch();
   };
   const images = useNoteImages({ body, onChange: changeBody });
+
+  // Handwriting: a note may own one ink page, linked by note.ink_page_id.
+  const inkActive = ribbonTab === "ink";
+  const openInkOwner = async (pageId) => {
+    const result = await db.entities.Note.list({ limit: 2000 });
+    const owner = (result?.items ?? []).find((item) => item.ink_page_id === pageId && !item.trashed);
+    if (owner) navigate(`/note/${owner.id}`);
+  };
+  const inkPage = useInkPage(inkId, { active: inkActive, onOpenPage: openInkOwner });
+
+  const startInk = async () => {
+    if (startingInk) return;
+    setStartingInk(true);
+    try {
+      const page = await db.entities.InkPage.create({ name: title.trim() || "Untitled note", strokes: [] });
+      setInkId(page.id);
+      touch();
+    } finally {
+      setStartingInk(false);
+    }
+  };
+
+  const removeInk = async () => {
+    if (!inkId) return;
+    if (!window.confirm("Delete all handwriting in this note? This cannot be undone.")) return;
+    await deletePage(inkId).catch(() => {});
+    setInkId(null);
+    touch();
+  };
+
+  const attachInk = async (pageId) => {
+    if (inkId && inkId !== pageId) {
+      if (!window.confirm("Replace this note's handwriting with the selected page? The current handwriting is deleted.")) return;
+      await deletePage(inkId).catch(() => {});
+    }
+    setInkId(pageId);
+    touch();
+  };
+
+  // Pages drawn before Ink moved into notes, and not yet claimed by any note.
+  const listAttachable = async () => {
+    const [pages, owners] = await Promise.all([
+      db.entities.InkPage.list({ sort: "-updated_date", limit: 50 }),
+      db.entities.Note.list({ limit: 2000 }),
+    ]);
+    const used = new Set((owners?.items ?? []).map((item) => item.ink_page_id).filter(Boolean));
+    return (pages?.items ?? []).filter((item) => !used.has(item.id));
+  };
+
+  // The ink page carries the note's title so handwriting search shows readable names.
+  const inkName = inkPage.page?.name;
+  const patchInk = inkPage.patch;
+  useEffect(() => {
+    const name = title.trim();
+    if (name && inkName !== undefined && inkName !== name) patchInk({ name });
+  }, [title, inkName, patchInk]);
+
+  const noteInk = {
+    loading: Boolean(inkId) && inkPage.loading,
+    hasPage: Boolean(inkId && inkPage.page),
+    starting: startingInk,
+    page: inkPage.page,
+    ink: inkPage.ink,
+    board: inkPage.board,
+    markCount: inkPage.markCount,
+    pageIndex: inkPage.pageIndex,
+    status: inkPage.status,
+    onStart: startInk,
+    onRemove: removeInk,
+    onAttach: attachInk,
+    listAttachable,
+  };
   const markdown = isMarkdown(format);
 
   const insertLink = async (rawTitle, goToNote) => {
@@ -483,9 +576,35 @@ export default function NotePage() {
                     setFormat(next);
                     touch();
                   }}
+                  typography={typography}
+                  onTypography={(next) => {
+                    setTypography(normalizeStyle(next));
+                    touch();
+                  }}
+                  tab={ribbonTab}
+                  onTab={setRibbonTab}
+                  noteInk={noteInk}
                 />
 
+                {inkActive ? (
+                  <div className="mt-8 border-t border-border/60 pt-8">
+                    <NoteInkSurface noteInk={noteInk} />
+                  </div>
+                ) : (
                 <div className="mt-8 border-t border-border/60 pt-8">
+                  {noteInk.hasPage && noteInk.markCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        writePref("ribbonTab", "ink");
+                        setRibbonTab("ink");
+                      }}
+                      className="mb-6 flex items-center gap-2 rounded-lg border border-border/70 bg-card/40 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+                    >
+                      <PenLine className="h-3 w-3 text-primary" />
+                      Handwriting · {noteInk.markCount} marks · open the Ink tab
+                    </button>
+                  )}
                   <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
                     {mode !== "read" && (
                       <div className="min-w-0">
@@ -500,6 +619,7 @@ export default function NotePage() {
                               titles={titles}
                               onCreateNote={(newTitle) => insertLink(newTitle, false)}
                               onImageFiles={images.insert}
+                              {...editorProps(typography)}
                             />
                             <MacroBar
                               body={body}
@@ -521,6 +641,7 @@ export default function NotePage() {
                             <MarkdownView
                               body={body}
                               linkIndex={linkIndex}
+                              typography={typography}
                               onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
                               onCreateNote={(newTitle) => insertLink(newTitle, true)}
                             />
@@ -536,6 +657,7 @@ export default function NotePage() {
                     )}
                   </div>
                 </div>
+                )}
               </>
             )}
           </article>

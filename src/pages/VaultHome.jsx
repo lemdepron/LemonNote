@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, PenLine, Search, Share2, Table2, X } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, Search, Share2, Table2, X } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -14,7 +14,6 @@ const SURFACES = [
   { to: "/tasks", label: "Task inbox", hint: "todo, doing, done", icon: ListChecks },
   { to: "/cards", label: "Flashcards", hint: "spaced repetition", icon: Layers },
   { to: "/graph", label: "Graph view", hint: "the vault as a network", icon: Share2 },
-  { to: "/ink", label: "Ink notebook", hint: "pen, highlighter, eraser", icon: PenLine },
   { to: "/canvas", label: "Infinite canvas", hint: "pan, zoom, wire cards", icon: LayoutGrid },
   { to: "/tables", label: "Relational tables", hint: "typed fields and relations", icon: Table2 },
   { to: "/code", label: "Code workspace", hint: "find & replace, autosave", icon: Code2 },

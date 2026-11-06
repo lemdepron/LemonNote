@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import ScrollToTop from './components/ScrollToTop';
 import VaultHome from '@/pages/VaultHome';
@@ -15,8 +15,6 @@ import JournalPage from '@/pages/JournalPage';
 import TasksPage from '@/pages/TasksPage';
 import CardsPage from '@/pages/CardsPage';
 import GraphPage from '@/pages/GraphPage';
-import InkHome from '@/pages/InkHome';
-import InkPage from '@/pages/InkPage';
 import QueriesPage from '@/pages/QueriesPage';
 import ExtensionsPage from '@/pages/ExtensionsPage';
 import ManifestPage from '@/pages/ManifestPage';
@@ -43,8 +41,9 @@ function App() {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/graph" element={<GraphPage />} />
-          <Route path="/ink" element={<InkHome />} />
-          <Route path="/ink/:id" element={<InkPage />} />
+          {/* Ink now lives in the Ink tab of every note; old links land on the vault. */}
+          <Route path="/ink" element={<Navigate to="/" replace />} />
+          <Route path="/ink/:id" element={<Navigate to="/" replace />} />
           <Route path="/queries" element={<QueriesPage />} />
           <Route path="/extensions" element={<ExtensionsPage />} />
           <Route path="/spaces" element={<ManifestPage />} />

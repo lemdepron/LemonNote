@@ -7,7 +7,6 @@ import {
   Layers,
   LayoutGrid,
   ListChecks,
-  PenLine,
   Plus,
   Search,
   Share2,
@@ -25,14 +24,13 @@ const ACTIONS = [
   { id: "act-canvas", label: "Infinite canvas", hint: "action", to: "/canvas", icon: LayoutGrid, keywords: "whiteboard map" },
   { id: "act-tables", label: "Relational tables", hint: "action", to: "/tables", icon: Table2, keywords: "database board gallery" },
   { id: "act-code", label: "Code workspace", hint: "action", to: "/code", icon: Code2, keywords: "editor files" },
-  { id: "act-ink", label: "Ink notebook", hint: "action", to: "/ink", icon: PenLine, keywords: "draw handwriting" },
 ];
 
 export default function CommandPalette({ open, onClose }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
-  const [sources, setSources] = useState({ notes: [], canvases: [], tables: [], code: [], ink: [] });
+  const [sources, setSources] = useState({ notes: [], canvases: [], tables: [], code: [] });
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -44,15 +42,13 @@ export default function CommandPalette({ open, onClose }) {
       db.entities.Canvas.list({ sort: "-updated_date", limit: 50 }),
       db.entities.DataTable.list({ sort: "-updated_date", limit: 50 }),
       db.entities.CodeFile.list({ sort: "-updated_date", limit: 50 }),
-      db.entities.InkPage.list({ sort: "-updated_date", limit: 50 }),
     ])
-      .then(([notes, canvases, tables, code, ink]) => {
+      .then(([notes, canvases, tables, code]) => {
         setSources({
           notes: notes?.items ?? [],
           canvases: canvases?.items ?? [],
           tables: tables?.items ?? [],
           code: code?.items ?? [],
-          ink: ink?.items ?? [],
         });
       })
       .catch(() => {});
@@ -118,13 +114,6 @@ export default function CommandPalette({ open, onClose }) {
         .filter((item) => hit(item.name))
         .slice(0, 5)
         .map((item) => ({ id: `code-${item.id}`, label: item.name, hint: "file", icon: Code2, run: () => navigate(`/code/${item.id}`) })),
-    },
-    {
-      label: "Ink",
-      entries: sources.ink
-        .filter((item) => hit(item.name))
-        .slice(0, 5)
-        .map((item) => ({ id: `ink-${item.id}`, label: item.name, hint: "page", icon: PenLine, run: () => navigate(`/ink/${item.id}`) })),
     },
   ].filter((group) => group.entries.length);
 

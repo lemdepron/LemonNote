@@ -85,8 +85,51 @@ export function commit(result, onFallback) {
     onFallback?.(result.next);
     return false;
   }
-  const at = typeof result.caret === "number" ? result.caret : result.start + result.text.length;
-  node.setSelectionRange(at, at);
+  if (Array.isArray(result.select)) {
+    node.setSelectionRange(result.select[0], result.select[1]);
+  } else {
+    const at = typeof result.caret === "number" ? result.caret : result.start + result.text.length;
+    node.setSelectionRange(at, at);
+  }
   publish(readFrom(node));
   return true;
+}
+
+/** Runs a native editing command (undo, redo, selectAll) on the editor and re-reads it. */
+export function execEditor(command) {
+  const node = element;
+  if (!node) return false;
+  node.focus({ preventScroll: true });
+  let done = false;
+  try {
+    done = document.execCommand(command);
+  } catch {
+    done = false;
+  }
+  publish(readFrom(node));
+  return done;
+}
+
+/** Copies text to the clipboard; falls back to the legacy command when the async API is blocked. */
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {
+      ok = false;
+    }
+    area.remove();
+    if (element) element.focus({ preventScroll: true });
+    return ok;
+  }
 }

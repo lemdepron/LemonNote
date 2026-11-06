@@ -1,27 +1,37 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarDays, CalendarPlus, Circle, CircleCheck, ImagePlus, Loader2, Timer } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { db } from "@/api/localDb";
-import { JOURNAL_TEMPLATE, dateKey } from "@/lib/journal";
-import { FORMAT_GROUPS, formatLabel, isMarkdown } from "@/lib/note-formats";
-import { codeBlockAt, insertText, taskStatusAt, tableInsert, toggleTask } from "@/lib/ribbon-actions";
+import { useNavigate } from "react-router-dom";
+import { dateKey } from "@/lib/journal";
+import { JOURNAL_TEMPLATE } from "@/lib/journal";
+import { formatLabel, isMarkdown } from "@/lib/note-formats";
+import { insertText, toggleTask } from "@/lib/ribbon-actions";
+import { applyAttr, toggleItalic, toggleWrap, toggleComment, fenceAt } from "@/lib/format-actions";
 import { commit, useEditorSnapshot } from "@/lib/editor-bridge";
-import { shortcutLabel, shortcutMatches } from "@/lib/shortcuts";
-import CardComposer from "@/components/ribbon/CardComposer";
-import TablePicker from "@/components/ribbon/TablePicker";
-import TableTools from "@/components/ribbon/TableTools";
-import CodeBlockPicker from "@/components/ribbon/CodeBlockPicker";
-import RibbonButton from "@/components/ribbon/RibbonButton";
-import RibbonGroup from "@/components/ribbon/RibbonGroup";
+import { shortcutMatches } from "@/lib/shortcuts";
+import { readPref, writePref } from "@/lib/preferences";
+import { RibbonContext, RibbonFrame } from "@/components/ribbon/RibbonKit";
+import { InkTab } from "@/components/ribbon/tabs/InkTabs";
+import { HomeTab, FormatTab, ParagraphTab } from "@/components/ribbon/tabs/TextTabs";
+import { InsertTab, CodeTab } from "@/components/ribbon/tabs/InsertTabs";
+import { TableTab, JournalTab, TasksTab, ViewTab } from "@/components/ribbon/tabs/DataTabs";
 import { cn } from "@/lib/utils";
 
-const TASKS = [
-  { status: "TODO", icon: Circle, hint: "Mark the line as TODO, or clear it if it already is" },
-  { status: "DOING", icon: Timer, hint: "Mark the line as DOING, or clear it if it already is" },
-  { status: "DONE", icon: CircleCheck, hint: "Mark the line as DONE, or clear it if it already is" },
+const TABS = [
+  { id: "home", label: "Home" },
+  { id: "insert", label: "Insert" },
+  { id: "format", label: "Format" },
+  { id: "paragraph", label: "Paragraph" },
+  { id: "table", label: "Table" },
+  { id: "journal", label: "Journal" },
+  { id: "tasks", label: "Tasks" },
+  { id: "code", label: "Code" },
+  { id: "ink", label: "Ink" },
+  { id: "view", label: "View" },
 ];
 
-const SHORTCUTS = {
+/** Shortcuts that work anywhere on the page (Alt-based, as before). */
+const GLOBAL_SHORTCUTS = {
   daily: { mod: true, alt: true, key: "d" },
   date: { mod: true, alt: true, key: "t" },
   TODO: { mod: true, alt: true, key: "1" },
@@ -33,212 +43,153 @@ const SHORTCUTS = {
   image: { mod: true, alt: true, key: "i" },
 };
 
-const SELECT_CLASS =
-  "h-8 max-w-[136px] shrink-0 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40";
+/** Shortcuts that only act while the writing box has focus. */
+const EDITOR_SHORTCUTS = [
+  [{ mod: true, key: "b" }, (s) => toggleWrap(s, "**")],
+  [{ mod: true, key: "i" }, (s) => toggleItalic(s)],
+  [{ mod: true, key: "u" }, (s) => toggleWrap(s, "<u>", "</u>")],
+  [{ mod: true, key: "e" }, (s) => toggleWrap(s, "`")],
+  [{ mod: true, shift: true, key: "x" }, (s) => toggleWrap(s, "~~")],
+  [{ mod: true, shift: true, key: "h" }, (s) => applyAttr(s, "mark", "h", "yellow")],
+  [{ mod: true, key: "/" }, (s, lang) => toggleComment(s, lang)],
+];
 
 /**
- * The ribbon above the writing area. Every button edits the markdown at the caret
- * through the editor bridge, so the selection, the focus and one-step undo survive.
+ * The tabbed ribbon above the writing area. Every button edits the markdown at the
+ * caret through the editor bridge, so the selection, the focus and one-step undo survive.
+ * Whole-note typography is saved on the note (`note.style`) via `onTypography`.
  */
-export default function NoteRibbon({ body, onChange, images, noteId, noteTitle, format = "markdown", onFormat }) {
+/** The tab to open with: the one used last time. */
+export function initialRibbonTab() {
+  const saved = readPref("ribbonTab", "home");
+  return TABS.some((item) => item.id === saved) ? saved : "home";
+}
+
+export default function NoteRibbon({
+  body, onChange, images, noteId, noteTitle, format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
+}) {
   const navigate = useNavigate();
   const fileRef = useRef(null);
-  const [opening, setOpening] = useState(false);
   const [signals, setSignals] = useState({ card: 0, table: 0, code: 0 });
 
   const snap = useEditorSnapshot();
   const value = snap.value || body || "";
   const start = snap.value ? Math.min(snap.start, value.length) : value.length;
   const end = snap.value ? Math.min(snap.end, value.length) : value.length;
-  const selection = { value, start, end };
+  const selection = useMemo(() => ({ value, start, end }), [value, start, end]);
 
   const markdown = isMarkdown(format);
   const offReason = `Only Markdown notes offer this — this note is ${formatLabel(format)}.`;
-  const activeStatus = taskStatusAt(value, start);
   const run = (result) => commit(result, onChange);
 
-  // Today's daily note, created with the journal scaffold the first time.
-  const openToday = async () => {
-    if (opening) return;
-    setOpening(true);
-    try {
-      const day = dateKey();
-      const found = await db.entities.Note.filter({ title: day, trashed: { $ne: true } }, { limit: 1 });
-      const existing = found?.items?.[0];
-      const note =
-        existing ||
-        (await db.entities.Note.create({ title: day, body: JOURNAL_TEMPLATE, tags: ["journal"] }));
-      navigate(`/note/${note.id}`);
-    } finally {
-      setOpening(false);
-    }
+  const chooseTab = (id) => {
+    writePref("ribbonTab", id);
+    onTab(id);
   };
 
-  const addDate = () => run(insertText(selection, dateKey()));
-  const markTask = (status) => run(toggleTask(selection, status));
-  const addCode = (language) => run(codeBlockAt(selection, language));
-  const addTable = (rows, columns) => run(tableInsert(selection, rows, columns));
+  const openToday = async () => {
+    const day = dateKey();
+    const found = await db.entities.Note.filter({ title: day, trashed: { $ne: true } }, { limit: 1 });
+    const note = found?.items?.[0] || (await db.entities.Note.create({ title: day, body: JOURNAL_TEMPLATE, tags: ["journal"] }));
+    navigate(`/note/${note.id}`);
+  };
 
   const handlers = useRef({});
   handlers.current = {
     daily: openToday,
-    date: addDate,
-    TODO: () => markTask("TODO"),
-    DOING: () => markTask("DOING"),
-    DONE: () => markTask("DONE"),
+    date: () => run(insertText(selection, dateKey())),
+    TODO: () => run(toggleTask(selection, "TODO")),
+    DOING: () => run(toggleTask(selection, "DOING")),
+    DONE: () => run(toggleTask(selection, "DONE")),
     image: () => fileRef.current?.click(),
-    card: () => setSignals((current) => ({ ...current, card: current.card + 1 })),
-    table: () => setSignals((current) => ({ ...current, table: current.table + 1 })),
-    code: () => setSignals((current) => ({ ...current, code: current.code + 1 })),
+    card: () => {
+      chooseTab("tasks");
+      setSignals((current) => ({ ...current, card: current.card + 1 }));
+    },
+    table: () => {
+      chooseTab("table");
+      setSignals((current) => ({ ...current, table: current.table + 1 }));
+    },
+    code: () => {
+      chooseTab("code");
+    },
   };
 
-  const markdownRef = useRef(markdown);
-  markdownRef.current = markdown;
+  const liveRef = useRef({});
+  liveRef.current = { markdown, selection, run, value };
 
   useEffect(() => {
     const onKey = (event) => {
-      const hit = Object.entries(SHORTCUTS).find(([, spec]) => shortcutMatches(event, spec));
-      if (!hit) return;
+      const live = liveRef.current;
+      const hit = Object.entries(GLOBAL_SHORTCUTS).find(([, spec]) => shortcutMatches(event, spec));
+      if (hit) {
+        event.preventDefault();
+        if (live.markdown) handlers.current[hit[0]]?.();
+        return;
+      }
+      if (document.activeElement?.id !== "nb-editor" || !live.markdown) return;
+      const match = EDITOR_SHORTCUTS.find(([spec]) => shortcutMatches(event, spec));
+      if (!match) return;
       event.preventDefault();
-      if (!markdownRef.current) return;
-      handlers.current[hit[0]]?.();
+      const node = document.activeElement;
+      const sel = { value: node.value, start: node.selectionStart, end: node.selectionEnd };
+      const block = fenceAt(sel.value, sel.start);
+      live.run(match[1](sel, block ? block.lang : readPref("codeBlockLanguage", "plain")));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const context = {
+    selection, value, body, onChange, run, markdown, offReason, noteId, noteTitle,
+    typography, setTypography: (next) => onTypography?.(next),
+  };
+
   return (
-    <div className="mt-6 overflow-x-auto">
-      <div className="flex w-max min-w-full flex-nowrap items-stretch divide-x divide-border/60 rounded-xl border border-border/70 bg-card/40">
-        <RibbonGroup label="Format">
-          <select
-            value={format}
-            onChange={(event) => onFormat?.(event.target.value)}
-            aria-label="Note format"
-            title="The type of the whole note — the only language list in the ribbon"
-            className={SELECT_CLASS}
-          >
-            {FORMAT_GROUPS.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.ids.map((id) => (
-                  <option key={id} value={id}>
-                    {formatLabel(id)}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </RibbonGroup>
-
-        <RibbonGroup label="Journal">
-          <RibbonButton
-            icon={opening ? Loader2 : CalendarPlus}
-            spinning={opening}
-            label="Daily template"
-            hint="Open or create today's daily note"
-            shortcut={shortcutLabel(SHORTCUTS.daily)}
-            disabled={!markdown}
-            disabledReason={offReason}
-            onClick={openToday}
-          />
-          <RibbonButton
-            icon={CalendarDays}
-            label="Today's date"
-            hint="Insert today's date at the cursor"
-            shortcut={shortcutLabel(SHORTCUTS.date)}
-            disabled={!markdown}
-            disabledReason={offReason}
-            onClick={addDate}
-          />
-        </RibbonGroup>
-
-        <RibbonGroup label="Tasks">
-          {TASKS.map(({ status, icon, hint }) => (
-            <RibbonButton
-              key={status}
-              icon={icon}
-              label={status}
-              hint={hint}
-              shortcut={shortcutLabel(SHORTCUTS[status])}
-              active={activeStatus === status}
-              disabled={!markdown}
-              disabledReason={offReason}
-              onClick={() => markTask(status)}
-            />
-          ))}
-        </RibbonGroup>
-
-        <RibbonGroup label="Cards">
-          <CardComposer
-            body={body}
-            noteId={noteId}
-            noteTitle={noteTitle}
-            disabled={!markdown}
-            disabledReason={offReason}
-            shortcut={shortcutLabel(SHORTCUTS.card)}
-            openSignal={signals.card}
-          />
-        </RibbonGroup>
-
-        <RibbonGroup label="Table">
-          <TablePicker
-            onInsert={addTable}
-            disabled={!markdown}
-            disabledReason={offReason}
-            shortcut={shortcutLabel(SHORTCUTS.table)}
-            openSignal={signals.table}
-          />
-        </RibbonGroup>
-
-        <RibbonGroup label="Table tools">
-          <TableTools body={body} onChange={onChange} />
-        </RibbonGroup>
-
-        <RibbonGroup label="Code">
-          <CodeBlockPicker
-            onInsert={addCode}
-            disabled={!markdown}
-            disabledReason={offReason}
-            shortcut={shortcutLabel(SHORTCUTS.code)}
-            openSignal={signals.code}
-          />
-        </RibbonGroup>
-
-        <RibbonGroup label="Image">
-          <RibbonButton
-            icon={ImagePlus}
-            label="Image"
-            hint="Insert an image — png, jpg, webp or gif, up to 5 MB"
-            shortcut={shortcutLabel(SHORTCUTS.image)}
-            disabled={!markdown}
-            disabledReason={offReason}
-            onClick={() => fileRef.current?.click()}
-          />
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            className="hidden"
-            onChange={(event) => {
-              images?.insert(event.target.files);
-              event.target.value = "";
-            }}
-          />
-        </RibbonGroup>
-
-        {(images?.busy || images?.error) && (
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 px-2.5 font-mono text-[9.5px] uppercase tracking-[0.1em]",
-              images?.error ? "text-destructive" : "text-muted-foreground"
-            )}
-          >
-            {images?.busy && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-            {images?.error || "uploading"}
-          </div>
+    <RibbonContext.Provider value={context}>
+      <RibbonFrame
+        tabs={TABS}
+        tab={tab}
+        onTab={chooseTab}
+        trailing={
+          (images?.busy || images?.error) && (
+            <div
+              className={cn(
+                "flex shrink-0 items-center gap-1.5 px-2.5 font-mono text-[9.5px] uppercase tracking-[0.1em]",
+                images?.error ? "text-destructive" : "text-muted-foreground"
+              )}
+            >
+              {images?.busy && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+              {images?.error || "uploading"}
+            </div>
+          )
+        }
+      >
+        {tab === "home" && <HomeTab format={format} onFormat={onFormat} />}
+        {tab === "insert" && <InsertTab onPickImage={() => fileRef.current?.click()} />}
+        {tab === "format" && <FormatTab />}
+        {tab === "paragraph" && <ParagraphTab />}
+        {tab === "table" && <TableTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} />}
+        {tab === "journal" && <JournalTab />}
+        {tab === "tasks" && (
+          <TasksTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} />
         )}
-      </div>
-    </div>
+        {tab === "code" && <CodeTab />}
+        {tab === "ink" && <InkTab noteInk={noteInk} />}
+        {tab === "view" && <ViewTab />}
+      </RibbonFrame>
+
+        <input
+          ref={fileRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(event) => {
+            images?.insert(event.target.files);
+            event.target.value = "";
+          }}
+        />
+    </RibbonContext.Provider>
   );
 }
