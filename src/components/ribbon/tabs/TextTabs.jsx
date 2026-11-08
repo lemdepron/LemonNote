@@ -3,6 +3,7 @@ import {
   FlipHorizontal2, Highlighter, IndentDecrease, IndentIncrease, Italic, List, ListChecks, ListOrdered, ListX, Merge, Minus,
   Quote, Redo2, Scissors, SquareDashedMousePointer, Strikethrough, Subscript, Superscript, Trash2,
   Type, Underline, Undo2, WrapText, Keyboard, Hash, Pilcrow, ArrowLeftRight, Space,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { FORMAT_GROUPS, formatLabel } from "@/lib/note-formats";
@@ -10,6 +11,7 @@ import { Btn, MenuItem, MenuLabel, RibbonMenu, RibbonSelect, Stepper, Swatches, 
 import { copyText, execEditor } from "@/lib/editor-bridge";
 import {
   applyAttr, changeCase, clearFormatting, lineTool, setBlock, setHeading, shiftIndent, toggleItalic, toggleLinePrefix, toggleWrap,
+  stepFontSize,
 } from "@/lib/format-actions";
 import {
   COLORS, FONTS, FONT_GROUPS, HIGHLIGHTS, LETTER_SPACING, LINE_HEIGHTS, PARAGRAPH_GAPS, SIZES,
@@ -90,7 +92,7 @@ export function HomeTab({ format, onFormat }) {
           onChange={(event) => onFormat?.(event.target.value)}
           aria-label="Note format"
           title={`The type of the whole note (now ${formatLabel(format)})`}
-          className="h-8 w-[128px] shrink-0 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40"
+          className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]"
         >
           {FORMAT_GROUPS.map((group) => (
             <optgroup key={group.label} label={group.label}>
@@ -140,6 +142,8 @@ export function FormatTab() {
           value=""
           onChange={(value) => value && run(applyAttr(selection, "span", "s", value))}
         />
+        <Btn id="format.growFont" icon={ChevronUp} hint="Grow font size (Ctrl+Shift+>)" shortcut="Ctrl+Shift+>" edit={(s) => stepFontSize(s, 1)} />
+        <Btn id="format.shrinkFont" icon={ChevronDown} hint="Shrink font size (Ctrl+Shift+<)" shortcut="Ctrl+Shift+<" edit={(s) => stepFontSize(s, -1)} />
         <RibbonMenu icon={Type} label="Color" hint="Text colour">
           {(close) => (
             <>

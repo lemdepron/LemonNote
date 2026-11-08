@@ -8,7 +8,7 @@ import { editorCaret } from "@/lib/note-insert";
 import { cn } from "@/lib/utils";
 
 /** Turns the selected note text into a flashcard: selection is the answer, the prompt is typed here. */
-export default function CardComposer({ body, noteId, noteTitle, disabled, disabledReason, shortcut, openSignal }) {
+export default function CardComposer({ id, body, noteId, noteTitle, disabled, disabledReason, shortcut, openSignal }) {
   const [open, setOpen] = useState(false);
   const [front, setFront] = useState("");
   const [back, setBack] = useState("");
@@ -44,6 +44,7 @@ export default function CardComposer({ body, noteId, noteTitle, disabled, disabl
   if (disabled) {
     return (
       <RibbonButton
+        id={id}
         icon={Layers}
         label="Make card"
         hint="Turn the selected text into a flashcard"
@@ -58,6 +59,7 @@ export default function CardComposer({ body, noteId, noteTitle, disabled, disabl
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <RibbonButton
+          id={id}
           icon={Layers}
           label="Make card"
           hint="Turn the selected text into a flashcard"

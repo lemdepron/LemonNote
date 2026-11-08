@@ -1,0 +1,670 @@
+diff --git a/AGENTS.md b/AGENTS.md
+new file mode 100644
+index 0000000..fdca346
+--- /dev/null
++++ b/AGENTS.md
+@@ -0,0 +1,110 @@
++# LemonNote: rules for the coding agent
++
++You are working on **LemonNote**, a local-first knowledge workspace (Markdown notes, wiki-links, backlinks, tags, full-text search, canvas, tables, code files, flashcards, handwriting ink, journal, tasks, graph, extensions, themes).
++Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub user `lemdepron`.
++
++## The owner
++
++- A complete beginner developer on a **Windows 11 laptop**. Uses VS Code and PowerShell.
++- Explain every result in **simple words**. For every command you tell the owner to run, say **where** to run it (PowerShell anywhere, PowerShell inside the project folder, VS Code terminal, or the browser).
++- Never invent facts, file contents, package versions or API details. If you did not check it, say "I did not check this".
++- Ask for the file, or read it, before editing it. Never assume a file exists.
++
++## Stack
++
++- React 18, Vite 8, Tailwind 3, react-router 7, TanStack Query, **plain JavaScript (`.jsx` / `.js`, no TypeScript)**, Tauri 2 in `src-tauri/`.
++- The `@` alias means `src/` (defined in `vite.config.js`).
++- Markdown rendering: `react-markdown` with `remark-gfm`, `rehype-raw` and `rehype-sanitize` (whitelist in `src/lib/text-style.js`). Never allow arbitrary `style`, `class` or scripts in notes.
++
++## Hard rules
++
++1. **All data goes through `src/api/localDb.js`.** Pages never touch IndexedDB directly. A later Rust engine will replace only the inside of this file, so keep its outside shape identical (`list`, `filter`, `get`, `create`, `bulkCreate`, `update`, `bulkUpdate`, `delete`, `deleteMany`; results look like `{ items, has_more, next_cursor }`).
++2. **Do not rename** these internal names (saved settings would silently reset): `notecraft:prefs`, `notecraft:user`, the IndexedDB name `notecraft`, CSS classes `nb-*`, theme preset ids.
++3. There are **no logins or accounts**. Do not add any.
++4. Do not add network calls. Local-first means it must work offline. (Known exception to fix later: fonts still load from Google.)
++5. UI components in `src/components/ui/` are hand-written shadcn-style files. Do not assume other shadcn files exist. There is no toast system yet.
++6. Do not edit `node_modules`, `dist`, `src-tauri/target`, `package-lock.json` by hand.
++7. Keep changes **small and focused**. Touch only the files the task needs. No drive-by refactors, no renames, no reformatting of untouched code.
++8. Do not add a dependency unless the task needs it. If you add one, say which and why.
++9. Windows 11 laptop first, iPhone second. Do not optimise for other hardware.
++
++## Where things are
++
++- Notes page: `src/pages/NotePage.jsx` (autosave, title, tags, editor, reader, ribbon).
++- **Tabbed ribbon (10 tabs):** `src/components/ribbon/NoteRibbon.jsx`
++  - Tabs: Home, Insert, Format, Paragraph, Table, Journal, Tasks, Code, View, Ink.
++  - Tab files: `src/components/ribbon/tabs/` (`TextTabs.jsx`, `InsertTabs.jsx`, `DataTabs.jsx`, `InkTabs.jsx`). Shared UI: `RibbonKit.jsx`.
++  - Pure text-edit logic (no React): `src/lib/format-actions.js`, `table-extras.js`, `journal-tools.js`, `text-style.js`, `code-fence-languages.js`.
++  - The editor is a plain `<textarea>`. Ribbon buttons edit it through `src/lib/editor-bridge.js`.
++  - Per-note typography is saved on the note as `note.style`.
++- **Ink lives inside notes.** Each note may own one ink page, linked by `note.ink_page_id`.
++  - Logic: `src/hooks/useInkPage.js`. Drawing surface: `src/components/ink/NoteInkSurface.jsx` and `InkBoard.jsx`. Storage: `src/lib/ink/store.js`.
++  - Deleting a note forever also deletes its ink (`src/lib/notes.js`).
++  - The old standalone Ink pages and `/ink` routes were removed on purpose.
++- Data tables in `localDb.js`: `Note`, `Canvas`, `DataTable`, `CodeFile`, `InkPage`, `InkChunk`, `Flashcard`.
++
++## Standard process for EVERY task (follow it unless the prompt says otherwise)
++
++1. **PLAN first.** List the files you will create or change, any data-shape changes and the risk to existing notes. If saved data could change shape, propose a safe migration so old notes keep opening. Then STOP and wait for the owner to reply "go".
++2. **BUILD** only what the task says. Small changes. No renames, no unrelated refactors.
++3. **No dead buttons.** Never add a button, menu item or tab that does nothing. If a feature is not built yet, leave it out.
++4. **TEST.** Put pure logic in `src/lib/` and test it with a small Node script (`npm i --no-save fake-indexeddb jsdom` if you need a fake browser). Report real results and say what you could not test (anything needing a real screen, mouse or pen).
++5. **VERIFY** with the commands in the next section.
++6. Give a numbered **hand-test list** for the browser, including one step that proves old notes still open.
++7. Do not commit, push or tag. STOP and wait.
++
++## Planned architecture: Page mode (do not build until a task asks)
++
++Goal: a Word/OneNote-like page with text, floating objects and handwriting ink **on top of the text**.
++
++- A note gets `note.layout` = `"flow"` (today's behaviour, the default) or `"page"`. Old notes stay `"flow"` and must never change.
++- `note.page` stores page settings (paper size, orientation, margins, columns, page colour, border, watermark, zoom). `note.objects` stores floating objects (text boxes, shapes, stickers, images, sticky notes) with x, y, width, height, rotation, z-order, group id and wrap mode.
++- Page mode renders the note as a sheet at its real paper size (96 dpi: A4 portrait = 794 x 1123 px) with margins as padding. First version is one continuous sheet with dashed page-break guides; real pagination happens in print through CSS.
++- Layers, bottom to top: page background and watermark, text, objects, ink. Ink strokes use **sheet pixel coordinates** so zoom never changes them. Ink does NOT follow text edits (text above it changing height will misalign it); the app must warn about this.
++- The ink engine (`src/lib/ink/engine.js`) already has `setCamera`; page mode needs a locked-camera, transparent-background mode driven by the scroll position and zoom of the sheet.
++- Wrap modes for objects: in front of text and behind text first; top-and-bottom later; square/tight wrap is a later, optional step.
++- Macros mean recorded sequences of ribbon commands (never user-written code). Multi-window needs cross-window sync (BroadcastChannel) first. GIFs are imported from local files only (no online search).
++
++## Before you say "done"
++
++Run these from the project folder and report the real output:
++
++```powershell
++npx eslint src --quiet
++npm run build
++```
++
++- Both must finish with no errors. Warnings about chunk size and `EBUSY` watcher noise are harmless.
++- If you changed behaviour, say exactly how the owner can **test it by hand** in the browser (`npm run dev`, then http://localhost:5173), step by step.
++- Never claim something works if you did not run or test it. Say what you tested and what you did not.
++- Do not commit, push, tag or release. The owner does that.
++
++## Known limits (do not "fix" unless the task says so)
++
++- Notes live in browser/app storage (IndexedDB). The installed `.exe` and the browser at `localhost:5173` have **separate** storage.
++- AI assist and handwriting recognition are off (their old backend functions were removed).
++- Installers are unsigned. No sync between devices.
++
++## Roadmap (context only)
++
++1. Fix bugs and add essential features **in JavaScript** (current phase): backup/export and import, toast messages, bundled fonts, smaller notes with images, inline ink preview in Read mode.
++2. Later: Rust engine with SQLite behind `localDb.js`, notes as real `.md` files, sync, Android, iPhone, code signing.
++
++## Task protocol (applies to every task)
++
++1. Do ONE task only: the one in the prompt. Do not start other items from the roadmap.
++2. Before editing, read the files you will touch. Then write a short plan (files to change, files to create) and follow it.
++3. Never invent file names, function names or library APIs. If something is not in the project, say so and ask, or create it deliberately.
++4. Keep changes small. Do not reformat or rename untouched code. Do not delete features unless the task says so.
++5. After editing, run `npx eslint src --quiet` and `npm run build` and report the REAL output.
++6. Finish with: (a) list of files changed or created, (b) what you tested and what you did NOT test, (c) "Test by hand" steps for a beginner, numbered, with exact clicks, (d) anything risky or left undone.
++7. Never commit, push, tag or release. Never run destructive commands (`rm -rf`, `git reset --hard`, `git clean`).
++8. Explain in simple words. State where every command runs.
++
++## UI design decisions (decided by the owner)
++
++- The note ribbon is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover, it stays visible (sticky) when the page scrolls.
++- Main ribbon tabs, in this order: Home, Ink, Insert, Design, Layout, View, Share. Two contextual tabs (Table, Code) appear only when the cursor is inside a table or a code block.
++- The ink layer lives inside the note (no separate Ink page).
++- The logo is the lemon notebook icon (`src-tauri/icons/icon.png`), not an emoji.
++- Do NOT add multi-window features (New Window, Arrange All, Side by Side, Synchronous Scrolling, Switch Windows): windows keep separate in-memory data and can overwrite each other.
+diff --git a/eslint.config.js b/eslint.config.js
+index 14a70c5..4a628f0 100644
+--- a/eslint.config.js
++++ b/eslint.config.js
+@@ -10,6 +10,7 @@ export default [
+       "src/components/**/*.{js,mjs,cjs,jsx}",
+       "src/pages/**/*.{js,mjs,cjs,jsx}",
+       "src/Layout.jsx",
++      "src/hooks/**/*.{js,mjs,cjs,jsx}",
+     ],
+     ignores: ["src/lib/**/*", "src/components/ui/**/*"],
+     ...pluginJs.configs.recommended,
+@@ -35,6 +36,7 @@ export default [
+       "unused-imports": pluginUnusedImports,
+     },
+     rules: {
++      "no-undef": "error",
+       "no-unused-vars": "off",
+       "react/jsx-uses-vars": "error",
+       "react/jsx-uses-react": "error",
+diff --git a/package.json b/package.json
+index cad60ca..59db373 100644
+--- a/package.json
++++ b/package.json
+@@ -10,7 +10,8 @@
+     "lint:fix": "eslint . --fix",
+     "typecheck": "tsc -p ./jsconfig.json",
+     "preview": "vite preview",
+-    "tauri": "tauri"
++    "tauri": "tauri",
++    "check": "eslint src --quiet && vite build"
+   },
+   "dependencies": {
+     "@hello-pangea/dnd": "^17.0.0",
+diff --git a/src/components/ribbon/NoteRibbon.jsx b/src/components/ribbon/NoteRibbon.jsx
+index efee561..fe2fdd9 100644
+--- a/src/components/ribbon/NoteRibbon.jsx
++++ b/src/components/ribbon/NoteRibbon.jsx
+@@ -12,22 +12,30 @@ import { shortcutMatches } from "@/lib/shortcuts";
+ import { readPref, writePref } from "@/lib/preferences";
+ import { RibbonContext, RibbonFrame } from "@/components/ribbon/RibbonKit";
+ import { InkTab } from "@/components/ribbon/tabs/InkTabs";
+-import { HomeTab, FormatTab, ParagraphTab } from "@/components/ribbon/tabs/TextTabs";
+-import { InsertTab, CodeTab } from "@/components/ribbon/tabs/InsertTabs";
+-import { TableTab, JournalTab, TasksTab, ViewTab } from "@/components/ribbon/tabs/DataTabs";
++import { HomeTab } from "@/components/ribbon/tabs/HomeTab";
++import { InsertTab } from "@/components/ribbon/tabs/InsertTab";
++import { DesignTab } from "@/components/ribbon/tabs/DesignTab";
++import { LayoutTab } from "@/components/ribbon/tabs/LayoutTab";
++import { ViewTab } from "@/components/ribbon/tabs/ViewTab";
++import { ShareTab } from "@/components/ribbon/tabs/ShareTab";
++import { TableContextTab } from "@/components/ribbon/tabs/TableContextTab";
++import { CodeContextTab } from "@/components/ribbon/tabs/CodeContextTab";
+ import { cn } from "@/lib/utils";
++import { tableAt } from "@/lib/ribbon-actions";
+ 
+-const TABS = [
++const MAIN_TABS = [
+   { id: "home", label: "Home" },
++  { id: "ink", label: "Ink" },
+   { id: "insert", label: "Insert" },
+-  { id: "format", label: "Format" },
+-  { id: "paragraph", label: "Paragraph" },
++  { id: "design", label: "Design" },
++  { id: "layout", label: "Layout" },
++  { id: "view", label: "View" },
++  { id: "share", label: "Share" },
++];
++
++const CONTEXTUAL_TABS = [
+   { id: "table", label: "Table" },
+-  { id: "journal", label: "Journal" },
+-  { id: "tasks", label: "Tasks" },
+   { id: "code", label: "Code" },
+-  { id: "ink", label: "Ink" },
+-  { id: "view", label: "View" },
+ ];
+ 
+ /** Shortcuts that work anywhere on the page (Alt-based, as before). */
+@@ -62,7 +70,7 @@ const EDITOR_SHORTCUTS = [
+ /** The tab to open with: the one used last time. */
+ export function initialRibbonTab() {
+   const saved = readPref("ribbonTab", "home");
+-  return TABS.some((item) => item.id === saved) ? saved : "home";
++  return MAIN_TABS.some((item) => item.id === saved) ? saved : "home";
+ }
+ 
+ export default function NoteRibbon({
+@@ -71,6 +79,7 @@ export default function NoteRibbon({
+   const navigate = useNavigate();
+   const fileRef = useRef(null);
+   const [signals, setSignals] = useState({ card: 0, table: 0, code: 0 });
++  const [lastMainTab, setLastMainTab] = useState(() => initialRibbonTab());
+ 
+   const snap = useEditorSnapshot();
+   const value = snap.value || body || "";
+@@ -82,8 +91,30 @@ export default function NoteRibbon({
+   const offReason = `Only Markdown notes offer this — this note is ${formatLabel(format)}.`;
+   const run = (result) => commit(result, onChange);
+ 
++  // Detect contextual tabs based on cursor position
++  const inTable = markdown && tableAt(value, selection.start);
++  const block = fenceAt(value, selection.start);
++  const inCodeBlock = markdown && Boolean(block);
++
++  // Determine which tabs to show
++  const visibleTabs = useMemo(() => {
++    const tabs = [...MAIN_TABS];
++    if (inTable) tabs.push(CONTEXTUAL_TABS[0]);
++    if (inCodeBlock) tabs.push(CONTEXTUAL_TABS[1]);
++    return tabs;
++  }, [inTable, inCodeBlock]);
++
++  // Determine active tab - if current tab is no longer visible, fall back to last main tab
++  const activeTab = useMemo(() => {
++    if (visibleTabs.some((t) => t.id === tab)) return tab;
++    return lastMainTab;
++  }, [tab, visibleTabs, lastMainTab]);
++
+   const chooseTab = (id) => {
+-    writePref("ribbonTab", id);
++    if (MAIN_TABS.some((t) => t.id === id)) {
++      writePref("ribbonTab", id);
++      setLastMainTab(id);
++    }
+     onTab(id);
+   };
+ 
+@@ -103,15 +134,19 @@ export default function NoteRibbon({
+     DONE: () => run(toggleTask(selection, "DONE")),
+     image: () => fileRef.current?.click(),
+     card: () => {
+-      chooseTab("tasks");
++      chooseTab("insert");
+       setSignals((current) => ({ ...current, card: current.card + 1 }));
+     },
+     table: () => {
+-      chooseTab("table");
+-      setSignals((current) => ({ ...current, table: current.table + 1 }));
++      if (inTable) {
++        chooseTab("table");
++        setSignals((current) => ({ ...current, table: current.table + 1 }));
++      }
+     },
+     code: () => {
+-      chooseTab("code");
++      if (inCodeBlock) {
++        chooseTab("code");
++      }
+     },
+   };
+ 
+@@ -148,8 +183,8 @@ export default function NoteRibbon({
+   return (
+     <RibbonContext.Provider value={context}>
+       <RibbonFrame
+-        tabs={TABS}
+-        tab={tab}
++        tabs={visibleTabs}
++        tab={activeTab}
+         onTab={chooseTab}
+         trailing={
+           (images?.busy || images?.error) && (
+@@ -165,31 +200,28 @@ export default function NoteRibbon({
+           )
+         }
+       >
+-        {tab === "home" && <HomeTab format={format} onFormat={onFormat} />}
+-        {tab === "insert" && <InsertTab onPickImage={() => fileRef.current?.click()} />}
+-        {tab === "format" && <FormatTab />}
+-        {tab === "paragraph" && <ParagraphTab />}
+-        {tab === "table" && <TableTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} />}
+-        {tab === "journal" && <JournalTab />}
+-        {tab === "tasks" && (
+-          <TasksTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} />
+-        )}
+-        {tab === "code" && <CodeTab />}
+-        {tab === "ink" && <InkTab noteInk={noteInk} />}
+-        {tab === "view" && <ViewTab />}
++        {activeTab === "home" && <HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} />}
++        {activeTab === "insert" && <InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} />}
++        {activeTab === "design" && <DesignTab />}
++        {activeTab === "layout" && <LayoutTab />}
++        {activeTab === "view" && <ViewTab />}
++        {activeTab === "share" && <ShareTab />}
++        {activeTab === "ink" && <InkTab noteInk={noteInk} />}
++        {activeTab === "table" && <TableContextTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} />}
++        {activeTab === "code" && <CodeContextTab />}
+       </RibbonFrame>
+ 
+-        <input
+-          ref={fileRef}
+-          type="file"
+-          multiple
+-          accept="image/png,image/jpeg,image/webp,image/gif"
+-          className="hidden"
+-          onChange={(event) => {
+-            images?.insert(event.target.files);
+-            event.target.value = "";
+-          }}
+-        />
++      <input
++        ref={fileRef}
++        type="file"
++        multiple
++        accept="image/png,image/jpeg,image/webp,image/gif"
++        className="hidden"
++        onChange={(event) => {
++          images?.insert(event.target.files);
++          event.target.value = "";
++        }}
++      />
+     </RibbonContext.Provider>
+   );
+-}
++}
+\ No newline at end of file
+diff --git a/src/components/ribbon/RibbonButton.jsx b/src/components/ribbon/RibbonButton.jsx
+index e0ca766..c55e7a8 100644
+--- a/src/components/ribbon/RibbonButton.jsx
++++ b/src/components/ribbon/RibbonButton.jsx
+@@ -2,14 +2,17 @@ import { forwardRef } from "react";
+ import { cn } from "@/lib/utils";
+ 
+ /**
+- * One ribbon action: icon plus its short label, with the action's shortcut in the
+- * tooltip. `keepFocus` holds the caret in the editor while the button is pressed.
++ * One ribbon action: icon-only by default. The name (and shortcut) shows as a
++ * tooltip on hover and keyboard focus. Every button keeps an aria-label.
++ * Buttons for quick languages (JS, TS, Py, etc.) keep a 2-3 letter text label.
+  */
+ const RibbonButton = forwardRef(function RibbonButton(
+-  { icon: Icon, label, hint, shortcut, onClick, spinning, active, disabled, disabledReason, keepFocus = true, className, ...rest },
++  { icon: Icon, label, hint, shortcut, onClick, spinning, active, disabled, disabledReason, keepFocus = true, className, showLabel = false, ...rest },
+   ref
+ ) {
+-  const title = disabled ? disabledReason || hint || label : [hint || label, shortcut].filter(Boolean).join(" · ");
++  const title = disabled
++    ? disabledReason || hint || label
++    : [hint || label, shortcut].filter(Boolean).join(" · ");
+ 
+   return (
+     <button
+@@ -28,7 +31,7 @@ const RibbonButton = forwardRef(function RibbonButton(
+       aria-pressed={active || undefined}
+       aria-disabled={disabled || undefined}
+       className={cn(
+-        "flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-transparent px-2 text-[11.5px] leading-none transition",
++        "flex h-8 shrink-0 items-center justify-center rounded-md border border-transparent px-2 transition",
+         active
+           ? "border-primary/40 bg-primary/15 text-primary"
+           : "text-muted-foreground hover:bg-accent hover:text-foreground",
+@@ -37,7 +40,7 @@ const RibbonButton = forwardRef(function RibbonButton(
+       )}
+     >
+       {Icon && <Icon className={cn("h-3.5 w-3.5 shrink-0", spinning && "animate-spin")} />}
+-      {label && <span className="whitespace-nowrap">{label}</span>}
++      {showLabel && label && <span className="whitespace-nowrap font-mono text-[10.5px]">{label}</span>}
+     </button>
+   );
+ });
+diff --git a/src/components/ribbon/RibbonGroup.jsx b/src/components/ribbon/RibbonGroup.jsx
+index 00e2e64..550fbc2 100644
+--- a/src/components/ribbon/RibbonGroup.jsx
++++ b/src/components/ribbon/RibbonGroup.jsx
+@@ -1,9 +1,20 @@
+-/** One section of the single-row ribbon; its name sits under the buttons. */
++/** One section of the ribbon; controls flow in columns 2 rows high, name below. */
+ export default function RibbonGroup({ label, children }) {
++  const gridStyle = {
++    display: 'grid',
++    gridAutoFlow: 'column',
++    gridTemplateRows: 'repeat(2, 32px)',
++    gridAutoColumns: 'max-content',
++    gap: '4px',
++    alignItems: 'center',
++  };
++
+   return (
+-    <div className="flex shrink-0 flex-col justify-center px-2 pb-1 pt-1.5">
+-      <div className="flex items-center gap-0.5">{children}</div>
+-      <span className="mt-0.5 select-none font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
++    <div className="flex shrink-0 flex-col px-2 pb-1 pt-1.5" style={{ minWidth: 'max-content' }}>
++      <div style={gridStyle} role="group" aria-label={label}>
++        {children}
++      </div>
++      <span className="mt-0.5 select-none font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55 text-center">
+         {label}
+       </span>
+     </div>
+diff --git a/src/components/ribbon/RibbonKit.jsx b/src/components/ribbon/RibbonKit.jsx
+index 88e0634..1e71c21 100644
+--- a/src/components/ribbon/RibbonKit.jsx
++++ b/src/components/ribbon/RibbonKit.jsx
+@@ -25,10 +25,10 @@ export function Btn({ edit, onClick, ...props }) {
+ }
+ 
+ const SELECT_CLASS =
+-  "h-8 shrink-0 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40";
++  "h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40 min-w-[72px]";
+ 
+ /** Native dropdown. `groups` = [{ label, options: [{ value, label }] }] or `options` = [{ value, label }]. */
+-export function RibbonSelect({ value, onChange, options, groups, title, width = 120, placeholder, disabled }) {
++export function RibbonSelect({ value, onChange, options, groups, title, placeholder, disabled }) {
+   return (
+     <select
+       value={value ?? ""}
+@@ -36,7 +36,6 @@ export function RibbonSelect({ value, onChange, options, groups, title, width =
+       onChange={(event) => onChange(event.target.value)}
+       title={title}
+       aria-label={title}
+-      style={{ width }}
+       className={SELECT_CLASS}
+     >
+       {placeholder !== undefined && <option value="">{placeholder}</option>}
+@@ -188,11 +187,12 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
+ /**
+  * The tab strip plus the panel that holds the active tab's groups. Shared by the
+  * note ribbon and the ink ribbon so both look and behave the same.
++ * Sticky at the top with a solid background so content doesn't show through.
+  */
+ export function RibbonFrame({ tabs, tab, onTab, children, trailing, className }) {
+   return (
+-    <div className={cn("mt-6", className)}>
+-      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1">
++    <div className={cn("mt-6 sticky top-0 z-10", className)}>
++      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
+         {tabs.map((item) => (
+           <button
+             key={item.id}
+@@ -203,17 +203,17 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, className })
+             onClick={() => onTab(item.id)}
+             className={cn(
+               "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition",
+-              tab === item.id ? "border-border/70 bg-card/60 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
++              tab === item.id ? "border-border bg-card text-foreground" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+             )}
+           >
+             {item.label}
+           </button>
+         ))}
+       </div>
+-      <div className="overflow-x-auto">
++      <div className="overflow-x-auto bg-background border-b border-border">
+         <div
+           role="tabpanel"
+-          className="flex w-max min-w-full flex-nowrap items-stretch divide-x divide-border/60 rounded-xl rounded-tl-none border border-border/70 bg-card/40"
++          className="flex w-max min-w-full items-stretch divide-x divide-border rounded-xl rounded-tl-none border border-border bg-card"
+         >
+           {children}
+           {trailing}
+diff --git a/src/components/ribbon/tabs/DataTabs.jsx b/src/components/ribbon/tabs/DataTabs.jsx
+index 508ac1f..bd484e3 100644
+--- a/src/components/ribbon/tabs/DataTabs.jsx
++++ b/src/components/ribbon/tabs/DataTabs.jsx
+@@ -383,7 +383,7 @@ export function ViewTab() {
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Statistics">
+-        <div className="flex items-center divide-x divide-border/50">
++        <div className="flex items-center divide-x divide-border/50" style={{ minWidth: 'max-content' }}>
+           {stat("words", words)}
+           {stat("chars", body.length)}
+           {stat("lines", lines)}
+diff --git a/src/components/ribbon/tabs/InkTabs.jsx b/src/components/ribbon/tabs/InkTabs.jsx
+index 04e0a96..a3a2797 100644
+--- a/src/components/ribbon/tabs/InkTabs.jsx
++++ b/src/components/ribbon/tabs/InkTabs.jsx
+@@ -73,12 +73,8 @@ export function InkDrawTab({ ink }) {
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Stroke">
+-        <div className="flex w-44 items-center px-1">
+-          <Slider label="width" value={tool.width} min={0.5} max={24} step={0.5} onChange={(width) => onTool({ width })} display={`${tool.width}px`} className="w-full" />
+-        </div>
+-        <div className="flex w-36 items-center px-1">
+-          <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} className="w-full" />
+-        </div>
++        <Slider label="width" value={tool.width} min={0.5} max={24} step={0.5} onChange={(width) => onTool({ width })} display={`${tool.width}px`} />
++        <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} />
+         <RibbonMenu icon={Brush} label="Brush engine" hint="Pen behaviour, eraser engine, shape and ruler assists" width={300}>
+           {() => (
+             <div className="space-y-4 p-1">
+@@ -93,9 +89,7 @@ export function InkDrawTab({ ink }) {
+       <RibbonGroup label="Eraser">
+         <Chip active={tool.eraserMode === "stroke"} onClick={() => onTool({ eraserMode: "stroke", mode: "erase" })}>Stroke</Chip>
+         <Chip active={tool.eraserMode === "precision"} onClick={() => onTool({ eraserMode: "precision", mode: "erase" })}>Point</Chip>
+-        <div className="flex w-32 items-center px-1">
+-          <Slider label="radius" value={tool.size} min={6} max={90} onChange={(size) => onTool({ size })} display={`${tool.size}px`} className="w-full" />
+-        </div>
++        <Slider label="radius" value={tool.size} min={6} max={90} onChange={(size) => onTool({ size })} display={`${tool.size}px`} />
+       </RibbonGroup>
+ 
+       <RibbonGroup label="History">
+@@ -105,10 +99,10 @@ export function InkDrawTab({ ink }) {
+ 
+       <RibbonGroup label="View">
+         <RibbonButton icon={ZoomOut} hint="Zoom out" onClick={() => ink.onZoom(0.85)} />
+-        <span className="grid w-11 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
+         <RibbonButton icon={ZoomIn} hint="Zoom in" onClick={() => ink.onZoom(1.18)} />
+         <RibbonButton icon={Maximize} label="Fit" hint="Fit the page to the ink" onClick={ink.onFit} />
+         <RibbonButton icon={Trash2} label="Clear page" hint="Remove every mark on this page" onClick={ink.onClear} />
++        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
+       </RibbonGroup>
+     </>
+   );
+@@ -127,7 +121,7 @@ export function InkColorTab({ ink }) {
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Quick inks">
+-        <div className="flex flex-wrap items-center gap-1.5 px-1" style={{ maxWidth: 260 }}>
++        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
+           {QUICK_COLORS.map((color) => (
+             <button
+               key={color}
+@@ -143,7 +137,7 @@ export function InkColorTab({ ink }) {
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Recent">
+-        <div className="flex flex-wrap items-center gap-1.5 px-1" style={{ maxWidth: 260 }}>
++        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
+           {recent.length === 0 && <span className="font-mono text-[10px] text-muted-foreground">colours you use appear here</span>}
+           {recent.map((color) => (
+             <button key={color} type="button" title={color} aria-label={`Use ${color}`} onClick={() => ink.onPickColor(color)} className="h-5 w-5 rounded-full border border-foreground/30 transition hover:scale-110" style={{ background: color }} />
+@@ -163,9 +157,7 @@ export function InkColorTab({ ink }) {
+             />
+           )}
+         </RibbonMenu>
+-        <div className="flex w-36 items-center px-1">
+-          <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} className="w-full" />
+-        </div>
++        <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} />
+       </RibbonGroup>
+     </>
+   );
+@@ -181,7 +173,7 @@ export function InkSelectTab({ ink }) {
+     <>
+       <RibbonGroup label="Lasso">
+         <RibbonButton icon={Lasso} label="Lasso" hint="Select marks by circling them" active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
+-        <span className="grid min-w-[5rem] shrink-0 place-items-center self-center px-1 font-mono text-[10.5px] text-muted-foreground">{count ? `${count} selected` : "nothing selected"}</span>
++        <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">{count ? `${count} selected` : "nothing selected"}</span>
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Actions">
+@@ -219,18 +211,18 @@ export function InkPaperTab({ ink }) {
+   return (
+     <>
+       <RibbonGroup label="Template">
+-        <RibbonSelect title="Paper template" width={120} value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
+-        <RibbonSelect title="Paper tone" width={96} value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
++        <RibbonSelect title="Paper template" value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
++        <RibbonSelect title="Paper tone" value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Page size">
+-        <RibbonSelect title="Page size" width={120} value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
++        <RibbonSelect title="Page size" value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Pages">
+         <RibbonButton icon={ChevronLeft} hint="Previous page" disabled={pageIndex <= 0} onClick={() => ink.onPage(-1)} />
+-        <span className="grid w-16 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">page {pageIndex + 1}</span>
+         <RibbonButton icon={ChevronRight} hint="Next page" onClick={() => ink.onPage(1)} />
++        <span className="self-center font-mono text-[10.5px] text-muted-foreground">page {pageIndex + 1}</span>
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Studio">
+@@ -270,7 +262,7 @@ export function InkSmartTab({ ink }) {
+             />
+           )}
+         </RibbonMenu>
+-        {recognition.error && <span className="max-w-[16rem] self-center truncate px-1 font-mono text-[10px] text-destructive" title={recognition.error}>{recognition.error}</span>}
++        {recognition.error && <span className="self-center truncate max-w-[16rem] font-mono text-[10px] text-destructive" title={recognition.error}>{recognition.error}</span>}
+       </RibbonGroup>
+     </>
+   );
+@@ -287,15 +279,13 @@ export function InkAudioTab({ ink }) {
+     <>
+       <RibbonGroup label="Record">
+         <RibbonButton icon={recording ? Square : Mic} label={recording ? "Stop" : "Record"} hint="Record audio while you write; every stroke is time-stamped" active={recording} onClick={recording ? ink.onStop : ink.onRecord} />
+-        {recording && <span className="grid shrink-0 place-items-center self-center px-1 font-mono text-[10.5px] text-destructive">recording…</span>}
++        {recording && <span className="self-center font-mono text-[10.5px] text-destructive">recording…</span>}
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Playback">
+         <RibbonButton icon={replay.syncing ? Loader2 : replay.playing ? Pause : Play} spinning={replay.syncing} label={replay.playing ? "Pause" : "Play"} hint="Play the recording and redraw the page as it was written" disabled={!audio?.file_uri} disabledReason="Record some audio first" onClick={ink.onPlay} />
+         <RibbonButton icon={History} label="Replay ink" hint="Replay the strokes without sound" onClick={ink.onReplayInk} />
+-        <span className="grid w-24 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">
+-          {audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : "no recording"}
+-        </span>
++        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : "no recording"}</span>
+       </RibbonGroup>
+ 
+       <RibbonGroup label="Manage">
+@@ -399,7 +389,7 @@ export function InkTab({ noteInk }) {
+             {attach}
+           </RibbonGroup>
+           <RibbonGroup label="About">
+-            <p className="max-w-[24rem] self-center px-3 font-mono text-[10.5px] leading-snug text-muted-foreground">
++            <p className="max-w-[24rem] self-center font-mono text-[10.5px] leading-snug text-muted-foreground">
+               Every note can carry its own handwriting page. Pens, colours, selection, paper, smart ink and audio appear here once you start.
+             </p>
+           </RibbonGroup>
+@@ -407,7 +397,7 @@ export function InkTab({ noteInk }) {
+       ) : (
+         <>
+           <RibbonGroup label="Ink">
+-            <div className="grid grid-cols-3 gap-1">
++            <div className="grid grid-cols-3 gap-1" style={{ minWidth: 'max-content' }}>
+               {SUBTABS.map(([id, label]) => (
+                 <button
+                   key={id}
+@@ -427,7 +417,7 @@ export function InkTab({ noteInk }) {
+           </RibbonGroup>
+           {noteInk.ink && <Section ink={noteInk.ink} />}
+           <RibbonGroup label="Handwriting page">
+-            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground">
++            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>
+               <span>{noteInk.markCount} marks</span>
+               <span>{noteInk.status === "saving" ? "saving…" : noteInk.status === "saved" ? "saved" : "autosave on"}</span>
+             </div>
+@@ -438,4 +428,4 @@ export function InkTab({ noteInk }) {
+       )}
+     </RibbonContext.Provider>
+   );
+-}
++}
+\ No newline at end of file
+diff --git a/src/components/ribbon/tabs/InsertTabs.jsx b/src/components/ribbon/tabs/InsertTabs.jsx
+index a829507..9151d20 100644
+--- a/src/components/ribbon/tabs/InsertTabs.jsx
++++ b/src/components/ribbon/tabs/InsertTabs.jsx
+@@ -257,7 +257,7 @@ export function CodeTab() {
+           )}
+         </RibbonMenu>
+         {QUICK_LANGUAGES.map(([id, label]) => (
+-          <Btn key={id} label={label} hint={`Insert a ${fenceLabel(id)} code block`} onClick={() => insertFence(id)} />
++          <Btn key={id} label={label} hint={`Insert a ${fenceLabel(id)} code block`} onClick={() => insertFence(id)} showLabel />
+         ))}
+         <Btn icon={Braces} label="Inline" hint="Inline code" shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
+       </RibbonGroup>
+diff --git a/src/components/ribbon/tabs/TextTabs.jsx b/src/components/ribbon/tabs/TextTabs.jsx
+index 1b57010..645705d 100644
+--- a/src/components/ribbon/tabs/TextTabs.jsx
++++ b/src/components/ribbon/tabs/TextTabs.jsx
+@@ -90,7 +90,7 @@ export function HomeTab({ format, onFormat }) {
+           onChange={(event) => onFormat?.(event.target.value)}
+           aria-label="Note format"
+           title={`The type of the whole note (now ${formatLabel(format)})`}
+-          className="h-8 w-[128px] shrink-0 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40"
++          className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]"
+         >
+           {FORMAT_GROUPS.map((group) => (
+             <optgroup key={group.label} label={group.label}>

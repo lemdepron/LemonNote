@@ -11,7 +11,7 @@ const LIMIT = { rows: 20, columns: 24 };
 const FIELD =
   "mt-1 h-8 w-full rounded-md border border-border/80 bg-background/60 px-2 text-[12.5px] text-foreground outline-none focus:border-primary/40";
 
-export default function TablePicker({ onInsert, disabled, disabledReason, shortcut, openSignal }) {
+export default function TablePicker({ id, onInsert, disabled, disabledReason, shortcut, openSignal }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState(3);
   const [columns, setColumns] = useState(3);
@@ -25,6 +25,7 @@ export default function TablePicker({ onInsert, disabled, disabledReason, shortc
   if (disabled) {
     return (
       <RibbonButton
+        id={id}
         icon={Table}
         label="Table"
         hint="Insert a table"
@@ -61,6 +62,7 @@ export default function TablePicker({ onInsert, disabled, disabledReason, shortc
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <RibbonButton
+          id={id}
           icon={Table}
           label="Table"
           hint="Insert a table — hover the grid or type a size"

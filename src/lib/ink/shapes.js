@@ -2,6 +2,135 @@ import { boundsOf, distToSegment, simplify } from "@/lib/ink/smoothing";
 
 const TAU = Math.PI * 2;
 
+/**
+ * Creates a coordinate graph (axes with tick marks and grid) as a set of stroke paths.
+ * The graph is drawn centered at the given position with the specified size.
+ * Each line is a separate stroke so it can be selected and erased individually.
+ */
+export function createCoordinateGraph(centerX, centerY, width = 400, height = 300, gridStep = 50) {
+  const halfW = width / 2;
+  const halfH = height / 2;
+  const left = centerX - halfW;
+  const right = centerX + halfW;
+  const top = centerY - halfH;
+  const bottom = centerY + halfH;
+  const strokes = [];
+
+  // X-axis
+  strokes.push({
+    id: `graph-x-${Date.now()}`,
+    kind: "stroke",
+    tool: "pen",
+    brush: "ballpoint",
+    color: "#888888",
+    alpha: 0.8,
+    width: 1.5,
+    points: [
+      [left, centerY],
+      [right, centerY],
+    ],
+    pressures: [0.75, 0.75],
+    shape: "line",
+  });
+
+  // Y-axis
+  strokes.push({
+    id: `graph-y-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    kind: "stroke",
+    tool: "pen",
+    brush: "ballpoint",
+    color: "#888888",
+    alpha: 0.8,
+    width: 1.5,
+    points: [
+      [centerX, top],
+      [centerX, bottom],
+    ],
+    pressures: [0.75, 0.75],
+    shape: "line",
+  });
+
+  // Grid lines (vertical)
+  for (let x = left + gridStep; x < right; x += gridStep) {
+    strokes.push({
+      id: `grid-v-${x}-${Date.now()}`,
+      kind: "stroke",
+      tool: "pen",
+      brush: "ballpoint",
+      color: "#888888",
+      alpha: 0.3,
+      width: 0.8,
+      points: [
+        [x, top],
+        [x, bottom],
+      ],
+      pressures: [0.5, 0.5],
+      shape: "line",
+    });
+  }
+
+  // Grid lines (horizontal)
+  for (let y = top + gridStep; y < bottom; y += gridStep) {
+    strokes.push({
+      id: `grid-h-${y}-${Date.now()}`,
+      kind: "stroke",
+      tool: "pen",
+      brush: "ballpoint",
+      color: "#888888",
+      alpha: 0.3,
+      width: 0.8,
+      points: [
+        [left, y],
+        [right, y],
+      ],
+      pressures: [0.5, 0.5],
+      shape: "line",
+    });
+  }
+
+  // X-axis tick marks
+  for (let x = left; x <= right; x += gridStep) {
+    const tickLen = (x === centerX || x === left || x === right) ? 8 : 4;
+    strokes.push({
+      id: `tick-x-${x}-${Date.now()}`,
+      kind: "stroke",
+      tool: "pen",
+      brush: "ballpoint",
+      color: "#888888",
+      alpha: 0.6,
+      width: 1,
+      points: [
+        [x, centerY - tickLen / 2],
+        [x, centerY + tickLen / 2],
+      ],
+      pressures: [0.75, 0.75],
+      shape: "line",
+    });
+  }
+
+  // Y-axis tick marks
+  for (let y = top; y <= bottom; y += gridStep) {
+    const tickLen = (y === centerY || y === top || y === bottom) ? 8 : 4;
+    strokes.push({
+      id: `tick-y-${y}-${Date.now()}`,
+      kind: "stroke",
+      tool: "pen",
+      brush: "ballpoint",
+      color: "#888888",
+      alpha: 0.6,
+      width: 1,
+      points: [
+        [centerX - tickLen / 2, y],
+        [centerX + tickLen / 2, y],
+      ],
+      pressures: [0.75, 0.75],
+      shape: "line",
+    });
+  }
+
+  return strokes;
+}
+
 function ellipsePath(cx, cy, rx, ry, steps = 72) {
   return Array.from({ length: steps + 1 }, (_, index) => {
     const angle = (index / steps) * TAU;

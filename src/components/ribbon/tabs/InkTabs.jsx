@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Brush, Eraser, Hand, History, Lasso, Layers, Maximize, Mic, MicOff, Palette, Pause, PenLine, PenTool, Pipette, Play, Redo2,
-  ScanText, Shapes, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
+  Brush, History, Layers, Maximize, Mic, MicOff, Palette, Pause, PenLine, Pipette, Play, Redo2,
+  ScanText, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
   Droplets, BookOpen, Paperclip,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
@@ -18,18 +18,26 @@ import SmartInkStudio from "@/components/ink/SmartInkStudio";
 import AudioStudio from "@/components/ink/AudioStudio";
 import { BRUSHES, brushPreviewStyle } from "@/lib/ink/brushes";
 import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/ink/paper";
-import { readHistory } from "@/lib/ink/palette";
+import { readHistory, rememberColor } from "@/lib/ink/palette";
+import { createCoordinateGraph } from "@/lib/ink/shapes";
 import { relativeTime } from "@/lib/vault";
 import { cn } from "@/lib/utils";
+import {
+  FountainPenIcon, BallpointPenIcon, CalligraphyPenIcon, HighlighterIcon,
+  WatercolorBrushIcon, PencilIcon, EraserIcon, LassoIcon, HandIcon,
+  EyedropperIcon, ShapesIcon, CoordinateGraphIcon, SavePenIcon, RemovePenIcon,
+} from "@/components/ink/icons";
 
-const MODES = [
-  { id: "draw", label: "Draw", icon: PenTool, hint: "Draw with the current pen" },
-  { id: "shape", label: "Shapes", icon: Shapes, hint: "Draw lines, boxes and circles" },
-  { id: "lasso", label: "Lasso", icon: Lasso, hint: "Select marks by circling them" },
-  { id: "erase", label: "Eraser", icon: Eraser, hint: "Erase marks" },
-  { id: "pan", label: "Pan", icon: Hand, hint: "Move the page around" },
-  { id: "eyedropper", label: "Pick", icon: Pipette, hint: "Pick a colour from the page" },
-];
+function getModes(tool) {
+  return [
+    { id: "draw", label: "Draw", icon: FountainPenIcon, hint: "Draw with the current pen" },
+    { id: "shape", label: "Shapes", icon: ShapesIcon, hint: "Draw lines, boxes, circles and coordinate graphs" },
+    { id: "lasso", label: "Lasso", icon: LassoIcon, hint: "Select marks by circling them" },
+    { id: "erase", label: "Eraser", icon: () => <EraserIcon mode={tool?.eraserMode || "stroke"} />, hint: "Erase marks" },
+    { id: "pan", label: "Pan", icon: HandIcon, hint: "Move the page around" },
+    { id: "eyedropper", label: "Pick", icon: EyedropperIcon, hint: "Pick a colour from the page" },
+  ];
+}
 
 const QUICK_COLORS = ["#111827", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#f9fafb"];
 
@@ -37,15 +45,101 @@ const dot = (color, alpha = 1) => (
   <span className="h-4 w-4 rounded-full border border-foreground/30" style={{ background: color, opacity: Math.max(0.3, alpha) }} />
 );
 
+// Favourite pens persistence
+const FAV_PENS_KEY = "inkFavouritePens";
+const MAX_FAV_PENS = 8;
+
+function readFavPens() {
+  try {
+    const raw = readPref(FAV_PENS_KEY, "[]");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function writeFavPens(pens) {
+  writePref(FAV_PENS_KEY, JSON.stringify(pens.slice(0, MAX_FAV_PENS)));
+}
+
+function hexIsValid(hex) {
+  if (!hex) return false;
+  const clean = hex.trim().replace("#", "");
+  return /^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean);
+}
+
+function normalizeHex(hex) {
+  const clean = hex.trim().replace("#", "");
+  if (clean.length === 3) {
+    return "#" + clean.split("").map((c) => c + c).join("").toLowerCase();
+  }
+  return "#" + clean.toLowerCase();
+}
+
 /* ---------------------------------- Draw ---------------------------------- */
 
 export function InkDrawTab({ ink }) {
-  const { tool, onTool } = ink;
+  const { tool, onTool, engine } = ink;
+  const [favPens, setFavPens] = useState(() => readFavPens());
+
+  useEffect(() => {
+    setFavPens(readFavPens());
+  }, []);
+
+  const saveFavPen = useCallback(() => {
+    const pen = {
+      brush: tool.brush,
+      color: tool.color,
+      width: tool.width,
+      alpha: tool.alpha,
+      nibAngle: tool.nibAngle,
+      eraserMode: tool.eraserMode,
+      size: tool.size,
+    };
+    const next = [pen, ...favPens.filter((p) => p.brush !== pen.brush || p.color !== pen.color || p.width !== pen.width)].slice(0, MAX_FAV_PENS);
+    setFavPens(next);
+    writeFavPens(next);
+  }, [tool, favPens]);
+
+  const selectFavPen = useCallback((pen) => {
+    onTool({
+      brush: pen.brush,
+      color: pen.color,
+      width: pen.width,
+      alpha: pen.alpha,
+      nibAngle: pen.nibAngle,
+      eraserMode: pen.eraserMode,
+      size: pen.size,
+      mode: "draw",
+    });
+  }, [onTool]);
+
+  const removeFavPen = useCallback((index) => {
+    const next = favPens.filter((_, i) => i !== index);
+    setFavPens(next);
+    writeFavPens(next);
+  }, [favPens]);
+
+  const insertCoordinateGraph = useCallback(() => {
+    const eng = engine();
+    if (!eng) return;
+    const center = eng.centerWorld();
+    const strokes = createCoordinateGraph(center.x, center.y, 400, 300, 50);
+    eng.cb.onCommit?.(strokes);
+  }, [engine]);
+
   return (
     <>
       <RibbonGroup label="Mode">
-        {MODES.map((mode) => (
-          <RibbonButton key={mode.id} icon={mode.icon} label={mode.label} hint={mode.hint} active={tool.mode === mode.id} onClick={() => onTool({ mode: mode.id })} />
+        {getModes(tool).map((mode) => (
+          <RibbonButton
+            key={mode.id}
+            icon={typeof mode.icon === "function" ? mode.icon({ tool }) : mode.icon}
+            label={mode.label}
+            hint={mode.hint}
+            active={tool.mode === mode.id}
+            onClick={() => onTool({ mode: mode.id })}
+          />
         ))}
       </RibbonGroup>
 
@@ -53,6 +147,14 @@ export function InkDrawTab({ ink }) {
         {BRUSHES.map((brush) => {
           const preview = brushPreviewStyle(brush.id, tool.color);
           const active = tool.brush === brush.id && tool.mode !== "erase";
+          const Icon = {
+            fountain: FountainPenIcon,
+            ballpoint: BallpointPenIcon,
+            calligraphy: CalligraphyPenIcon,
+            marker: HighlighterIcon,
+            watercolor: WatercolorBrushIcon,
+            pencil: PencilIcon,
+          }[brush.id] || FountainPenIcon;
           return (
             <button
               key={brush.id}
@@ -65,6 +167,7 @@ export function InkDrawTab({ ink }) {
                 active ? "border-primary/40 bg-primary/15 text-primary" : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
+              <Icon className="h-4 w-4" />
               <span className="block w-4 rounded-full" style={{ height: preview.height / 2 + 2, background: preview.color }} />
               {brush.label.split(" ")[0]}
             </button>
@@ -72,13 +175,56 @@ export function InkDrawTab({ ink }) {
         })}
       </RibbonGroup>
 
+      <RibbonGroup label="Favourite pens">
+        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
+          {favPens.map((pen, index) => {
+            const preview = brushPreviewStyle(pen.brush, pen.color);
+            const active =
+              tool.brush === pen.brush &&
+              tool.color.toLowerCase() === pen.color.toLowerCase() &&
+              tool.width === pen.width &&
+              tool.mode !== "erase";
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => selectFavPen(pen)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  removeFavPen(index);
+                }}
+                title={`${brushLabel(pen.brush)} — ${pen.color} — ${pen.width}px${pen.alpha < 1 ? ` — ${Math.round(pen.alpha * 100)}%` : ""} — Right-click to remove`}
+                aria-pressed={active}
+                className={cn(
+                  "relative flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[10px] transition",
+                  active ? "border-primary/50 bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <span className="block w-4 rounded-full" style={{ height: preview.height / 2 + 2, background: preview.color }} />
+                {brushLabel(pen.brush).split(" ")[0]}
+                <RemovePenIcon className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
+              </button>
+            );
+          })}
+          {favPens.length < MAX_FAV_PENS && (
+            <button
+              type="button"
+              onClick={saveFavPen}
+              title="Save current pen as favourite"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+            >
+              <SavePenIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {favPens.length === 0 && (
+          <p className="font-mono text-[9.5px] text-muted-foreground">save your favourite pen setups here (max 8)</p>
+        )}
+      </RibbonGroup>
+
       <RibbonGroup label="Stroke">
-        <div className="flex w-44 items-center px-1">
-          <Slider label="width" value={tool.width} min={0.5} max={24} step={0.5} onChange={(width) => onTool({ width })} display={`${tool.width}px`} className="w-full" />
-        </div>
-        <div className="flex w-36 items-center px-1">
-          <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} className="w-full" />
-        </div>
+        <Slider label="width" value={tool.width} min={0.5} max={24} step={0.5} onChange={(width) => onTool({ width })} display={`${tool.width}px`} />
+        <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} />
         <RibbonMenu icon={Brush} label="Brush engine" hint="Pen behaviour, eraser engine, shape and ruler assists" width={300}>
           {() => (
             <div className="space-y-4 p-1">
@@ -93,9 +239,42 @@ export function InkDrawTab({ ink }) {
       <RibbonGroup label="Eraser">
         <Chip active={tool.eraserMode === "stroke"} onClick={() => onTool({ eraserMode: "stroke", mode: "erase" })}>Stroke</Chip>
         <Chip active={tool.eraserMode === "precision"} onClick={() => onTool({ eraserMode: "precision", mode: "erase" })}>Point</Chip>
-        <div className="flex w-32 items-center px-1">
-          <Slider label="radius" value={tool.size} min={6} max={90} onChange={(size) => onTool({ size })} display={`${tool.size}px`} className="w-full" />
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => onTool({ size: 12, mode: "erase" })}
+            title="Small eraser (12px)"
+            className={cn(
+              "rounded-md border px-2 py-1 font-mono text-[10px] transition",
+              tool.size === 12 ? "border-primary/50 bg-primary/15 text-primary" : "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            S
+          </button>
+          <button
+            type="button"
+            onClick={() => onTool({ size: 26, mode: "erase" })}
+            title="Medium eraser (26px)"
+            className={cn(
+              "rounded-md border px-2 py-1 font-mono text-[10px] transition",
+              tool.size === 26 ? "border-primary/50 bg-primary/15 text-primary" : "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            M
+          </button>
+          <button
+            type="button"
+            onClick={() => onTool({ size: 50, mode: "erase" })}
+            title="Large eraser (50px)"
+            className={cn(
+              "rounded-md border px-2 py-1 font-mono text-[10px] transition",
+              tool.size === 50 ? "border-primary/50 bg-primary/15 text-primary" : "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            L
+          </button>
         </div>
+        <Slider label="radius" value={tool.size} min={6} max={90} onChange={(size) => onTool({ size })} display={`${tool.size}px`} />
       </RibbonGroup>
 
       <RibbonGroup label="History">
@@ -105,13 +284,34 @@ export function InkDrawTab({ ink }) {
 
       <RibbonGroup label="View">
         <RibbonButton icon={ZoomOut} hint="Zoom out" onClick={() => ink.onZoom(0.85)} />
-        <span className="grid w-11 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
         <RibbonButton icon={ZoomIn} hint="Zoom in" onClick={() => ink.onZoom(1.18)} />
         <RibbonButton icon={Maximize} label="Fit" hint="Fit the page to the ink" onClick={ink.onFit} />
         <RibbonButton icon={Trash2} label="Clear page" hint="Remove every mark on this page" onClick={ink.onClear} />
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
+      </RibbonGroup>
+
+      <RibbonGroup label="Shapes">
+        <RibbonMenu icon={CoordinateGraphIcon} label="Coordinate graph" hint="Insert a coordinate graph with axes, grid and tick marks" width={220}>
+          {() => (
+            <div className="p-2 space-y-2">
+              <p className="font-mono text-[10px] text-muted-foreground">Inserts a graph centered on the view</p>
+              <button
+                type="button"
+                onClick={insertCoordinateGraph}
+                className="w-full rounded-md border border-border/70 px-2 py-1.5 font-mono text-[11px] text-foreground hover:bg-accent transition"
+              >
+                Add coordinate graph
+              </button>
+            </div>
+          )}
+        </RibbonMenu>
       </RibbonGroup>
     </>
   );
+}
+
+function brushLabel(id) {
+  return BRUSHES.find((brush) => brush.id === id)?.label || "Ballpoint";
 }
 
 /* ---------------------------------- Color ---------------------------------- */
@@ -119,22 +319,92 @@ export function InkDrawTab({ ink }) {
 export function InkColorTab({ ink }) {
   const { tool, onTool } = ink;
   const recent = readHistory().slice(0, 12);
+  const [hexInput, setHexInput] = useState(tool.color);
+  const [hexValid, setHexValid] = useState(true);
+
+  // Sync hex input with tool color when it changes externally
+  useEffect(() => {
+    setHexInput(tool.color);
+    setHexValid(true);
+  }, [tool.color]);
+
+  const handleHexChange = useCallback((value) => {
+    setHexInput(value);
+    const valid = hexIsValid(value);
+    setHexValid(valid);
+    if (valid) {
+      const normalized = normalizeHex(value);
+      onTool({ color: normalized });
+      rememberColor(normalized);
+    }
+  }, [onTool]);
+
+  const handleHexBlur = useCallback(() => {
+    if (!hexValid) {
+      setHexInput(tool.color);
+      setHexValid(true);
+    }
+  }, [hexValid, tool.color]);
+
+  const handleHexKeyDown = useCallback((e) => {
+    if (e.key === "Enter" && hexValid) {
+      const normalized = normalizeHex(hexInput);
+      onTool({ color: normalized });
+      rememberColor(normalized);
+    } else if (e.key === "Escape") {
+      setHexInput(tool.color);
+      setHexValid(true);
+    }
+  }, [hexInput, hexValid, onTool]);
+
   return (
     <>
       <RibbonGroup label="Current">
-        <RibbonButton icon={() => dot(tool.color, tool.alpha)} label={tool.color} hint="The current ink colour" onClick={() => {}} />
-        <RibbonButton icon={Pipette} label="Pick" hint="Pick a colour from the page" active={tool.mode === "eyedropper"} onClick={() => onTool({ mode: tool.mode === "eyedropper" ? "draw" : "eyedropper" })} />
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={hexInput}
+            onChange={(e) => handleHexChange(e.target.value)}
+            onBlur={handleHexBlur}
+            onKeyDown={handleHexKeyDown}
+            placeholder="#RRGGBB"
+            aria-label="Hex colour"
+            spellCheck={false}
+            className={cn(
+              "h-8 w-20 shrink-0 rounded-lg border px-2 font-mono text-[11px] uppercase outline-none transition",
+              hexValid
+                ? "border-border/70 bg-card/60 text-foreground focus:border-primary/40"
+                : "border-destructive/50 bg-destructive/10 text-destructive"
+            )}
+          />
+          <div
+            className="h-5 w-5 shrink-0 rounded-full border transition"
+            style={{
+              background: hexValid ? hexInput : tool.color,
+              borderColor: hexValid ? "transparent" : "hsl(var(--destructive))",
+              opacity: hexValid ? 1 : 0.5,
+            }}
+            title={hexValid ? hexInput : "Invalid hex"}
+          />
+          <RibbonButton icon={Pipette} label="Pick" hint="Pick a colour from the page" active={tool.mode === "eyedropper"} onClick={() => onTool({ mode: tool.mode === "eyedropper" ? "draw" : "eyedropper" })} />
+        </div>
+        <p className="font-mono text-[9px] text-muted-foreground/70">
+          {hexValid ? "3 or 6 digit hex, with or without #" : "Invalid hex — press Escape to revert"}
+        </p>
       </RibbonGroup>
 
       <RibbonGroup label="Quick inks">
-        <div className="flex flex-wrap items-center gap-1.5 px-1" style={{ maxWidth: 260 }}>
+        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
           {QUICK_COLORS.map((color) => (
             <button
               key={color}
               type="button"
               title={color}
               aria-label={`Use ${color}`}
-              onClick={() => ink.onPickColor(color)}
+              onClick={() => {
+                onTool({ color });
+                rememberColor(color);
+              }}
               className={cn("h-5 w-5 rounded-full border transition hover:scale-110", tool.color === color ? "border-foreground ring-1 ring-foreground/40" : "border-foreground/30")}
               style={{ background: color }}
             />
@@ -143,10 +413,10 @@ export function InkColorTab({ ink }) {
       </RibbonGroup>
 
       <RibbonGroup label="Recent">
-        <div className="flex flex-wrap items-center gap-1.5 px-1" style={{ maxWidth: 260 }}>
+        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
           {recent.length === 0 && <span className="font-mono text-[10px] text-muted-foreground">colours you use appear here</span>}
           {recent.map((color) => (
-            <button key={color} type="button" title={color} aria-label={`Use ${color}`} onClick={() => ink.onPickColor(color)} className="h-5 w-5 rounded-full border border-foreground/30 transition hover:scale-110" style={{ background: color }} />
+            <button key={color} type="button" title={color} aria-label={`Use ${color}`} onClick={() => { onTool({ color }); rememberColor(color); }} className="h-5 w-5 rounded-full border border-foreground/30 transition hover:scale-110" style={{ background: color }} />
           ))}
         </div>
       </RibbonGroup>
@@ -163,9 +433,7 @@ export function InkColorTab({ ink }) {
             />
           )}
         </RibbonMenu>
-        <div className="flex w-36 items-center px-1">
-          <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} className="w-full" />
-        </div>
+        <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} />
       </RibbonGroup>
     </>
   );
@@ -180,8 +448,8 @@ export function InkSelectTab({ ink }) {
   return (
     <>
       <RibbonGroup label="Lasso">
-        <RibbonButton icon={Lasso} label="Lasso" hint="Select marks by circling them" active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
-        <span className="grid min-w-[5rem] shrink-0 place-items-center self-center px-1 font-mono text-[10.5px] text-muted-foreground">{count ? `${count} selected` : "nothing selected"}</span>
+        <RibbonButton icon={LassoIcon} label="Lasso" hint="Select marks by circling them" active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">{count ? `${count} selected` : "nothing selected"}</span>
       </RibbonGroup>
 
       <RibbonGroup label="Actions">
@@ -219,18 +487,18 @@ export function InkPaperTab({ ink }) {
   return (
     <>
       <RibbonGroup label="Template">
-        <RibbonSelect title="Paper template" width={120} value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
-        <RibbonSelect title="Paper tone" width={96} value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
+        <RibbonSelect title="Paper template" value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
+        <RibbonSelect title="Paper tone" value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
       </RibbonGroup>
 
       <RibbonGroup label="Page size">
-        <RibbonSelect title="Page size" width={120} value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
+        <RibbonSelect title="Page size" value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
       </RibbonGroup>
 
       <RibbonGroup label="Pages">
         <RibbonButton icon={ChevronLeft} hint="Previous page" disabled={pageIndex <= 0} onClick={() => ink.onPage(-1)} />
-        <span className="grid w-16 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">page {pageIndex + 1}</span>
         <RibbonButton icon={ChevronRight} hint="Next page" onClick={() => ink.onPage(1)} />
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground">page {pageIndex + 1}</span>
       </RibbonGroup>
 
       <RibbonGroup label="Studio">
@@ -270,7 +538,7 @@ export function InkSmartTab({ ink }) {
             />
           )}
         </RibbonMenu>
-        {recognition.error && <span className="max-w-[16rem] self-center truncate px-1 font-mono text-[10px] text-destructive" title={recognition.error}>{recognition.error}</span>}
+        {recognition.error && <span className="self-center truncate max-w-[16rem] font-mono text-[10px] text-destructive" title={recognition.error}>{recognition.error}</span>}
       </RibbonGroup>
     </>
   );
@@ -287,15 +555,13 @@ export function InkAudioTab({ ink }) {
     <>
       <RibbonGroup label="Record">
         <RibbonButton icon={recording ? Square : Mic} label={recording ? "Stop" : "Record"} hint="Record audio while you write; every stroke is time-stamped" active={recording} onClick={recording ? ink.onStop : ink.onRecord} />
-        {recording && <span className="grid shrink-0 place-items-center self-center px-1 font-mono text-[10.5px] text-destructive">recording…</span>}
+        {recording && <span className="self-center font-mono text-[10.5px] text-destructive">recording…</span>}
       </RibbonGroup>
 
       <RibbonGroup label="Playback">
         <RibbonButton icon={replay.syncing ? Loader2 : replay.playing ? Pause : Play} spinning={replay.syncing} label={replay.playing ? "Pause" : "Play"} hint="Play the recording and redraw the page as it was written" disabled={!audio?.file_uri} disabledReason="Record some audio first" onClick={ink.onPlay} />
         <RibbonButton icon={History} label="Replay ink" hint="Replay the strokes without sound" onClick={ink.onReplayInk} />
-        <span className="grid w-24 shrink-0 place-items-center self-center font-mono text-[10.5px] text-muted-foreground">
-          {audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : "no recording"}
-        </span>
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : "no recording"}</span>
       </RibbonGroup>
 
       <RibbonGroup label="Manage">
@@ -399,7 +665,7 @@ export function InkTab({ noteInk }) {
             {attach}
           </RibbonGroup>
           <RibbonGroup label="About">
-            <p className="max-w-[24rem] self-center px-3 font-mono text-[10.5px] leading-snug text-muted-foreground">
+            <p className="max-w-[24rem] self-center font-mono text-[10.5px] leading-snug text-muted-foreground">
               Every note can carry its own handwriting page. Pens, colours, selection, paper, smart ink and audio appear here once you start.
             </p>
           </RibbonGroup>
@@ -407,7 +673,7 @@ export function InkTab({ noteInk }) {
       ) : (
         <>
           <RibbonGroup label="Ink">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-1" style={{ minWidth: 'max-content' }}>
               {SUBTABS.map(([id, label]) => (
                 <button
                   key={id}
@@ -427,7 +693,7 @@ export function InkTab({ noteInk }) {
           </RibbonGroup>
           {noteInk.ink && <Section ink={noteInk.ink} />}
           <RibbonGroup label="Handwriting page">
-            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground">
+            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>
               <span>{noteInk.markCount} marks</span>
               <span>{noteInk.status === "saving" ? "saving…" : noteInk.status === "saved" ? "saved" : "autosave on"}</span>
             </div>

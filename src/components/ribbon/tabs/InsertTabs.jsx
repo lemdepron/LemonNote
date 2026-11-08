@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  AtSign, Braces, Calendar, ChevronsDownUp, ClipboardCopy, CopyPlus, Footprints, Hash, ImagePlus, Link, Link2, ListTree, MessageSquareQuote,
-  Minus, Omega, SquareCode, SquareTerminal, TextQuote, ArrowDown, ArrowUp, Trash2, FileJson, Shrink, Replace, IndentDecrease, IndentIncrease,
+  AtSign, Braces, Calendar, ChevronsDownUp, ClipboardCopy, CopyPlus, FileText, Footprints, Hash, ImagePlus, Link, Link2, ListTree, MessageSquareQuote,
+  Minus, Omega, Plus, SquareCode, SquareTerminal, TextQuote, ArrowDown, ArrowUp, Trash2, FileJson, Shrink, Replace, IndentDecrease, IndentIncrease,
   MessageSquareOff, PackageOpen, Clock, CornerDownLeft,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
@@ -177,7 +177,176 @@ export function InsertTab({ onPickImage }) {
         </RibbonMenu>
         <Btn icon={Clock} label="Time" hint="Insert the current time" edit={(s) => insertText(s, DATE_FORMATS.find((f) => f.id === "time24").make(now()))} />
       </RibbonGroup>
+
+      <RibbonGroup label="Templates">
+        <TemplateMenu selection={selection} run={run} />
+      </RibbonGroup>
     </>
+  );
+}
+
+// Built-in text templates
+const BUILTIN_TEMPLATES = [
+  {
+    id: "letter",
+    label: "Letter",
+    text: "[Recipient Name]\n[Address]\n[City, State ZIP]\n\nDear [Recipient Name],\n\n\nSincerely,\n[Your Name]",
+  },
+  {
+    id: "checklist",
+    label: "Checklist",
+    text: "## Checklist\n\n- [ ] Item 1\n- [ ] Item 2\n- [ ] Item 3\n",
+  },
+  {
+    id: "pros-cons",
+    label: "Pros & Cons",
+    text: "## Decision: [Title]\n\n| Pros | Cons |\n| --- | --- |\n|  |  |\n|  |  |\n|  |  |\n",
+  },
+  {
+    id: "meeting",
+    label: "Meeting Agenda",
+    text: "## Meeting: [Title]\n\n**Date:** \n**Time:** \n**Attendees:** \n\n### Agenda\n\n1. \n2. \n3. \n\n### Notes\n\n\n### Action Items\n\n- [ ] \n- [ ] \n",
+  },
+  {
+    id: "daily-log",
+    label: "Daily Log",
+    text: "## Daily Log — [Date]\n\n### Top 3 Priorities\n\n1. \n2. \n3. \n\n### Notes\n\n\n### End of Day Review\n\n- Completed: \n- Blocked: \n- Tomorrow: \n",
+  },
+];
+
+const TEMPLATES_PREF_KEY = "textTemplates";
+
+function readCustomTemplates() {
+  try {
+    const raw = readPref(TEMPLATES_PREF_KEY, "[]");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomTemplates(templates) {
+  writePref(TEMPLATES_PREF_KEY, JSON.stringify(templates));
+}
+
+function TemplateMenu({ selection, run }) {
+  const [customTemplates, setCustomTemplates] = useState(() => readCustomTemplates());
+  const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newText, setNewText] = useState("");
+
+  const allTemplates = [...BUILTIN_TEMPLATES, ...customTemplates];
+
+  const insertTemplate = (template) => {
+    run(insertBlock(selection, template.text));
+  };
+
+  const addCustomTemplate = () => {
+    if (!newName.trim() || !newText.trim()) return;
+    const template = { id: `custom-${Date.now()}`, label: newName.trim(), text: newText };
+    const next = [...customTemplates, template];
+    setCustomTemplates(next);
+    writeCustomTemplates(next);
+    setNewName("");
+    setNewText("");
+    setShowAdd(false);
+  };
+
+  const removeCustomTemplate = (id) => {
+    const next = customTemplates.filter((t) => t.id !== id);
+    setCustomTemplates(next);
+    writeCustomTemplates(next);
+  };
+
+  return (
+    <RibbonMenu icon={FileText} label="Templates" hint="Insert a text template or manage your own" width={340}>
+      {(close) => (
+        <div className="space-y-2 p-1">
+          {!showAdd ? (
+            <>
+              <MenuLabel>Built-in</MenuLabel>
+              <div className="grid gap-1">
+                {BUILTIN_TEMPLATES.map((template) => (
+                  <MenuItem
+                    key={template.id}
+                    onClick={() => { insertTemplate(template); close(); }}
+                    hint={template.text.slice(0, 80).replace(/\n/g, " ") + "…"}
+                  >
+                    {template.label}
+                  </MenuItem>
+                ))}
+              </div>
+              {customTemplates.length > 0 && (
+                <>
+                  <MenuLabel>My templates</MenuLabel>
+                  <div className="grid gap-1">
+                    {customTemplates.map((template) => (
+                      <div key={template.id} className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { insertTemplate(template); close(); }}
+                          className="flex-1 h-7 truncate rounded-md border border-border/70 px-2 text-left text-[11.5px] text-foreground hover:bg-accent transition"
+                        >
+                          {template.label}
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { removeCustomTemplate(template.id); }}
+                          className="h-7 w-7 shrink-0 grid place-items-center rounded-md border border-transparent text-muted-foreground hover:bg-accent hover:text-destructive transition"
+                          title="Delete template"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="mt-1 flex w-full items-center justify-center gap-1.5 h-7 rounded-md border border-dashed border-border text-muted-foreground font-mono text-[10px] transition hover:border-primary/50 hover:text-primary"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add template…
+              </button>
+            </>
+          ) : (
+            <form
+              className="space-y-2"
+              onSubmit={(e) => { e.preventDefault(); addCustomTemplate(); }}
+            >
+              <MenuLabel>New template</MenuLabel>
+              <input
+                autoFocus
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Template name"
+                className={FIELD}
+              />
+              <textarea
+                value={newText}
+                onChange={(e) => setNewText(e.target.value)}
+                placeholder="Template text (use \\n for newlines)"
+                rows={4}
+                className={FIELD + " resize-none font-mono text-[11px]"}
+              />
+              <div className="flex gap-1">
+                <button type="submit" className="flex-1 h-8 rounded-md bg-primary/90 text-[12px] font-medium text-primary-foreground hover:bg-primary">
+                  Save
+                </button>
+                <button type="button" onClick={() => setShowAdd(false)} className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 text-[12px] font-medium text-foreground hover:bg-accent transition">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+    </RibbonMenu>
   );
 }
 
@@ -257,7 +426,7 @@ export function CodeTab() {
           )}
         </RibbonMenu>
         {QUICK_LANGUAGES.map(([id, label]) => (
-          <Btn key={id} label={label} hint={`Insert a ${fenceLabel(id)} code block`} onClick={() => insertFence(id)} />
+          <Btn key={id} label={label} hint={`Insert a ${fenceLabel(id)} code block`} onClick={() => insertFence(id)} showLabel />
         ))}
         <Btn icon={Braces} label="Inline" hint="Inline code" shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
       </RibbonGroup>

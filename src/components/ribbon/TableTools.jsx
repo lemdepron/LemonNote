@@ -17,6 +17,7 @@ import { shortcutMatches } from "@/lib/shortcuts";
 const OPS = [
   {
     id: "row-above",
+    pin: "table.addRowAbove",
     icon: ArrowUpToLine,
     label: "Row above",
     hint: "Add a row above this one",
@@ -24,6 +25,7 @@ const OPS = [
   },
   {
     id: "row-below",
+    pin: "table.addRowBelow",
     icon: ArrowDownToLine,
     label: "Row below",
     hint: "Add a row below this one",
@@ -31,6 +33,7 @@ const OPS = [
   },
   {
     id: "column-left",
+    pin: "table.addColumnLeft",
     icon: ArrowLeftToLine,
     label: "Column left",
     hint: "Add a column to the left",
@@ -38,6 +41,7 @@ const OPS = [
   },
   {
     id: "column-right",
+    pin: "table.addColumnRight",
     icon: ArrowRightToLine,
     label: "Column right",
     hint: "Add a column to the right",
@@ -45,6 +49,7 @@ const OPS = [
   },
   {
     id: "delete-row",
+    pin: "table.deleteRow",
     icon: Trash2,
     label: "Delete row",
     hint: "Remove the row the cursor is on",
@@ -52,6 +57,7 @@ const OPS = [
   },
   {
     id: "delete-column",
+    pin: "table.deleteColumn",
     icon: Trash2,
     label: "Delete column",
     hint: "Remove the column the cursor is in",
@@ -59,6 +65,7 @@ const OPS = [
   },
   {
     id: "delete-table",
+    pin: "table.deleteTable",
     icon: Trash2,
     label: "Delete table",
     hint: "Remove the whole table",
@@ -66,6 +73,7 @@ const OPS = [
   },
   {
     id: "align-left",
+    pin: "table.alignLeft",
     icon: AlignLeft,
     label: "Left",
     hint: "Align this column left",
@@ -73,6 +81,7 @@ const OPS = [
   },
   {
     id: "align-centre",
+    pin: "table.alignCentre",
     icon: AlignCenter,
     label: "Centre",
     hint: "Centre this column",
@@ -80,6 +89,7 @@ const OPS = [
   },
   {
     id: "align-right",
+    pin: "table.alignRight",
     icon: AlignRight,
     label: "Right",
     hint: "Align this column right",
@@ -88,8 +98,7 @@ const OPS = [
 ];
 
 /** Row and column tools; they stay off until the cursor sits inside a table. */
-export default function TableTools({ body, onChange }) {
-  const snap = useEditorSnapshot();
+export default function TableTools({ body, onChange }) {  const snap = useEditorSnapshot();
   const value = snap.value || body || "";
   const start = snap.value ? Math.min(snap.start, value.length) : value.length;
   const end = snap.value ? Math.min(snap.end, value.length) : value.length;
@@ -108,9 +117,10 @@ export default function TableTools({ body, onChange }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  return OPS.map(({ id, icon, label, hint, shortcut }) => (
+  return OPS.map(({ id, pin, icon, label, hint, shortcut }) => (
     <RibbonButton
       key={id}
+      id={pin}
       icon={icon}
       label={label}
       hint={hint}

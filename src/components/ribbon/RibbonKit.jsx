@@ -25,10 +25,10 @@ export function Btn({ edit, onClick, ...props }) {
 }
 
 const SELECT_CLASS =
-  "h-8 shrink-0 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40";
+  "h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40 min-w-[72px]";
 
 /** Native dropdown. `groups` = [{ label, options: [{ value, label }] }] or `options` = [{ value, label }]. */
-export function RibbonSelect({ value, onChange, options, groups, title, width = 120, placeholder, disabled }) {
+export function RibbonSelect({ value, onChange, options, groups, title, placeholder, disabled }) {
   return (
     <select
       value={value ?? ""}
@@ -36,7 +36,6 @@ export function RibbonSelect({ value, onChange, options, groups, title, width = 
       onChange={(event) => onChange(event.target.value)}
       title={title}
       aria-label={title}
-      style={{ width }}
       className={SELECT_CLASS}
     >
       {placeholder !== undefined && <option value="">{placeholder}</option>}
@@ -60,11 +59,11 @@ export function RibbonSelect({ value, onChange, options, groups, title, width = 
 }
 
 /** A button that opens a popover. `children` is a function that receives `close`. */
-export function RibbonMenu({ icon, label, hint, shortcut, disabled, disabledReason, width = 260, children, active, onOpenChange }) {
+export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabledReason, width = 260, children, active, onOpenChange }) {
   const [open, setOpen] = useState(false);
   const ctx = useRibbon();
   const off = !ctx.markdown || Boolean(disabled);
-  if (off) return <RibbonButton icon={icon} label={label} hint={hint} disabled disabledReason={!ctx.markdown ? ctx.offReason : disabledReason} />;
+  if (off) return <RibbonButton id={id} icon={icon} label={label} hint={hint} disabled disabledReason={!ctx.markdown ? ctx.offReason : disabledReason} />;
   return (
     <Popover
       open={open}
@@ -74,7 +73,7 @@ export function RibbonMenu({ icon, label, hint, shortcut, disabled, disabledReas
       }}
     >
       <PopoverTrigger asChild>
-        <RibbonButton icon={icon} label={label} hint={hint} shortcut={shortcut} active={active || open} />
+        <RibbonButton id={id} icon={icon} label={label} hint={hint} shortcut={shortcut} active={active || open} />
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -188,11 +187,13 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
 /**
  * The tab strip plus the panel that holds the active tab's groups. Shared by the
  * note ribbon and the ink ribbon so both look and behave the same.
+ * Sticky at the top with a solid background so content doesn't show through.
  */
-export function RibbonFrame({ tabs, tab, onTab, children, trailing, className }) {
+export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className }) {
   return (
-    <div className={cn("mt-6", className)}>
-      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1">
+    <div className={cn("mt-6 sticky top-0 z-10", className)}>
+      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
+        {leading}
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -203,17 +204,17 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, className })
             onClick={() => onTab(item.id)}
             className={cn(
               "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition",
-              tab === item.id ? "border-border/70 bg-card/60 text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              tab === item.id ? "border-border bg-card text-foreground" : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
             )}
           >
             {item.label}
           </button>
         ))}
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto bg-background border-b border-border">
         <div
           role="tabpanel"
-          className="flex w-max min-w-full flex-nowrap items-stretch divide-x divide-border/60 rounded-xl rounded-tl-none border border-border/70 bg-card/40"
+          className="flex w-max min-w-full items-stretch divide-x divide-border rounded-xl rounded-tl-none border border-border bg-card"
         >
           {children}
           {trailing}

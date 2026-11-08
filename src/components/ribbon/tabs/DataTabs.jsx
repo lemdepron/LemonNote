@@ -383,7 +383,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       <RibbonGroup label="Statistics">
-        <div className="flex items-center divide-x divide-border/50">
+        <div className="flex items-center divide-x divide-border/50" style={{ minWidth: 'max-content' }}>
           {stat("words", words)}
           {stat("chars", body.length)}
           {stat("lines", lines)}

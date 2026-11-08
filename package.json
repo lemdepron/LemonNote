@@ -10,7 +10,9 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "check": "eslint src --quiet && vite build",
+    "smoke": "node scripts/smoke-ribbon.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

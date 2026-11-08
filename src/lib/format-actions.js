@@ -119,6 +119,46 @@ export function applyAttr(selection, tag, attr, value) {
   return make(doc, start, end, wrapped, start + wrapped.length, [start + open(value).length, start + open(value).length + text.length]);
 }
 
+/** Steps the font size of the selection through the SIZES list. */
+export function stepFontSize(selection, direction) {
+  const { value, start, end } = selection;
+  const text = value.slice(start, end);
+  if (!text && start === end) return null;
+
+  // Find the current size in the selection
+  const sizeMatch = text.match(/<span[^>]*data-s="(\d+)"[^>]*>([\s\S]*)<\/span>/i);
+  let currentSize = null;
+  if (sizeMatch) {
+    currentSize = parseInt(sizeMatch[1], 10);
+  } else {
+    // Check just outside the selection
+    const before = value.slice(Math.max(0, start - 20), start);
+    const after = value.slice(end, Math.min(value.length, end + 20));
+    const beforeMatch = before.match(/<span[^>]*data-s="(\d+)"[^>]*>$/i);
+    const afterMatch = after.match(/^<\/span>/i);
+    if (beforeMatch && afterMatch) {
+      currentSize = parseInt(beforeMatch[1], 10);
+    }
+  }
+
+  // Default to 16 if no size found
+  if (!currentSize) currentSize = 16;
+
+  const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72];
+  let idx = SIZES.indexOf(currentSize);
+  if (idx === -1) idx = SIZES.indexOf(16); // fallback to 16 if size not in list
+  const nextIdx = Math.max(0, Math.min(SIZES.length - 1, idx + direction));
+  const nextSize = SIZES[nextIdx];
+
+  // If at boundary and trying to go beyond, return null (no change)
+  if ((direction > 0 && currentSize >= SIZES[SIZES.length - 1]) || 
+      (direction < 0 && currentSize <= SIZES[0])) {
+    return null;
+  }
+
+  return applyAttr(selection, "span", "s", String(nextSize));
+}
+
 /** Removes formatting marks and the whitelisted HTML tags from the selection (or the current line). */
 export function clearFormatting(selection) {
   const { value, start, end } = selection;
@@ -293,6 +333,194 @@ export function insertBlock(selection, snippet, caretOffset = snippet.length) {
   const tail = value.slice(end, end + 2) === "\n\n" ? "" : value[end] === "\n" ? "\n" : "\n\n";
   const text = `${lead}${snippet}${tail}`;
   return make(value, start, end, text, start + lead.length + caretOffset);
+}
+
+/* ------------------------------ format painter ------------------------------ */
+
+/** Extracts all formatting marks from a selection. */
+export function readMarks(selection) {
+  const { value, start, end } = selection;
+  const text = value.slice(start, end);
+  if (!text) return null;
+
+  const marks = {
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    code: false,
+    highlight: null,
+    color: null,
+    font: null,
+    size: null,
+    smallCaps: false,
+    subscript: false,
+    superscript: false,
+    kbd: false,
+    link: null,
+  };
+
+  // Check for markdown marks inside the selection
+  if (text.startsWith("**") && text.endsWith("**") && !text.startsWith("***")) marks.bold = true;
+  // Italic: single * on both ends, but not part of ** or ***
+  if (text.startsWith("*") && text.endsWith("*") && !text.startsWith("**") && !text.startsWith("***")) marks.italic = true;
+  if (text.startsWith("~~") && text.endsWith("~~")) marks.strikethrough = true;
+  if (text.startsWith("`") && text.endsWith("`")) marks.code = true;
+
+  // Check for HTML tags with data attributes
+  // Pattern: <tag data-attr="value">text</tag>
+  const spanMatch = text.match(/^<span((?:\s+data-[a-z-]+="[^"]*")*)>([\s\S]*)<\/span>$/i);
+  if (spanMatch) {
+    const attrs = spanMatch[1];
+    if (attrs.includes('data-f=')) marks.font = attrs.match(/data-f="([^"]*)"/)?.[1] || true;
+    if (attrs.includes('data-c=')) marks.color = attrs.match(/data-c="([^"]*)"/)?.[1] || true;
+    if (attrs.includes('data-s=')) marks.size = attrs.match(/data-s="([^"]*)"/)?.[1] || true;
+    if (attrs.includes('data-sc')) marks.smallCaps = true;
+    if (attrs.includes('data-ls=')) marks.letterSpacing = attrs.match(/data-ls="([^"]*)"/)?.[1] || true;
+  }
+
+  const markMatch = text.match(/^<mark((?:\s+data-[a-z-]+="[^"]*")*)>([\s\S]*)<\/mark>$/i);
+  if (markMatch) {
+    const attrs = markMatch[1];
+    if (attrs.includes('data-h=')) marks.highlight = attrs.match(/data-h="([^"]*)"/)?.[1] || true;
+  }
+
+  if (text.startsWith("<u>") && text.endsWith("</u>")) marks.underline = true;
+  if (text.startsWith("<sub>") && text.endsWith("</sub>")) marks.subscript = true;
+  if (text.startsWith("<sup>") && text.endsWith("</sup>")) marks.superscript = true;
+  if (text.startsWith("<kbd>") && text.endsWith("</kbd>")) marks.kbd = true;
+
+  // Check for link
+  const linkMatch = text.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+  if (linkMatch) marks.link = { label: linkMatch[1], url: linkMatch[2] };
+
+  // Also check for marks just outside the selection (common case when cursor is at edge)
+  if (!marks.bold) {
+    const before = value.slice(Math.max(0, start - 2), start);
+    const after = value.slice(end, Math.min(value.length, end + 2));
+    if (before === "**" && after === "**") marks.bold = true;
+  }
+  if (!marks.italic) {
+    const before = value.slice(Math.max(0, start - 1), start);
+    const after = value.slice(end, Math.min(value.length, end + 1));
+    // Only mark italic if it's not part of bold (i.e., not **)
+    if (before === "*" && after === "*" && 
+        !(value.slice(Math.max(0, start - 2), start) === "**" && value.slice(end, Math.min(value.length, end + 2)) === "**")) {
+      marks.italic = true;
+    }
+  }
+  if (!marks.underline) {
+    const before = value.slice(Math.max(0, start - 3), start);
+    const after = value.slice(end, Math.min(value.length, end + 4));
+    if (before === "<u>" && after === "</u>") marks.underline = true;
+  }
+  if (!marks.strikethrough) {
+    const before = value.slice(Math.max(0, start - 2), start);
+    const after = value.slice(end, Math.min(value.length, end + 2));
+    if (before === "~~" && after === "~~") marks.strikethrough = true;
+  }
+  if (!marks.code) {
+    const before = value.slice(Math.max(0, start - 1), start);
+    const after = value.slice(end, Math.min(value.length, end + 1));
+    if (before === "`" && after === "`") marks.code = true;
+  }
+
+  // Only return marks that are actually set
+  const result = {};
+  for (const [key, val] of Object.entries(marks)) {
+    if (val !== false && val !== null && val !== undefined) result[key] = val;
+  }
+  return Object.keys(result).length ? result : null;
+}
+
+/** Applies a set of marks to a selection. */
+export function applyMarks(selection, marks) {
+  if (!marks) return null;
+  const { value, start, end } = selection;
+  let { next, start: s, end: e, text, caret, select } = { next: value, start, end, text: value.slice(start, end), caret: end, select: [start, end] };
+
+  // Apply in order: outer marks first (span, mark), then inner marks (bold, italic, etc.)
+  // This ensures proper nesting
+
+  // Span attributes (font, color, size, small-caps)
+  if (marks.font !== undefined || marks.color !== undefined || marks.size !== undefined || marks.smallCaps) {
+    const attrResult = applyAttr({ value: next, start: s, end: e }, "span", "f", marks.font ?? null);
+    if (attrResult) ({ next, start: s, end: e, text: attrResult.text, caret: attrResult.caret, select: attrResult.select } = attrResult);
+    if (marks.color !== undefined) {
+      const colorResult = applyAttr({ value: next, start: s, end: e }, "span", "c", marks.color ?? null);
+      if (colorResult) ({ next, start: s, end: e, text: colorResult.text, caret: colorResult.caret, select: colorResult.select } = colorResult);
+    }
+    if (marks.size !== undefined) {
+      const sizeResult = applyAttr({ value: next, start: s, end: e }, "span", "s", marks.size ?? null);
+      if (sizeResult) ({ next, start: s, end: e, text: sizeResult.text, caret: sizeResult.caret, select: sizeResult.select } = sizeResult);
+    }
+    if (marks.smallCaps) {
+      const scResult = applyAttr({ value: next, start: s, end: e }, "span", "sc", null);
+      if (scResult) ({ next, start: s, end: e, text: scResult.text, caret: scResult.caret, select: scResult.select } = scResult);
+    }
+  }
+
+  // Highlight
+  if (marks.highlight !== undefined) {
+    const hResult = applyAttr({ value: next, start: s, end: e }, "mark", "h", marks.highlight ?? null);
+    if (hResult) ({ next, start: s, end: e, text: hResult.text, caret: hResult.caret, select: hResult.select } = hResult);
+  }
+
+  // Underline
+  if (marks.underline) {
+    const uResult = toggleWrap({ value: next, start: s, end: e }, "<u>", "</u>");
+    if (uResult) ({ next, start: s, end: e, text: uResult.text, caret: uResult.caret, select: uResult.select } = uResult);
+  }
+
+  // Strikethrough
+  if (marks.strikethrough) {
+    const stResult = toggleWrap({ value: next, start: s, end: e }, "~~");
+    if (stResult) ({ next, start: s, end: e, text: stResult.text, caret: stResult.caret, select: stResult.select } = stResult);
+  }
+
+  // Bold
+  if (marks.bold) {
+    const bResult = toggleWrap({ value: next, start: s, end: e }, "**");
+    if (bResult) ({ next, start: s, end: e, text: bResult.text, caret: bResult.caret, select: bResult.select } = bResult);
+  }
+
+  // Italic
+  if (marks.italic) {
+    const iResult = toggleItalic({ value: next, start: s, end: e });
+    if (iResult) ({ next, start: s, end: e, text: iResult.text, caret: iResult.caret, select: iResult.select } = iResult);
+  }
+
+  // Code
+  if (marks.code) {
+    const cResult = toggleWrap({ value: next, start: s, end: e }, "`");
+    if (cResult) ({ next, start: s, end: e, text: cResult.text, caret: cResult.caret, select: cResult.select } = cResult);
+  }
+
+  // Subscript
+  if (marks.subscript) {
+    const subResult = toggleWrap({ value: next, start: s, end: e }, "<sub>", "</sub>");
+    if (subResult) ({ next, start: s, end: e, text: subResult.text, caret: subResult.caret, select: subResult.select } = subResult);
+  }
+
+  // Superscript
+  if (marks.superscript) {
+    const supResult = toggleWrap({ value: next, start: s, end: e }, "<sup>", "</sup>");
+    if (supResult) ({ next, start: s, end: e, text: supResult.text, caret: supResult.caret, select: supResult.select } = supResult);
+  }
+
+  // Kbd
+  if (marks.kbd) {
+    const kResult = toggleWrap({ value: next, start: s, end: e }, "<kbd>", "</kbd>");
+    if (kResult) ({ next, start: s, end: e, text: kResult.text, caret: kResult.caret, select: kResult.select } = kResult);
+  }
+
+  // Link
+  if (marks.link && marks.link.url) {
+    const lResult = linkWithUrl({ value: next, start: s, end: e }, marks.link.url);
+    if (lResult) ({ next, start: s, end: e, text: lResult.text, caret: lResult.caret, select: lResult.select } = lResult);
+  }
+
+  return { next, start: s, end: e, text, caret, select };
 }
 
 /** Wraps the covered lines in a `<div data-a data-dir>` block; "left" + "ltr" removes it. */
