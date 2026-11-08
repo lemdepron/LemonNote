@@ -24,7 +24,8 @@ import useNoteImages from "@/hooks/useNoteImages";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { useFocusMode } from "@/lib/focusMode";
-import { trashNote } from "@/lib/notes";
+import { trashNote, restoreNote } from "@/lib/notes";
+import { toast } from "@/lib/toast";
 import { emitEvent, runHook } from "@/lib/extensions";
 import { buildLinkIndex, extractInlineTags, extractWikiLinks } from "@/lib/vault";
 import { cn } from "@/lib/utils";
@@ -299,7 +300,21 @@ export default function NotePage() {
   };
 
   const removeNote = async () => {
-    if (createdIdRef.current) await trashNote(createdIdRef.current);
+    const id = createdIdRef.current;
+    if (!id) return;
+    const note = await db.entities.Note.get(id).catch(() => null);
+    if (!note) return;
+    await trashNote(id);
+    toast({
+      text: `Moved "${note.title || "Untitled note"}" to the Bin.`,
+      type: "info",
+      actionLabel: "Undo",
+      onAction: async () => {
+        await restoreNote(id);
+        toast.success("Note restored.");
+      },
+      duration: 8000,
+    });
     navigate("/");
   };
 
@@ -571,6 +586,7 @@ export default function NotePage() {
                   images={images}
                   noteId={createdIdRef.current}
                   noteTitle={title}
+                  tags={tags}
                   format={format}
                   onFormat={(next) => {
                     setFormat(next);
@@ -674,6 +690,7 @@ export default function NotePage() {
         </div>
         <EdgeDock panels={dockPanels} />
       </main>
+      <div id="file-panel-root" />
     </div>
   );
 }

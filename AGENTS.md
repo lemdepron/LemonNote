@@ -27,6 +27,7 @@ Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub us
 7. Keep changes **small and focused**. Touch only the files the task needs. No drive-by refactors, no renames, no reformatting of untouched code.
 8. Do not add a dependency unless the task needs it. If you add one, say which and why.
 9. Windows 11 laptop first, iPhone second. Do not optimise for other hardware.
+10. **When you add a table to localDb.js you MUST bump DB_VERSION and add a migration test.**
 
 ## Where things are
 

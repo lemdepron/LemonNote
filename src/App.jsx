@@ -19,35 +19,58 @@ import QueriesPage from '@/pages/QueriesPage';
 import ExtensionsPage from '@/pages/ExtensionsPage';
 import ManifestPage from '@/pages/ManifestPage';
 import TrashPage from '@/pages/TrashPage';
+import SettingsPage from '@/pages/SettingsPage';
 import ExtensionRuntime from '@/components/extensions/ExtensionRuntime';
+import { Toaster } from '@/components/ui/toaster';
+import { withPageErrorBoundary } from '@/components/PageErrorBoundary';
 
 // No login: LemonNote keeps everything on this computer, so every page is open.
+const VaultHomeWithErrorBoundary = withPageErrorBoundary(VaultHome);
+const NotePageWithErrorBoundary = withPageErrorBoundary(NotePage);
+const CanvasHomeWithErrorBoundary = withPageErrorBoundary(CanvasHome);
+const CanvasPageWithErrorBoundary = withPageErrorBoundary(CanvasPage);
+const TablesHomeWithErrorBoundary = withPageErrorBoundary(TablesHome);
+const TablePageWithErrorBoundary = withPageErrorBoundary(TablePage);
+const CodeHomeWithErrorBoundary = withPageErrorBoundary(CodeHome);
+const CodePageWithErrorBoundary = withPageErrorBoundary(CodePage);
+const JournalPageWithErrorBoundary = withPageErrorBoundary(JournalPage);
+const TasksPageWithErrorBoundary = withPageErrorBoundary(TasksPage);
+const CardsPageWithErrorBoundary = withPageErrorBoundary(CardsPage);
+const GraphPageWithErrorBoundary = withPageErrorBoundary(GraphPage);
+const QueriesPageWithErrorBoundary = withPageErrorBoundary(QueriesPage);
+const ExtensionsPageWithErrorBoundary = withPageErrorBoundary(ExtensionsPage);
+const ManifestPageWithErrorBoundary = withPageErrorBoundary(ManifestPage);
+const TrashPageWithErrorBoundary = withPageErrorBoundary(TrashPage);
+const SettingsPageWithErrorBoundary = withPageErrorBoundary(SettingsPage);
+
 function App() {
   return (
     <QueryClientProvider client={queryClientInstance}>
       <Router>
         <ScrollToTop />
         <ExtensionRuntime />
+        <Toaster />
         <Routes>
-          <Route path="/" element={<VaultHome />} />
-          <Route path="/note/:id" element={<NotePage />} />
-          <Route path="/canvas" element={<CanvasHome />} />
-          <Route path="/canvas/:id" element={<CanvasPage />} />
-          <Route path="/tables" element={<TablesHome />} />
-          <Route path="/tables/:id" element={<TablePage />} />
-          <Route path="/code" element={<CodeHome />} />
-          <Route path="/code/:id" element={<CodePage />} />
-          <Route path="/journal" element={<JournalPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/cards" element={<CardsPage />} />
-          <Route path="/graph" element={<GraphPage />} />
+          <Route path="/" element={<VaultHomeWithErrorBoundary />} />
+          <Route path="/note/:id" element={<NotePageWithErrorBoundary />} />
+          <Route path="/canvas" element={<CanvasHomeWithErrorBoundary />} />
+          <Route path="/canvas/:id" element={<CanvasPageWithErrorBoundary />} />
+          <Route path="/tables" element={<TablesHomeWithErrorBoundary />} />
+          <Route path="/tables/:id" element={<TablePageWithErrorBoundary />} />
+          <Route path="/code" element={<CodeHomeWithErrorBoundary />} />
+          <Route path="/code/:id" element={<CodePageWithErrorBoundary />} />
+          <Route path="/journal" element={<JournalPageWithErrorBoundary />} />
+          <Route path="/tasks" element={<TasksPageWithErrorBoundary />} />
+          <Route path="/cards" element={<CardsPageWithErrorBoundary />} />
+          <Route path="/graph" element={<GraphPageWithErrorBoundary />} />
+          <Route path="/queries" element={<QueriesPageWithErrorBoundary />} />
+          <Route path="/extensions" element={<ExtensionsPageWithErrorBoundary />} />
+          <Route path="/spaces" element={<ManifestPageWithErrorBoundary />} />
+          <Route path="/trash" element={<TrashPageWithErrorBoundary />} />
+          <Route path="/settings" element={<SettingsPageWithErrorBoundary />} />
           {/* Ink now lives in the Ink tab of every note; old links land on the vault. */}
           <Route path="/ink" element={<Navigate to="/" replace />} />
           <Route path="/ink/:id" element={<Navigate to="/" replace />} />
-          <Route path="/queries" element={<QueriesPage />} />
-          <Route path="/extensions" element={<ExtensionsPage />} />
-          <Route path="/spaces" element={<ManifestPage />} />
-          <Route path="/trash" element={<TrashPage />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Router>

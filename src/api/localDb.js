@@ -11,7 +11,7 @@
  */
 
 const DB_NAME = "notecraft";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const FILE_STORE = "_files";
 const USER_KEY = "notecraft:user";
 
@@ -24,11 +24,13 @@ const DEFAULTS = {
   InkPage: {},
   InkChunk: {},
   Flashcard: {},
+  Template: {},
 };
 
 /* ---------- IndexedDB plumbing ---------- */
 
 let dbPromise = null;
+let dbVersionAtOpen = null;
 
 function openDb() {
   if (!dbPromise) {
@@ -42,11 +44,41 @@ function openDb() {
           }
         });
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        dbVersionAtOpen = request.result.version;
+        resolve(request.result);
+      };
       request.onerror = () => reject(request.error);
     });
   }
   return dbPromise;
+}
+
+/**
+ * Forces a new database connection (for testing migrations).
+ * Clears the cached promise and cache.
+ */
+export function reopenDb() {
+  clearDbCache();
+  return openDb();
+}
+
+/**
+ * Clears the in-memory cache. Call this after a database upgrade
+ * or when you know the underlying data has changed externally.
+ */
+export function clearDbCache() {
+  cache.clear();
+  dbVersionAtOpen = null;
+  dbPromise = null;
+}
+
+/**
+ * Returns the IndexedDB version the app opened with.
+ * Useful for diagnostics or migration logic.
+ */
+export function getOpenedDbVersion() {
+  return dbVersionAtOpen;
 }
 
 const wrap = (request) =>

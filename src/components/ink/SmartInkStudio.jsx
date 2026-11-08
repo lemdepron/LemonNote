@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, ScanText, Search, Sigma, Type } from "lucide-react";
 import { Section } from "@/components/ink/StudioSection";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 
 export default function SmartInkStudio({ recognition, onRecognize, onInsert, search, onSearch, matches, searching, onOpenPage }) {
   const [draft, setDraft] = useState(search || "");
@@ -55,7 +56,10 @@ export default function SmartInkStudio({ recognition, onRecognize, onInsert, sea
               </button>
               <button
                 type="button"
-                onClick={() => navigator.clipboard?.writeText(result)}
+                onClick={async () => {
+                  await navigator.clipboard?.writeText(result);
+                  toast.success("Copied to clipboard.");
+                }}
                 className="rounded-md border border-border/60 px-2 py-1 font-mono text-[10px] text-muted-foreground transition hover:text-foreground"
               >
                 copy

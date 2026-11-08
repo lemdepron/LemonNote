@@ -1,26 +1,19 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle, Download, Loader2, Upload } from "lucide-react";
+import { Download, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportBackup, importBackup, previewBackup } from "@/lib/backup";
+import { success, error } from "@/lib/toast";
 
 export default function Backup() {
   const [mode, setMode] = useState("merge");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null); // { data, counts }
-  const [message, setMessage] = useState(null); // { type: "success" | "error", text }
   const fileInput = useRef(null);
-
-  const clear = () => setMessage(null);
-  const show = (type, text) => {
-    setMessage({ type, text });
-    setTimeout(clear, 8000);
-  };
 
   const dateStamp = () => new Date().toISOString().slice(0, 10);
 
   const handleExport = async () => {
     setBusy(true);
-    setMessage(null);
     setPreview(null);
     try {
       const backup = await exportBackup();
@@ -35,16 +28,15 @@ export default function Backup() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      show("success", "Backup downloaded.");
-    } catch (error) {
-      show("error", `Export failed: ${error.message}`);
+      success("Backup downloaded.");
+    } catch (err) {
+      error(`Export failed: ${err.message}`);
     } finally {
       setBusy(false);
     }
   };
 
   const handleFile = async (file) => {
-    setMessage(null);
     setPreview(null);
     setBusy(true);
     try {
@@ -52,8 +44,8 @@ export default function Backup() {
       const data = JSON.parse(text);
       const counts = await previewBackup(data, mode);
       setPreview({ data, counts });
-    } catch (error) {
-      show("error", `Could not read backup: ${error.message}`);
+    } catch (err) {
+      error(`Could not read backup: ${err.message}`);
     } finally {
       setBusy(false);
     }
@@ -72,48 +64,19 @@ export default function Backup() {
   const applyImport = async () => {
     if (!preview) return;
     setBusy(true);
-    setMessage(null);
     try {
       const result = await importBackup(preview.data, mode);
       const total = Object.values(result.tables).reduce((sum, t) => sum + t.imported, 0);
       const skipped = Object.values(result.tables).reduce((sum, t) => sum + t.skipped, 0);
       setPreview(null);
-      show(
-        "success",
+      success(
         `Imported ${total} record${total === 1 ? "" : "s"}${skipped ? `, skipped ${skipped} already present` : ""}.`
       );
-    } catch (error) {
-      show("error", `Import failed: ${error.message}`);
+    } catch (err) {
+      error(`Import failed: ${err.message}`);
     } finally {
       setBusy(false);
     }
-  };
-
-  const messageBox = () => {
-    if (!message) return null;
-    const error = message.type === "error";
-    return (
-      <div
-        role="alert"
-        aria-live="polite"
-        className={`mt-4 rounded-md border p-3 text-[13px] leading-relaxed ${error ? "border-destructive/40 bg-destructive/50 text-destructive" : "border-primary/40 bg-primary/50 text-primary"}`}
-      >
-        {error ? (
-          <AlertTriangle className="mr-2 h-4 w-4 shrink-0" />
-        ) : (
-          <CheckCircle className="mr-2 h-4 w-4 shrink-0" />
-        )}
-        {message.text}
-        <button
-          type="button"
-          onClick={clear}
-          className="ml-auto inline-block h-5 w-5 rounded-md opacity-60 hover:opacity-100"
-          aria-label="Dismiss message"
-        >
-          ×
-        </button>
-      </div>
-    );
   };
 
   const countsTable = () => {
@@ -213,8 +176,6 @@ export default function Backup() {
         hidden
         onChange={handleFileInput}
       />
-
-      {messageBox()}
 
       {preview ? (
         <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">

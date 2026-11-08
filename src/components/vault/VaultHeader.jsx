@@ -49,9 +49,12 @@ export default function VaultHeader() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link to="/" className="group flex shrink-0 items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-[7px] border border-primary/30 bg-primary/10 transition group-hover:border-primary/60">
-            <span className="font-display text-[15px] leading-none text-primary">n</span>
-          </span>
+          <img
+            src="/logo-64.png"
+            alt=""
+            className="h-7 w-7 rounded-[7px] border border-primary/30 bg-primary/10 transition group-hover:border-primary/60"
+            aria-hidden="true"
+          />
           <span className="hidden font-display text-[20px] leading-none tracking-tight sm:inline">LemonNote</span>
         </Link>
         <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">

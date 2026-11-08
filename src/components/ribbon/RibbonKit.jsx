@@ -189,10 +189,11 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
  * The tab strip plus the panel that holds the active tab's groups. Shared by the
  * note ribbon and the ink ribbon so both look and behave the same.
  */
-export function RibbonFrame({ tabs, tab, onTab, children, trailing, className }) {
+export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className }) {
   return (
     <div className={cn("mt-6", className)}>
       <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1">
+        {leading}
         {tabs.map((item) => (
           <button
             key={item.id}
