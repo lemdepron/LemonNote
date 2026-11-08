@@ -67,3 +67,22 @@ npm run build
 
 1. Fix bugs and add essential features **in JavaScript** (current phase): backup/export and import, toast messages, bundled fonts, smaller notes with images, inline ink preview in Read mode.
 2. Later: Rust engine with SQLite behind `localDb.js`, notes as real `.md` files, sync, Android, iPhone, code signing.
+
+## Task protocol (applies to every task)
+
+1. Do ONE task only: the one in the prompt. Do not start other items from the roadmap.
+2. Before editing, read the files you will touch. Then write a short plan (files to change, files to create) and follow it.
+3. Never invent file names, function names or library APIs. If something is not in the project, say so and ask, or create it deliberately.
+4. Keep changes small. Do not reformat or rename untouched code. Do not delete features unless the task says so.
+5. After editing, run `npx eslint src --quiet` and `npm run build` and report the REAL output.
+6. Finish with: (a) list of files changed or created, (b) what you tested and what you did NOT test, (c) "Test by hand" steps for a beginner, numbered, with exact clicks, (d) anything risky or left undone.
+7. Never commit, push, tag or release. Never run destructive commands (`rm -rf`, `git reset --hard`, `git clean`).
+8. Explain in simple words. State where every command runs.
+
+## UI design decisions (decided by the owner)
+
+- The note ribbon is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover, it stays visible (sticky) when the page scrolls.
+- Main ribbon tabs, in this order: Home, Ink, Insert, Design, Layout, View, Share. Two contextual tabs (Table, Code) appear only when the cursor is inside a table or a code block.
+- The ink layer lives inside the note (no separate Ink page).
+- The logo is the lemon notebook icon (`src-tauri/icons/icon.png`), not an emoji.
+- Do NOT add multi-window features (New Window, Arrange All, Side by Side, Synchronous Scrolling, Switch Windows): windows keep separate in-memory data and can overwrite each other.
