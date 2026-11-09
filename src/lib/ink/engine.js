@@ -28,7 +28,7 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
  * stroke identity and selection survive every interaction.
  */
 export default class InkEngine {
-  constructor({ base, overlay, callbacks = {} }) {
+  constructor({ base, overlay, callbacks = {}, transparent = false }) {
     this.base = base;
     this.overlay = overlay;
     this.cb = callbacks;
@@ -59,6 +59,12 @@ export default class InkEngine {
     this.dirtyBase = true;
     this.dirtyOverlay = true;
     this.frame = 0;
+    this.transparent = transparent;
+  }
+
+  setTransparent(transparent) {
+    this.transparent = transparent;
+    this.invalidate();
   }
 
   /* ---------------------------------------------------------------- scene */
@@ -597,7 +603,9 @@ export default class InkEngine {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.base.width, this.base.height);
     this.applyCamera(ctx);
-    drawPaper(ctx, { paper: this.paper, view: this.viewRect() });
+    if (!this.transparent) {
+      drawPaper(ctx, { paper: this.paper, view: this.viewRect() });
+    }
     const hidden = this.selection?.ids;
     const light = this.paper.tone === "light";
     this.strokes.forEach((stroke) => {

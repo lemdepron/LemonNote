@@ -14,7 +14,7 @@ function optionsFor(suggest, titles) {
   return rows;
 }
 
-export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles, style, spellCheck = true }) {
+export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles, style, spellCheck = true, hasInk }) {
   const [suggest, setSuggest] = useState(null);
   const [active, setActive] = useState(0);
   const areaRef = useRef(null);

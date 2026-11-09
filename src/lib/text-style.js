@@ -159,6 +159,12 @@ export const EDITOR_FONTS = [
 
 export const DEFAULT_STYLE = Object.freeze({});
 
+/** Page mode settings for notes with ink overlay. */
+export const PAGE_MODE_KEYS = [
+  "pageWidth",
+  "pageLineHeight",
+];
+
 /** Cleans a stored style object so only known keys with valid values remain. */
 export function normalizeStyle(raw) {
   const out = {};
@@ -177,11 +183,14 @@ export function normalizeStyle(raw) {
   if (raw.indent === true) out.indent = true;
   if (raw.dropCap === true) out.dropCap = true;
   if (raw.spell === false) out.spell = false;
+  // Page mode settings for ink overlay
+  if (Number.isFinite(raw.pageWidth) && raw.pageWidth >= 400 && raw.pageWidth <= 1200) out.pageWidth = Math.round(raw.pageWidth);
+  if (Number.isFinite(raw.pageLineHeight) && raw.pageLineHeight >= 1 && raw.pageLineHeight <= 3.5) out.pageLineHeight = raw.pageLineHeight;
   return out;
 }
 
 /** Inline style + class names for the reading view of a note. */
-export function readerProps(style) {
+export function readerProps(style, hasInk = false) {
   const s = normalizeStyle(style);
   const css = {};
   if (s.font) css.fontFamily = fontStack(s.font);
@@ -192,16 +201,27 @@ export function readerProps(style) {
   if (s.dir) css.direction = s.dir;
   if (s.gap !== undefined) css["--nt-gap"] = `${s.gap}em`;
   if (s.headingFont) css["--nt-heading"] = fontStack(s.headingFont);
-  const width = WIDTHS.find((item) => item.id === s.width);
-  if (width && width.value !== "none") {
-    css.maxWidth = width.value;
+  
+  // Fixed page width for notes with ink (page mode)
+  if (hasInk) {
+    const pageWidth = s.pageWidth || 736; // 46rem = 736px default
+    css.maxWidth = `${pageWidth}px`;
+    if (s.pageLineHeight) {
+      css.lineHeight = s.pageLineHeight;
+    }
+  } else {
+    const width = WIDTHS.find((item) => item.id === s.width);
+    if (width && width.value !== "none") {
+      css.maxWidth = width.value;
+    }
   }
+  
   const classes = [s.indent ? "nt-indent" : "", s.dropCap ? "nt-dropcap" : ""].filter(Boolean).join(" ");
   return { style: css, className: classes };
 }
 
 /** Inline style for the markdown textarea. */
-export function editorProps(style) {
+export function editorProps(style, hasInk = false) {
   const s = normalizeStyle(style);
   const css = {};
   if (s.editorFont) css.fontFamily = fontStack(s.editorFont);
@@ -209,6 +229,16 @@ export function editorProps(style) {
   if (s.lineHeight) css.lineHeight = s.lineHeight;
   if (s.dir) css.direction = s.dir;
   if (s.align && s.align !== "justify") css.textAlign = s.align;
+  
+  // Fixed page width for notes with ink (page mode)
+  if (hasInk) {
+    const pageWidth = s.pageWidth || 736; // 46rem = 736px default
+    css.maxWidth = `${pageWidth}px`;
+    if (s.pageLineHeight) {
+      css.lineHeight = s.pageLineHeight;
+    }
+  }
+  
   return { style: css, spellCheck: s.spell !== false };
 }
 

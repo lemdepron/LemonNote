@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Trash2 } from "lucide-react";
 import { db } from "@/api/localDb";
@@ -18,6 +18,7 @@ import ExtensionPanels from "@/components/extensions/ExtensionPanels";
 import ExtensionBanners from "@/components/extensions/ExtensionBanners";
 import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
+import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
 import useInkPage from "@/hooks/useInkPage";
 import { deletePage } from "@/lib/ink/store";
 import useNoteImages from "@/hooks/useNoteImages";
@@ -71,6 +72,8 @@ export default function NotePage() {
   const [revision, setRevision] = useState(0);
   const [missing, setMissing] = useState(false);
   const [loadingNote, setLoadingNote] = useState(!isNew);
+  const [inkOverlayMode, setInkOverlayMode] = useState(false); // "Ink over text" mode
+  const [readContentRect, setReadContentRect] = useState(null); // { width, height, scrollTop }
   const createdIdRef = useRef(isNew ? null : id);
   const loadedIdRef = useRef(null);
   const savePending = useRef(false);
@@ -258,6 +261,11 @@ export default function NotePage() {
     if (name && inkName !== undefined && inkName !== name) patchInk({ name });
   }, [title, inkName, patchInk]);
 
+  // Handle ink overlay mode change
+  const toggleInkOverlayMode = useCallback(() => {
+    setInkOverlayMode((prev) => !prev);
+  }, []);
+
   const noteInk = {
     loading: Boolean(inkId) && inkPage.loading,
     hasPage: Boolean(inkId && inkPage.page),
@@ -272,6 +280,8 @@ export default function NotePage() {
     onRemove: removeInk,
     onAttach: attachInk,
     listAttachable,
+    overlayMode: inkOverlayMode,
+    onToggleOverlayMode: toggleInkOverlayMode,
   };
   const markdown = isMarkdown(format);
 
@@ -374,6 +384,38 @@ export default function NotePage() {
       ),
     },
   ];
+
+  // Ref for the read view content container to track scroll and dimensions
+  const readContentRef = useRef(null);
+
+  // Track scroll position and dimensions for ink overlay
+  const handleReadScroll = useCallback((event) => {
+    const target = event.target;
+    if (target && readContentRef.current) {
+      setReadContentRect({
+        width: target.clientWidth,
+        height: target.scrollHeight,
+        scrollTop: target.scrollTop,
+      });
+    }
+  }, []);
+
+  // Update content rect on resize
+  useEffect(() => {
+    const element = readContentRef.current;
+    if (!element) return;
+    const updateRect = () => {
+      setReadContentRect({
+        width: element.clientWidth,
+        height: element.scrollHeight,
+        scrollTop: element.scrollTop,
+      });
+    };
+    updateRect();
+    const observer = new ResizeObserver(updateRect);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   if (missing) {
     return (
@@ -594,7 +636,24 @@ export default function NotePage() {
                   }}
                   typography={typography}
                   onTypography={(next) => {
-                    setTypography(normalizeStyle(next));
+                    const normalized = normalizeStyle(next);
+                    // Warn if changing layout on a note with ink
+                    if (noteInk.hasPage && noteInk.markCount > 0) {
+                      const current = typography || {};
+                      const layoutChanged =
+                        (normalized.font && normalized.font !== current.font) ||
+                        (normalized.size && normalized.size !== current.size) ||
+                        (normalized.lineHeight && normalized.lineHeight !== current.lineHeight) ||
+                        (normalized.width && normalized.width !== current.width) ||
+                        (normalized.pageWidth && normalized.pageWidth !== current.pageWidth) ||
+                        (normalized.pageLineHeight && normalized.pageLineHeight !== current.pageLineHeight);
+                      if (layoutChanged) {
+                        if (!window.confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?")) {
+                          return;
+                        }
+                      }
+                    }
+                    setTypography(normalized);
                     touch();
                   }}
                   tab={ribbonTab}
@@ -624,6 +683,12 @@ export default function NotePage() {
                   <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
                     {mode !== "read" && (
                       <div className="min-w-0">
+                        {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
+                          <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
+                            <PenLine className="h-3 w-3 text-muted-foreground/50" />
+                            Ink is shown in Read view · {noteInk.markCount} marks
+                          </div>
+                        )}
                         {markdown ? (
                           <>
                             <MarkdownEditor
@@ -635,7 +700,8 @@ export default function NotePage() {
                               titles={titles}
                               onCreateNote={(newTitle) => insertLink(newTitle, false)}
                               onImageFiles={images.insert}
-                              {...editorProps(typography)}
+                              hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
                             />
                             <MacroBar
                               body={body}
@@ -654,13 +720,26 @@ export default function NotePage() {
                       <div className={cn("min-w-0", mode === "split" && "lg:border-l lg:border-border/60 lg:pl-10")}>
                         {body.trim() ? (
                           markdown ? (
-                            <MarkdownView
-                              body={body}
-                              linkIndex={linkIndex}
-                              typography={typography}
-                              onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
-                              onCreateNote={(newTitle) => insertLink(newTitle, true)}
-                            />
+                            <div ref={readContentRef} onScroll={handleReadScroll} className="relative">
+                              <MarkdownView
+                                body={body}
+                                linkIndex={linkIndex}
+                                typography={typography}
+                                hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                                onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                              />
+                              {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
+                                <NoteInkOverlay
+                                  noteInk={noteInk}
+                                  contentRef={readContentRef.current}
+                                  scrollTop={readContentRect.scrollTop}
+                                  contentWidth={readContentRect.width}
+                                  contentHeight={readContentRect.height}
+                                  scale={1}
+                                />
+                              )}
+                            </div>
                           ) : (
                             <FormatPreview value={body} format={format} />
                           )

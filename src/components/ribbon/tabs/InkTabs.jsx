@@ -691,6 +691,23 @@ export function InkTab({ noteInk }) {
               ))}
             </div>
           </RibbonGroup>
+          {noteInk.overlayMode !== undefined && (
+            <RibbonGroup label="Overlay">
+              <button
+                type="button"
+                onClick={noteInk.onToggleOverlayMode}
+                className={cn(
+                  "h-7 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.08em] transition",
+                  noteInk.overlayMode
+                    ? "border-primary/50 bg-primary/15 text-primary"
+                    : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+                title={noteInk.overlayMode ? "Switch to full-page ink surface" : "Show ink over note text in Read view"}
+              >
+                {noteInk.overlayMode ? "Full page" : "Ink over text"}
+              </button>
+            </RibbonGroup>
+          )}
           {noteInk.ink && <Section ink={noteInk.ink} />}
           <RibbonGroup label="Handwriting page">
             <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>

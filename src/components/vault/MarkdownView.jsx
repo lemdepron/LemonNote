@@ -11,8 +11,8 @@ const REHYPE = [rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]];
 /** react-markdown hands data-attributes over as `data-x` props; the tables in text-style read them by that name. */
 const dataOf = (props) => Object.fromEntries(Object.entries(props).filter(([key]) => key.startsWith("data-")));
 
-export default function MarkdownView({ body = "", linkIndex, onOpenNote, onCreateNote, typography }) {
-  const { style, className } = readerProps(typography);
+export default function MarkdownView({ body = "", linkIndex, onOpenNote, onCreateNote, typography, hasInk }) {
+  const { style, className } = readerProps(typography, hasInk);
   return (
     <div className={`nb-prose ${className}`.trim()} style={style}>
       <ReactMarkdown

@@ -16,6 +16,9 @@ const CURSORS = {
  * Mounts the ink engine on two stacked canvases: the committed base layer and a
  * live overlay for the in-progress stroke, lasso and selection handles.
  */
+// Tool modes that should receive pointer events on the overlay
+const INK_TOOL_MODES = ["draw", "erase", "lasso", "shape", "eyedropper", "pan"];
+
 export default function InkBoard({
   strokes,
   paper,
@@ -30,6 +33,7 @@ export default function InkBoard({
   className,
   height,
   autoFit = false,
+  transparent = false,
 }) {
   const wrapRef = useRef(null);
   const baseRef = useRef(null);
@@ -51,6 +55,7 @@ export default function InkBoard({
         onCamera: (camera) => live.current.onCamera?.(camera),
         onPickColor: (hex, alpha) => live.current.onPickColor?.(hex, alpha),
       },
+      transparent,
     });
     engineRef.current = engine;
     engine.setStrokes(live.current.strokes || []);
@@ -69,7 +74,7 @@ export default function InkBoard({
       engineRef.current = null;
       live.current.onEngine?.(null);
     };
-  }, []);
+  }, [transparent]);
 
   useEffect(() => {
     engineRef.current?.setStrokes(strokes);
@@ -103,6 +108,7 @@ export default function InkBoard({
   }, []);
 
   useEffect(() => {
+    if (transparent) return undefined;
     const canvas = overlayRef.current;
     if (!canvas) return undefined;
     const onWheel = (event) => {
@@ -123,7 +129,7 @@ export default function InkBoard({
       canvas.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [transparent]);
 
   const pointFrom = (event) => {
     const rect = overlayRef.current.getBoundingClientRect();
@@ -156,19 +162,29 @@ export default function InkBoard({
 
   const endStroke = () => engineRef.current?.pointerUp();
 
+  // Determine pointer events for overlay canvas
+  const isInkToolActive = INK_TOOL_MODES.includes(tool?.mode);
+  const overlayPointerEvents = isInkToolActive ? "auto" : "none";
+
+  // Wrapper styles
+  const wrapperClass = transparent
+    ? cn("relative overflow-hidden", className)
+    : cn(
+        "relative overflow-hidden rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
+        className
+      );
+
   return (
     <div
       ref={wrapRef}
       style={height ? { height } : undefined}
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
-        className
-      )}
+      className={wrapperClass}
     >
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full" />
       <canvas
         ref={overlayRef}
         className={cn("absolute inset-0 h-full w-full touch-none", CURSORS[tool?.mode] || CURSORS.draw)}
+        style={{ pointerEvents: overlayPointerEvents }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endStroke}
