@@ -7,6 +7,7 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import NoteCard from "@/components/vault/NoteCard";
 import SearchResults from "@/components/vault/SearchResults";
 import TagRail from "@/components/vault/TagRail";
+import Backup from "@/components/vault/Backup";
 import { collectTags, escapeRegExp, noteLinks, noteTags, relativeTime } from "@/lib/vault";
 
 const SURFACES = [
@@ -130,6 +131,8 @@ export default function VaultHome() {
           <p className="mt-4 font-mono text-[11px] text-muted-foreground">
             {notes.length} notes · {tags.length} tags · {linkCount} links
           </p>
+
+          <Backup />
 
           <div className="mt-7 grid gap-2 sm:grid-cols-3">
             {SURFACES.map((surface) => {

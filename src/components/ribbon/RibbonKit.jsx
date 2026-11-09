@@ -193,6 +193,8 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, cla
   return (
     <div className={cn("mt-6 sticky top-0 z-10", className)}>
       <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
+    <div className={cn("mt-6", className)}>
+      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1">
         {leading}
         {tabs.map((item) => (
           <button

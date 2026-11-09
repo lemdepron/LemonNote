@@ -9,6 +9,7 @@ import {
   ListChecks,
   Plus,
   Search,
+  Settings,
   Share2,
   Table2,
 } from "lucide-react";
@@ -24,6 +25,7 @@ const ACTIONS = [
   { id: "act-canvas", label: "Infinite canvas", hint: "action", to: "/canvas", icon: LayoutGrid, keywords: "whiteboard map" },
   { id: "act-tables", label: "Relational tables", hint: "action", to: "/tables", icon: Table2, keywords: "database board gallery" },
   { id: "act-code", label: "Code workspace", hint: "action", to: "/code", icon: Code2, keywords: "editor files" },
+  { id: "act-settings", label: "Settings", hint: "action", to: "/settings", icon: Settings, keywords: "preferences configure appearance" },
 ];
 
 export default function CommandPalette({ open, onClose }) {

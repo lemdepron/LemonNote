@@ -7,6 +7,7 @@
  * edit joins the browser's native undo stack, so one Ctrl+Z reverts one action.
  */
 import { useSyncExternalStore } from "react";
+import { toast } from "@/lib/toast";
 
 const EMPTY = { start: 0, end: 0, value: "", live: false };
 
@@ -114,6 +115,7 @@ export function execEditor(command) {
 export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard.");
     return true;
   } catch {
     const area = document.createElement("textarea");
@@ -130,6 +132,7 @@ export async function copyText(text) {
     }
     area.remove();
     if (element) element.focus({ preventScroll: true });
+    if (ok) toast.success("Copied to clipboard.");
     return ok;
   }
 }

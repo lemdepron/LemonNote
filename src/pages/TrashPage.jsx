@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/lib/toast";
 
 export default function TrashPage() {
   const [notes, setNotes] = useState([]);
@@ -41,9 +42,10 @@ export default function TrashPage() {
       });
   }, []);
 
-  const restore = async (id) => {
+  const restore = async (id, title) => {
     await restoreNote(id);
     setNotes((current) => current.filter((note) => note.id !== id));
+    toast.success(`Restored "${title || "Untitled note"}".`);
   };
 
   const destroy = async (id) => {
@@ -115,7 +117,7 @@ export default function TrashPage() {
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => restore(note.id)}
+                        onClick={() => restore(note.id, note.title)}
                         className="flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 font-mono text-[10.5px] text-primary transition hover:bg-primary/15"
                       >
                         <RotateCcw className="h-3 w-3" /> restore

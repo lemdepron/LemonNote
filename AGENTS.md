@@ -27,6 +27,7 @@ Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub us
 7. Keep changes **small and focused**. Touch only the files the task needs. No drive-by refactors, no renames, no reformatting of untouched code.
 8. Do not add a dependency unless the task needs it. If you add one, say which and why.
 9. Windows 11 laptop first, iPhone second. Do not optimise for other hardware.
+10. **When you add a table to localDb.js you MUST bump DB_VERSION and add a migration test.**
 
 ## Where things are
 
@@ -42,6 +43,8 @@ Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub us
   - Deleting a note forever also deletes its ink (`src/lib/notes.js`).
   - The old standalone Ink pages and `/ink` routes were removed on purpose.
 - Data tables in `localDb.js`: `Note`, `Canvas`, `DataTable`, `CodeFile`, `InkPage`, `InkChunk`, `Flashcard`.
+
+<<<<<<< HEAD
 
 ## Standard process for EVERY task (follow it unless the prompt says otherwise)
 
@@ -64,6 +67,10 @@ Goal: a Word/OneNote-like page with text, floating objects and handwriting ink *
 - The ink engine (`src/lib/ink/engine.js`) already has `setCamera`; page mode needs a locked-camera, transparent-background mode driven by the scroll position and zoom of the sheet.
 - Wrap modes for objects: in front of text and behind text first; top-and-bottom later; square/tight wrap is a later, optional step.
 - Macros mean recorded sequences of ribbon commands (never user-written code). Multi-window needs cross-window sync (BroadcastChannel) first. GIFs are imported from local files only (no online search).
+
+=======
+
+> > > > > > > feature-backup
 
 ## Before you say "done"
 

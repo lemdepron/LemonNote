@@ -1,5 +1,6 @@
+import RibbonButton from "@/components/ribbon/RibbonButton";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileText } from "lucide-react";
 import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
 import { dateKey } from "@/lib/journal";
@@ -24,6 +25,8 @@ import { TableContextTab } from "@/components/ribbon/tabs/TableContextTab";
 import { CodeContextTab } from "@/components/ribbon/tabs/CodeContextTab";
 import { cn } from "@/lib/utils";
 import { tableAt } from "@/lib/ribbon-actions";
+import { FilePanel } from "@/components/ribbon/FilePanel";
+import { toast } from "@/lib/toast";
 
 const MAIN_TABS = [
   { id: "home", label: "Home" },
@@ -78,12 +81,14 @@ export function initialRibbonTab() {
 }
 
 export default function NoteRibbon({
-  body, onChange, images, noteId, noteTitle, format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
+  body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
 }) {
   const navigate = useNavigate();
   const fileRef = useRef(null);
   const [signals, setSignals] = useState({ card: 0, table: 0, code: 0 });
   const [lastMainTab, setLastMainTab] = useState(() => initialRibbonTab());
+  const [filePanelOpen, setFilePanelOpen] = useState(false);
+  const [noteForPanel, setNoteForPanel] = useState(null);
 
   const snap = useEditorSnapshot();
   const value = snap.value || body || "";
@@ -185,6 +190,33 @@ export default function NoteRibbon({
     pickImage: () => fileRef.current?.click(),
   };
 
+  const handleFileOpen = () => {
+    setNoteForPanel({ title: noteTitle, body, tags: tags || [], id: noteId, created_date: undefined, updated_date: undefined });
+    setFilePanelOpen(true);
+  };
+
+  const handleApplyTemplate = (template) => {
+    onChange?.(template.body || "");
+    if (template.tags) onTypography?.({ tags: template.tags });
+    toast.success(`Applied "${template.name}".`);
+  };
+
+  // Expose for FilePanel to use
+  if (typeof window !== "undefined") {
+    window.__applyTemplate = handleApplyTemplate;
+  }
+
+  const leading = (
+    <RibbonButton
+      icon={FileText}
+      label="File"
+      hint="File menu (Ctrl+Shift+F)"
+      onClick={handleFileOpen}
+      active={filePanelOpen}
+      className="border-r border-border/60 mr-0.5"
+    />
+  );
+
   return (
     <RibbonContext.Provider value={context}>
       <RibbonFrame
@@ -192,6 +224,7 @@ export default function NoteRibbon({
         tab={activeTab}
         onTab={chooseTab}
         leading={<QuickAccess />}
+        leading={leading}
         trailing={
           (images?.busy || images?.error) && (
             <div
@@ -220,6 +253,17 @@ export default function NoteRibbon({
         {activeTab === "table" && <TabErrorBoundary><TableContextTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} /></TabErrorBoundary>}
         {activeTab === "code" && <TabErrorBoundary><CodeContextTab /></TabErrorBoundary>}
       </RibbonFrame>
+
+      {filePanelOpen && noteForPanel && (
+        <FilePanel
+          note={noteForPanel}
+          onClose={() => {
+            setFilePanelOpen(false);
+            setNoteForPanel(null);
+          }}
+          isNew={!noteId}
+        />
+      )}
 
       <input
         ref={fileRef}

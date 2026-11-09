@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import VaultHeader from "@/components/vault/VaultHeader";
-import FocusToggle from "@/components/shell/FocusToggle";
 import GraphView from "@/components/graph/GraphView";
 import { noteLinks } from "@/lib/vault";
 import { listActiveNotes } from "@/lib/notes";
@@ -39,7 +38,6 @@ export default function GraphPage() {
               {notes.length} notes · {linkCount} links · drag to rearrange · click to open
             </p>
           </div>
-          <FocusToggle className="ml-auto shrink-0" />
         </div>
 
         <div className="mt-5">
