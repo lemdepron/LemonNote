@@ -7,16 +7,13 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
-  ArrowLeftRight,
   GripVertical,
-  FileText as PageBreakIcon,
   MoreHorizontal,
   Move,
   RotateCcw,
   RotateCw,
   FlipHorizontal,
   FlipVertical,
-  Layers,
   Eye,
   EyeOff,
   Lock,
@@ -27,12 +24,16 @@ import {
   AlignVerticalDistributeCenter,
   Minus,
   Plus,
-  Grid,
   ChevronRight,
   Trash2,
   Square,
   Star,
   MessageSquareQuote,
+  List,
+  ArrowUp,
+  ArrowDown,
+  MoveHorizontal,
+  LayoutDashboard,
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
@@ -47,6 +48,10 @@ import {
 import { insertPageBreak, insertColumnBreak } from "@/lib/format-actions";
 import { useEditorSnapshot } from "@/lib/editor-bridge";
 import { cn } from "@/lib/utils";
+import {
+  groupObjects,
+  ungroupObjects,
+} from "@/lib/ink/objects";
 
 function pageSizeLabel(size) {
   const found = PAGE_SIZES.find((s) => s.id === size);
@@ -134,9 +139,10 @@ export function LayoutTab({ ink }) {
 
   // Floating object state from ink
   const objects = ink?.objects || [];
-  const selectedObjectId = ink?.selectedObjectId;
-  const selectedObject = objects.find((o) => o.id === selectedObjectId);
-  const hasSelection = Boolean(selectedObject);
+  const selectedObjectIds = ink?.selectedObjectIds || [];
+  const selectedObjects = objects.filter((o) => selectedObjectIds.includes(o.id));
+  const selectedObject = selectedObjects[0]; // Primary selected object (first in selection)
+  const hasSelection = selectedObjects.length > 0;
   const updateObject = ink?.updateObject;
   const bringToFront = ink?.bringToFront;
   const sendToBack = ink?.sendToBack;
@@ -184,85 +190,88 @@ export function LayoutTab({ ink }) {
 
   // Bring forward/backward (by 1 z-order step)
   const handleBringForward = useCallback(() => {
-    if (!selectedObject || !updateObject) return;
-    const currentObjects = objects;
-    const currentZ = selectedObject.zOrder || 0;
-    const nextZ = Math.min(
-      ...currentObjects
-        .filter((o) => (o.zOrder || 0) > currentZ)
-        .map((o) => o.zOrder || 0),
-      currentZ + 1
-    );
-    if (nextZ > currentZ) {
-      updateObject(selectedObject.id, { zOrder: nextZ }, { history: true });
-    } else {
-      bringToFront?.(selectedObject.id);
-    }
-  }, [selectedObject, objects, updateObject, bringToFront]);
+    if (!hasSelection || !updateObject) return;
+    selectedObjects.forEach((selectedObject) => {
+      const currentObjects = objects;
+      const currentZ = selectedObject.zOrder || 0;
+      const nextZ = Math.min(
+        ...currentObjects
+          .filter((o) => (o.zOrder || 0) > currentZ)
+          .map((o) => o.zOrder || 0),
+        currentZ + 1
+      );
+      if (nextZ > currentZ) {
+        updateObject(selectedObject.id, { zOrder: nextZ }, { history: true });
+      } else {
+        bringToFront?.(selectedObject.id);
+      }
+    });
+  }, [hasSelection, selectedObjects, objects, updateObject, bringToFront]);
 
   const handleSendBackward = useCallback(() => {
-    if (!selectedObject || !updateObject) return;
-    const currentObjects = objects;
-    const currentZ = selectedObject.zOrder || 0;
-    const prevZ = Math.max(
-      ...currentObjects
-        .filter((o) => (o.zOrder || 0) < currentZ)
-        .map((o) => o.zOrder || 0),
-      currentZ - 1
-    );
-    if (prevZ < currentZ) {
-      updateObject(selectedObject.id, { zOrder: prevZ }, { history: true });
-    } else {
-      sendToBack?.(selectedObject.id);
-    }
-  }, [selectedObject, objects, updateObject, sendToBack]);
+    if (!hasSelection || !updateObject) return;
+    selectedObjects.forEach((selectedObject) => {
+      const currentObjects = objects;
+      const currentZ = selectedObject.zOrder || 0;
+      const prevZ = Math.max(
+        ...currentObjects
+          .filter((o) => (o.zOrder || 0) < currentZ)
+          .map((o) => o.zOrder || 0),
+        currentZ - 1
+      );
+      if (prevZ < currentZ) {
+        updateObject(selectedObject.id, { zOrder: prevZ }, { history: true });
+      } else {
+        sendToBack?.(selectedObject.id);
+      }
+    });
+  }, [hasSelection, selectedObjects, objects, updateObject, sendToBack]);
 
   const handleBringToFront = useCallback(() => {
-    if (!selectedObject || !bringToFront) return;
-    bringToFront(selectedObject.id);
-  }, [selectedObject, bringToFront]);
+    if (!hasSelection || !bringToFront) return;
+    selectedObjects.forEach((obj) => bringToFront(obj.id));
+  }, [hasSelection, selectedObjects, bringToFront]);
 
   const handleSendToBack = useCallback(() => {
-    if (!selectedObject || !sendToBack) return;
-    sendToBack(selectedObject.id);
-  }, [selectedObject, sendToBack]);
+    if (!hasSelection || !sendToBack) return;
+    selectedObjects.forEach((obj) => sendToBack(obj.id));
+  }, [hasSelection, selectedObjects, sendToBack]);
 
   // Align selected objects
   const handleAlign = useCallback((alignment) => {
     if (!hasSelection || !updateObject) return;
-    const selected = objects.filter((o) => o.id === selectedObjectId); // Single selection for now
-    if (selected.length < 2) return; // Need multiple objects for alignment
+    const selected = selectedObjects;
+    if (selected.length === 0) return;
 
-    // For multi-select support, we'd need a different selection model
-    // For now, this works with single object relative to page
-    const obj = selected[0];
-    let changes = {};
+    selected.forEach((obj) => {
+      let changes = {};
 
-    switch (alignment) {
-      case "left":
-        changes.x = margin;
-        break;
-      case "center":
-        changes.x = (pageWidth - obj.width) / 2;
-        break;
-      case "right":
-        changes.x = pageWidth - margin - obj.width;
-        break;
-      case "top":
-        changes.y = margin;
-        break;
-      case "middle":
-        changes.y = (pageHeight - obj.height) / 2;
-        break;
-      case "bottom":
-        changes.y = pageHeight - margin - obj.height;
-        break;
-    }
+      switch (alignment) {
+        case "left":
+          changes.x = margin;
+          break;
+        case "center":
+          changes.x = (pageWidth - obj.width) / 2;
+          break;
+        case "right":
+          changes.x = pageWidth - margin - obj.width;
+          break;
+        case "top":
+          changes.y = margin;
+          break;
+        case "middle":
+          changes.y = (pageHeight - obj.height) / 2;
+          break;
+        case "bottom":
+          changes.y = pageHeight - margin - obj.height;
+          break;
+      }
 
-    if (Object.keys(changes).length > 0) {
-      updateObject(obj.id, { ...changes, x: Math.round(changes.x), y: Math.round(changes.y) }, { history: true });
-    }
-  }, [hasSelection, selectedObjectId, objects, updateObject]);
+      if (Object.keys(changes).length > 0) {
+        updateObject(obj.id, { ...changes, x: Math.round(changes.x), y: Math.round(changes.y) }, { history: true });
+      }
+    });
+  }, [hasSelection, selectedObjects, updateObject]);
 
   // Distribute (not implemented for single selection)
   const handleDistribute = useCallback((direction) => {
@@ -272,45 +281,66 @@ export function LayoutTab({ ink }) {
 
   // Rotate
   const handleRotate = useCallback((degrees) => {
-    if (!selectedObject || !updateObject) return;
-    const currentRotation = selectedObject.rotation || 0;
-    const newRotation = currentRotation + degrees * (Math.PI / 180);
-    updateObject(selectedObject.id, { rotation: Number(newRotation.toFixed(4)) }, { history: true });
-  }, [selectedObject, updateObject]);
+    if (!hasSelection || !updateObject) return;
+    const radians = degrees * (Math.PI / 180);
+    selectedObjects.forEach((obj) => {
+      const currentRotation = obj.rotation || 0;
+      const newRotation = currentRotation + radians;
+      updateObject(obj.id, { rotation: Number(newRotation.toFixed(4)) }, { history: true });
+    });
+  }, [hasSelection, selectedObjects, updateObject]);
 
   const handleFlip = useCallback((axis) => {
-    if (!selectedObject || !updateObject) return;
+    if (!hasSelection || !updateObject) return;
     // Flip by adding 180 degrees rotation around the axis
     // For horizontal flip, we'd need to scale X by -1 (not supported yet)
     // For now, rotate 180 degrees
-    const currentRotation = selectedObject.rotation || 0;
-    const newRotation = currentRotation + Math.PI;
-    updateObject(selectedObject.id, { rotation: Number(newRotation.toFixed(4)) }, { history: true });
-  }, [selectedObject, updateObject]);
+    selectedObjects.forEach((obj) => {
+      const currentRotation = obj.rotation || 0;
+      const newRotation = currentRotation + Math.PI;
+      updateObject(obj.id, { rotation: Number(newRotation.toFixed(4)) }, { history: true });
+    });
+  }, [hasSelection, selectedObjects, updateObject]);
 
   // Wrap text
   const handleWrapChange = useCallback((wrap) => {
-    if (!selectedObject || !updateObject) return;
-    updateObject(selectedObject.id, { wrap }, { history: true });
-  }, [selectedObject, updateObject]);
+    if (!hasSelection || !updateObject) return;
+    selectedObjects.forEach((obj) => {
+      updateObject(obj.id, { wrap }, { history: true });
+    });
+  }, [hasSelection, selectedObjects, updateObject]);
 
   // Selection pane state
   const [showSelectionPane, setShowSelectionPane] = useState(false);
 
-  // Group/Ungroup (simplified - just toggles a groupId)
+  // Group/Ungroup (works on multiple selected objects)
   const handleGroup = useCallback(() => {
     if (!hasSelection || !updateObject) return;
-    // For single object, assign a new groupId
-    const groupId = `group-${Date.now()}`;
-    updateObject(selectedObjectId, { groupId }, { history: true });
-  }, [hasSelection, selectedObjectId, updateObject]);
+    // Group all selected objects
+    const groupedObjects = groupObjects(objects, selectedObjectIds);
+    // Apply updates for each grouped object
+    groupedObjects.forEach((obj) => {
+      if (selectedObjectIds.includes(obj.id) && obj.groupId) {
+        updateObject(obj.id, { groupId: obj.groupId }, { history: true });
+      }
+    });
+  }, [hasSelection, selectedObjectIds, objects, updateObject]);
 
   const handleUngroup = useCallback(() => {
-    if (!selectedObject || !updateObject) return;
-    if (selectedObject.groupId) {
-      updateObject(selectedObject.id, { groupId: undefined }, { history: true });
-    }
-  }, [selectedObject, updateObject]);
+    if (!hasSelection || !updateObject) return;
+    // Find groupId from any selected object
+    const groupId = selectedObjects.find((o) => o.groupId)?.groupId;
+    if (!groupId) return;
+    // Get the original grouped object IDs before ungrouping
+    const groupedObjectIds = objects.filter((o) => o.groupId === groupId).map((o) => o.id);
+    // Ungroup all objects in that group
+    const ungroupedObjects = ungroupObjects(objects, groupId);
+    ungroupedObjects.forEach((obj) => {
+      if (obj.groupId === null && groupedObjectIds.includes(obj.id)) {
+        updateObject(obj.id, { groupId: null }, { history: true });
+      }
+    });
+  }, [hasSelection, selectedObjects, objects, updateObject]);
 
   // Toggle visibility/lock in selection pane
   const handleToggleVisibility = useCallback((id) => {
@@ -485,7 +515,7 @@ export function LayoutTab({ ink }) {
           />
           <Btn
             id="layout.pageBreak"
-            icon={PageBreakIcon}
+            icon={LayoutDashboard}
             label="Page break"
             hint="Insert a page break at the cursor (forces next content to next page when printing)"
             onClick={handlePageBreak}
@@ -638,7 +668,7 @@ export function LayoutTab({ ink }) {
         {/* Wrap Text */}
         <RibbonMenu
           id="layout.wrapText"
-          icon={ArrowLeftRight}
+          icon={MoveHorizontal}
           label="Wrap Text"
           hint="Choose how text wraps around the selected object"
           width={260}
@@ -666,7 +696,7 @@ export function LayoutTab({ ink }) {
         {/* Bring Forward */}
         <Btn
           id="layout.bringForward"
-          icon={Layers}
+          icon={ArrowUp}
           label="Bring Forward"
           hint="Move the selected object one layer forward"
           onClick={handleBringForward}
@@ -676,7 +706,7 @@ export function LayoutTab({ ink }) {
         {/* Send Backward */}
         <Btn
           id="layout.sendBackward"
-          icon={Layers}
+          icon={ArrowDown}
           label="Send Backward"
           hint="Move the selected object one layer backward"
           onClick={handleSendBackward}
@@ -706,7 +736,7 @@ export function LayoutTab({ ink }) {
         {/* Selection Pane */}
         <Btn
           id="layout.selectionPane"
-          icon={Grid}
+          icon={List}
           label="Selection Pane"
           hint="Show a panel listing all floating objects with visibility and lock controls"
           active={showSelectionPane}
@@ -923,7 +953,7 @@ export function LayoutTab({ ink }) {
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {/* Objects listed in z-order (back to front) */}
             {sortedObjects.map((obj, index) => {
-                const isSelected = obj.id === selectedObjectId;
+                const isSelected = selectedObjectIds.includes(obj.id);
                 const typeIcons = {
                   shape: <Square className="h-3.5 w-3.5" />,
                   sticker: <Star className="h-3.5 w-3.5" />,

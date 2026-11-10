@@ -534,3 +534,134 @@ export function renderSticky(ctx, object, scale = 1, isEditing = false) {
   
   ctx.restore();
 }
+
+/** Generate a unique group ID */
+export function generateGroupId() {
+  return `group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Get all objects belonging to a group */
+export function getGroupedObjects(objects, groupId) {
+  if (!groupId) return [];
+  return objects.filter((obj) => obj.groupId === groupId);
+}
+
+/** Assign a groupId to multiple objects (pure function) */
+export function groupObjects(objects, objectIds) {
+  if (!objectIds || objectIds.length === 0) return objects;
+  const groupId = generateGroupId();
+  return objects.map((obj) =>
+    objectIds.includes(obj.id) ? { ...obj, groupId } : obj
+  );
+}
+
+/** Remove groupId from all objects in a group (pure function) */
+export function ungroupObjects(objects, groupId) {
+  if (!groupId) return objects;
+  return objects.map((obj) =>
+    obj.groupId === groupId ? { ...obj, groupId: null } : obj
+  );
+}
+
+/** Apply a transform function to all objects in a group (pure function) */
+export function applyToGroup(objects, groupId, transformFn) {
+  if (!groupId) return objects;
+  return objects.map((obj) =>
+    obj.groupId === groupId ? transformFn(obj) : obj
+  );
+}
+
+/** Get the bounding box of a group of objects */
+export function getGroupBounds(objects, groupId) {
+  const grouped = getGroupedObjects(objects, groupId);
+  if (grouped.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  for (const obj of grouped) {
+    const corners = [
+      { x: obj.x, y: obj.y },
+      { x: obj.x + obj.width, y: obj.y },
+      { x: obj.x + obj.width, y: obj.y + obj.height },
+      { x: obj.x, y: obj.y + obj.height },
+    ];
+
+    // Transform corners by rotation
+    const cx = obj.x + obj.width / 2;
+    const cy = obj.y + obj.height / 2;
+    const cos = Math.cos(obj.rotation || 0);
+    const sin = Math.sin(obj.rotation || 0);
+
+    for (const corner of corners) {
+      const dx = corner.x - cx;
+      const dy = corner.y - cy;
+      const rx = cx + dx * cos - dy * sin;
+      const ry = cy + dx * sin + dy * cos;
+      minX = Math.min(minX, rx);
+      minY = Math.min(minY, ry);
+      maxX = Math.max(maxX, rx);
+      maxY = Math.max(maxY, ry);
+    }
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    centerX: (minX + maxX) / 2,
+    centerY: (minY + maxY) / 2,
+  };
+}
+
+/** Transform a group of objects (move, resize, rotate around group center) */
+export function transformGroup(objects, groupId, transform) {
+  if (!groupId) return objects;
+  const bounds = getGroupBounds(objects, groupId);
+  if (!bounds) return objects;
+
+  const { centerX, centerY } = bounds;
+
+  return objects.map((obj) => {
+    if (obj.groupId !== groupId) return obj;
+
+    // Transform relative to group center
+    const objCenterX = obj.x + obj.width / 2;
+    const objCenterY = obj.y + obj.height / 2;
+    const relX = objCenterX - centerX;
+    const relY = objCenterY - centerY;
+
+    let newObj = { ...obj };
+
+    if (transform.type === "move") {
+      // Move all objects by the same delta
+      newObj.x = Number((obj.x + transform.dx).toFixed(1));
+      newObj.y = Number((obj.y + transform.dy).toFixed(1));
+    } else if (transform.type === "resize") {
+      // Resize relative to group center
+      const scaleX = transform.scaleX || 1;
+      const scaleY = transform.scaleY || 1;
+      newObj.x = Number((centerX + relX * scaleX - obj.width / 2).toFixed(1));
+      newObj.y = Number((centerY + relY * scaleY - obj.height / 2).toFixed(1));
+      newObj.width = Number((obj.width * scaleX).toFixed(1));
+      newObj.height = Number((obj.height * scaleY).toFixed(1));
+    } else if (transform.type === "rotate") {
+      // Rotate around group center
+      const cos = Math.cos(transform.angle);
+      const sin = Math.sin(transform.angle);
+      const rotatedX = relX * cos - relY * sin;
+      const rotatedY = relX * sin + relY * cos;
+      newObj.x = Number((centerX + rotatedX - obj.width / 2).toFixed(1));
+      newObj.y = Number((centerY + rotatedY - obj.height / 2).toFixed(1));
+      newObj.rotation = Number((obj.rotation + transform.angle).toFixed(4));
+    }
+
+    return newObj;
+  });
+}
+
+/** Delete all objects in a group */
+export function deleteGroup(objects, groupId) {
+  if (!groupId) return objects;
+  return objects.filter((obj) => obj.groupId !== groupId);
+}

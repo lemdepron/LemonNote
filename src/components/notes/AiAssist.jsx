@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { isAIEnabled, callAI, buildPrompt, getAIErrorMessage, AI_LANGUAGES } from "@/lib/ai";
 import { toast } from "@/lib/toast";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const ACTIONS = [
   { id: "summarize", label: "ai.summarize" },
@@ -96,17 +103,18 @@ export default function AiAssist({ title, body, onAppend, onReplace, onClose }) 
       {busy === "translate" && (
         <div className="mt-2 flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground">{tr("ai.translate.targetLanguage")}</span>
-          <select
-            value={targetLanguage}
-            onChange={(e) => setTargetLanguage(e.target.value)}
-            className="h-7 rounded border border-border/70 bg-card/60 px-2 font-mono text-[11px] outline-none focus:border-primary/40"
-          >
-            {AI_LANGUAGES.map((lang) => (
-              <option key={lang.id} value={lang.id}>
-                {lang.native} ({lang.label})
-              </option>
-            ))}
-          </select>
+          <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+            <SelectTrigger className="h-7 rounded border border-border/70 bg-card/60 px-2 font-mono text-[11px] outline-none focus:border-primary/40">
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {AI_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.id} value={lang.id}>
+                  {lang.native} ({lang.label})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 

@@ -1,18 +1,20 @@
 import {
   Grid,
   Type,
+  Heading,
   Palette,
-  FileText,
+  LayoutTemplate,
   Square,
   Droplet,
   Hash,
-  Circle,
   Eye,
   EyeOff,
   Save,
   RotateCcw,
   Trash2,
   Globe,
+  PaintBucket,
+  Stamp,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, RibbonMenu, MenuItem, MenuLabel, Swatches, TextGrid, useRibbon } from "@/components/ribbon/RibbonKit";
@@ -199,7 +201,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 2. Style Sets */}
-      <RibbonGroup label="Style sets" icon={FileText}>
+      <RibbonGroup label="Style sets" icon={LayoutTemplate}>
         <MenuLabel>Document Formatting</MenuLabel>
         <TextGrid
           items={STYLE_SETS.map((s) => s.id)}
@@ -233,7 +235,7 @@ export function DesignTab() {
         <MenuLabel>Theme Preset (per note)</MenuLabel>
         <RibbonMenu
           id="design.themePreset"
-          icon={Circle}
+          icon={Palette}
           label="Theme preset"
           hint="Apply a theme preset to this note only"
           width={280}
@@ -349,7 +351,7 @@ export function DesignTab() {
         <MenuLabel>Page Color</MenuLabel>
         <RibbonMenu
           id="design.pageColor"
-          icon={Droplet}
+          icon={PaintBucket}
           label="Page color"
           hint="Background color for the page"
           width={280}
@@ -450,7 +452,7 @@ export function DesignTab() {
         <MenuLabel>Watermark</MenuLabel>
         <RibbonMenu
           id="design.watermarkText"
-          icon={Eye}
+          icon={Stamp}
           label="Watermark text"
           hint="Text to show as watermark (e.g. DRAFT, CONFIDENTIAL)"
           width={280}
@@ -537,7 +539,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 6. Page Title Style */}
-      <RibbonGroup label="Page title style" icon={Type}>
+      <RibbonGroup label="Page title style" icon={Heading}>
         <MenuLabel>Font</MenuLabel>
         <RibbonSelect
           title="Font for the page title"

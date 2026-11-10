@@ -2,12 +2,14 @@ import { useState, useRef } from "react";
 import {
   AtSign, BarChart, Bookmark, Braces, ChevronsDownUp, Footprints, Hash, ImagePlus, Link, Link2, ListOrdered, ListTree, MessageSquareQuote,
   Minus, Omega, SquareCode, TextQuote, Clock, CornerDownLeft, CalendarPlus, CalendarClock, CalendarCheck, CalendarRange, CalendarDays,
-  BookOpenCheck, ArrowLeft, ArrowRight, FileVideo, Paperclip, Mic, MicOff, Square, Circle, Triangle, Star, Minus as LineIcon,
+  Calendar, BookOpenCheck, ArrowLeft, ArrowRight, Film, Paperclip, Mic, MicOff, Square, Triangle, Star, Star as StarIcon,
+  SquarePen, StickyNote, FileImage, Minus as LineHorizontal, ArrowRight as ArrowRightIcon, Circle as Ellipse, SquareDashed,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import TablePicker from "@/components/ribbon/TablePicker";
 import CardComposer from "@/components/ribbon/CardComposer";
 import { Btn, MenuItem, MenuLabel, RibbonMenu, TextGrid, useRibbon } from "@/components/ribbon/RibbonKit";
+import { useI18n } from "@/lib/i18n";
 import {
   fenceAt, footnoteParts, insertBlock, insertBookmark, insertChart, linkWithUrl, outlineOf, toggleWrap, wikiLink, wrapSelectionInFence,
 } from "@/lib/format-actions";
@@ -25,6 +27,8 @@ import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
 import { addAttachment } from "@/lib/attachments";
 import { toast } from "@/lib/toast";
+import { prompt } from "@/components/ui/use-dialog";
+import { setPendingFigureCaption } from "@/lib/dialog-state";
 
 const FIELD =
   "h-8 w-full rounded-md border border-border/80 bg-background/60 px-2 text-[12.5px] text-foreground outline-none focus:border-primary/40";
@@ -68,6 +72,7 @@ const CALLOUTS = [
 /* --------------------------------- Insert --------------------------------- */
 
 export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteTitle, ink }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { selection, run, value } = useRibbon();
   const now = () => new Date();
@@ -85,7 +90,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
   const block = fenceAt(value, selection.start);
   const active = block ? block.lang || "plain" : readPref("codeBlockLanguage", "plain");
   const inBlock = Boolean(block);
-  const needBlock = "Put the cursor inside a code block first.";
+  const needBlock = t("ribbon.insert.needCodeBlock");
   const [language, setLanguage] = useState(() => readPref("codeBlockLanguage", "plain"));
   const [filter, setFilter] = useState("");
 
@@ -129,7 +134,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
     // Validate file type
     const allowedTypes = ["image/gif", "image/webp", "image/apng"];
     if (!allowedTypes.includes(file.type)) {
-      toast.error("Please select a GIF, WebP, or APNG file.");
+      toast.error(t("ribbon.insert.gifError"));
       return;
     }
 
@@ -147,7 +152,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
       });
     } catch {
-      toast.error("Failed to insert GIF.");
+      toast.error(t("ribbon.insert.gifInsertError"));
     }
   };
 
@@ -178,7 +183,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
       });
     } catch {
-      toast.error("Failed to attach file.");
+      toast.error(t("ribbon.insert.fileAttachError"));
     }
   };
 
@@ -222,103 +227,98 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
             next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
           });
         } catch {
-          toast.error("Failed to save recording.");
+          toast.error(t("ribbon.insert.recordingSaveError"));
         }
       };
 
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-      toast.info("Recording… click again to stop.");
+      toast.info(t("ribbon.insert.recordingToast"));
     } catch (err) {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        toast.error("Microphone permission denied. Please allow microphone access in your browser settings.");
+        toast.error(t("ribbon.insert.micPermissionError"));
       } else {
-        toast.error("Failed to start recording.");
+        toast.error(t("ribbon.insert.recordingStartError"));
       }
     }
   };
 
   return (
     <>
-      <RibbonGroup label="Pictures">
-        <Btn id="insert.image" icon={ImagePlus} label="Image file" hint="Insert an image from your computer" shortcut="Ctrl+Alt+I" onClick={onPickImage} />
+      <RibbonGroup label={t("ribbon.insert.pictures")}>
+        <Btn id="insert.image" icon={ImagePlus} label={t("ribbon.insert.image")} hint={t("ribbon.insert.imageHint")} shortcut="Ctrl+Alt+I" onClick={onPickImage} />
         <UrlMenu
           id="insert.imageUrl"
-          icon={Link2}
-          label="Image URL"
-          hint="Insert an image from a web address"
-          placeholder="https://…/picture.png"
+          icon={Link}
+          label={t("ribbon.insert.imageUrl")} hint={t("ribbon.insert.imageUrlHint")}
+          placeholder={t("ribbon.insert.imageUrlPlaceholder")}
           build={(s, url) => insertText(s, `![${s.value.slice(s.start, s.end) || "image"}](${url})`)}
         />
         <Btn
           id="insert.figure"
-          icon={ImagePlus}
-          label="Figure"
-          hint="Insert an image with a caption (Figure N: caption)"
-          onClick={() => {
-            const caption = prompt('Figure caption (optional):');
+          icon={FileImage}
+          label={t("ribbon.insert.figure")} hint={t("ribbon.insert.figureHint")}
+          onClick={async () => {
+            const caption = await prompt(t("ribbon.insert.figureCaptionPrompt"));
             if (caption === null) return; // User cancelled
             // Store caption and trigger image picker
-            window.__pendingFigureCaption = caption;
+            setPendingFigureCaption(caption);
             onPickImage();
           }}
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Media">
+      <RibbonGroup label={t("ribbon.insert.media")}>
         <Btn
           id="insert.gif"
-          icon={FileVideo}
-          label="GIF"
-          hint="Insert an animated GIF, WebP or APNG from your computer"
+          icon={Film}
+          label={t("ribbon.insert.gif")} hint={t("ribbon.insert.gifHint")}
           onClick={() => gifInputRef.current?.click()}
         />
         <Btn
           id="insert.file"
           icon={Paperclip}
-          label="Attach file"
-          hint="Attach any file (PDF, Word, zip, etc.) — opens in viewer or downloads"
+          label={t("ribbon.insert.file")} hint={t("ribbon.insert.fileHint")}
           onClick={() => fileInputRef.current?.click()}
         />
         <Btn
           id="insert.audio"
           icon={isRecording ? MicOff : Mic}
           label="Record audio"
-          hint={isRecording ? "Stop recording" : "Record audio from microphone"}
+          hint={isRecording ? t("ribbon.insert.audioStopHint") : t("ribbon.insert.audioHint")}
           active={isRecording}
           onClick={handleAudioToggle}
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Links">
-        <Btn id="insert.noteLink" icon={Link2} label="Note link" hint="Link another note with [[ ]]" edit={wikiLink} />
-        <Btn id="insert.bookmark" icon={Bookmark} label="Bookmark" hint="Insert a named anchor at the cursor" edit={(s) => {
-          const name = prompt('Bookmark name:');
-          if (!name) return null;
-          return insertBookmark(s, name);
+      <RibbonGroup label={t("ribbon.insert.links")}>
+        <Btn id="insert.noteLink" icon={Link2} label={t("ribbon.insert.noteLink")} hint={t("ribbon.insert.noteLinkHint")} edit={wikiLink} />
+        <Btn id="insert.bookmark" icon={Bookmark} label={t("ribbon.insert.bookmark")} hint={t("ribbon.insert.bookmarkHint")} onClick={async () => {
+          const name = await prompt(t("ribbon.insert.bookmarkPrompt"));
+          if (!name) return;
+          run(insertBookmark(selection, name));
         }} />
-        <UrlMenu id="insert.webLink" icon={Link} label="Web link" hint="Turn the selection into a web link" placeholder="https://example.com" build={linkWithUrl} />
+        <UrlMenu id="insert.webLink" icon={Link} label={t("ribbon.insert.webLink")} hint={t("ribbon.insert.webLinkHint")} placeholder={t("ribbon.insert.webLinkPlaceholder")} build={linkWithUrl} />
         <UrlMenu
           id="insert.email"
           icon={AtSign}
-          label="Email"
-          hint="Insert an email link"
-          placeholder="name@example.com"
+          label={t("ribbon.insert.email")} hint={t("ribbon.insert.emailHint")}
+          placeholder={t("ribbon.insert.emailPlaceholder")}
           build={(s, mail) => linkWithUrl(s, `mailto:${mail}`)}
         />
-        <UrlMenu id="insert.tag" icon={Hash} label="Tag" hint="Insert a #tag" placeholder="tag-name" build={(s, tag) => insertText(s, `#${tag.replace(/^#/, "")} `)} />
+        <UrlMenu id="insert.tag" icon={Hash} label={t("ribbon.insert.tag")} hint={t("ribbon.insert.tagHint")} placeholder={t("ribbon.insert.tagPlaceholder")} build={(s, tag) => insertText(s, `#${tag.replace(/^#/, "")} `)} />
       </RibbonGroup>
 
       {/* Bookmarks menu - lists all bookmarks in the current note */}
-      <RibbonGroup label="Bookmarks">
-        <RibbonMenu id="insert.bookmarks" icon={Bookmark} label="Bookmarks" hint="Jump to a bookmark in this note" width={240}>
+      <RibbonGroup label={t("ribbon.insert.bookmarks")}>
+        <RibbonMenu id="insert.bookmarks" icon={Bookmark} label={t("ribbon.insert.bookmarks")} hint="Jump to a bookmark in this note" width={240}>
           {(close) => {
             const bookmarks = [...value.matchAll(/<span id="(bm-[^"]+)"><\/span>/g)].map(m => m[1]);
             if (!bookmarks.length) {
               return (
                 <MenuItem disabled className="text-muted-foreground px-2 py-1 text-[11px]">
-                  No bookmarks in this note
+                  {t("ribbon.insert.noBookmarks")}
                 </MenuItem>
               );
             }
@@ -341,9 +341,9 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label="Blocks">
-        <Btn id="insert.divider" icon={Minus} label="Divider" hint="Horizontal line" edit={(s) => insertBlock(s, "---")} />
-        <RibbonMenu id="insert.callout" icon={MessageSquareQuote} label="Callout" hint="Highlighted note box" width={200}>
+      <RibbonGroup label={t("ribbon.insert.blocks")}>
+        <Btn id="insert.divider" icon={Minus} label={t("ribbon.insert.divider")} hint={t("ribbon.insert.dividerHint")} edit={(s) => insertBlock(s, "---")} />
+        <RibbonMenu id="insert.callout" icon={MessageSquareQuote} label={t("ribbon.insert.callout")} hint={t("ribbon.insert.calloutHint")} width={200}>
           {(close) =>
             CALLOUTS.map(([id, text]) => (
               <MenuItem
@@ -363,15 +363,13 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         <Btn
           id="insert.collapsible"
           icon={ChevronsDownUp}
-          label="Collapsible"
-          hint="A section that opens and closes"
+          label={t("ribbon.insert.collapsible")} hint={t("ribbon.insert.collapsibleHint")}
           edit={(s) => insertBlock(s, "<details>\n<summary>Title</summary>\n\nHidden text\n\n</details>", "<details>\n<summary>".length)}
         />
         <Btn
           id="insert.footnote"
           icon={Footprints}
-          label="Footnote"
-          hint="Add a footnote marker here and its text at the end of the note"
+          label={t("ribbon.insert.footnote")} hint={t("ribbon.insert.footnoteHint")}
           onClick={() => {
             const { ref, definition } = footnoteParts(value);
             const withRef = insertText(selection, ref);
@@ -379,41 +377,39 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
             run({ next, start: 0, end: value.length, text: next, caret: next.length });
           }}
         />
-        <Btn id="insert.lineBreak" icon={CornerDownLeft} label="Line break" hint="Force a new line inside a paragraph" edit={(s) => insertText(s, "<br>\n")} />
+        <Btn id="insert.lineBreak" icon={CornerDownLeft} label={t("ribbon.insert.lineBreak")} hint={t("ribbon.insert.lineBreakHint")} edit={(s) => insertText(s, "<br>\n")} />
         <Btn
           id="insert.outline"
           icon={ListTree}
-          label="Outline"
-          hint="Insert a list of this note's headings"
+          label={t("ribbon.insert.outline")} hint={t("ribbon.insert.outlineHint")}
           disabled={!outlineOf(value)}
-          disabledReason="Add some # headings first"
+          disabledReason={t("ribbon.insert.outlineDisabled")}
           edit={(s) => insertBlock(s, outlineOf(value))}
         />
-        <Btn id="insert.quoteBlock" icon={TextQuote} label="Quote" hint="Block quote" edit={(s) => insertBlock(s, "> ", 2)} />
+        <Btn id="insert.quoteBlock" icon={TextQuote} label={t("ribbon.insert.quoteBlock")} hint={t("ribbon.insert.quoteBlockHint")} edit={(s) => insertBlock(s, "> ", 2)} />
         <Btn
           id="insert.chart"
           icon={BarChart}
-          label="Chart"
-          hint="Insert a chart from a table (bar, line, pie)"
+          label={t("ribbon.insert.chart")} hint={t("ribbon.insert.chartHint")}
           disabled={!tableAt(value, selection.start)}
-          disabledReason="Put the cursor inside a table first"
-          onClick={() => {
+          disabledReason={t("ribbon.insert.chartDisabled")}
+          onClick={async () => {
             const tableCount = (value.match(/\|.*\|/g) || []).length;
             if (!tableCount) return;
-            const type = prompt('Chart type (bar, line, pie):', 'bar');
+            const type = await prompt(t("ribbon.insert.chartTypePrompt"), "bar");
             if (!type || !['bar', 'line', 'pie'].includes(type)) return;
-            const tableIndex = prompt(`Table index (0 to ${tableCount - 1}):`, '0');
+            const tableIndex = await prompt(`${t("ribbon.insert.chartTablePrompt").replace("{count}", tableCount)}`, '0');
             if (tableIndex === null) return;
             const idx = parseInt(tableIndex, 10);
             if (isNaN(idx) || idx < 0 || idx >= tableCount) return;
-            const title = prompt('Chart title (optional):', '');
+            const title = await prompt(t("ribbon.insert.chartTitlePrompt"), '');
             run(insertChart(selection, { type, table: idx, title: title || undefined }));
           }}
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Symbols">
-        <RibbonMenu id="insert.symbols" icon={Omega} label="Symbols" hint="Special characters" width={330}>
+      <RibbonGroup label={t("ribbon.insert.symbols")}>
+        <RibbonMenu id="insert.symbols" icon={Omega} label={t("ribbon.insert.symbols")} hint={t("ribbon.insert.symbolsMenuHint")} width={330}>
           {(close) =>
             SYMBOLS.map((group) => (
               <div key={group.group}>
@@ -432,8 +428,8 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label="Code block">
-        <RibbonMenu id="insert.codeBlock" icon={SquareCode} label={`Block: ${fenceLabel(active)}`} hint="Insert a fenced code block; wraps the selection when there is one" width={320} shortcut="Ctrl+Alt+C">
+      <RibbonGroup label={t("ribbon.insert.codeBlock")}>
+        <RibbonMenu id="insert.codeBlock" icon={SquareCode} label={t("ribbon.insert.codeBlockMenu", { label: fenceLabel(active) })} hint={t("ribbon.insert.codeBlockMenuHint")} width={320} shortcut="Ctrl+Alt+C">
           {(close) => (
             <>
               <input
@@ -460,7 +456,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
                             close();
                           }}
                           className={cn(
-                            "h-7 truncate rounded-md border px-2 text-left text-[11.5px] transition",
+                            "h-7 truncate rounded-md border px-2 text-start text-[11.5px] transition",
                             active === id
                               ? "border-primary/50 bg-primary/15 text-primary"
                               : "border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -477,12 +473,12 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
           )}
         </RibbonMenu>
         {QUICK_LANGUAGES.map(([id, label]) => (
-          <Btn key={id} id={`insert.fence.${id}`} label={label} hint={`Insert a ${fenceLabel(id)} code block`} onClick={() => insertFence(id)} showLabel />
+          <Btn key={id} id={`insert.fence.${id}`} label={label} hint={t("ribbon.insert.quickLanguageHint", { lang: fenceLabel(id) })} onClick={() => insertFence(id)} showLabel />
         ))}
-        <Btn id="insert.inlineCode" icon={Braces} label="Inline" hint="Inline code" shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
+        <Btn id="insert.inlineCode" icon={Braces} label={t("ribbon.insert.inlineCode")} hint={t("ribbon.insert.inlineCodeHint")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
       </RibbonGroup>
 
-      <RibbonGroup label="Table">
+      <RibbonGroup label={t("ribbon.insert.table")}>
         <TablePicker
           id="insert.table"
           onInsert={(rows, columns) => run(tableInsert(selection, rows, columns))}
@@ -492,18 +488,18 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Shapes">
-        <Btn id="insert.shape.rect" icon={Square} label="Rectangle" hint="Insert a rectangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rect" })} />
-        <Btn id="insert.shape.rounded" icon={Square} label="Rounded rect" hint="Insert a rounded rectangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rounded-rect" })} />
-        <Btn id="insert.shape.ellipse" icon={Circle} label="Ellipse" hint="Insert an ellipse" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "ellipse" })} />
-        <Btn id="insert.shape.line" icon={LineIcon} label="Line" hint="Insert a line" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "line" })} />
-        <Btn id="insert.shape.arrow" icon={LineIcon} label="Arrow" hint="Insert an arrow" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "arrow" })} />
-        <Btn id="insert.shape.triangle" icon={Triangle} label="Triangle" hint="Insert a triangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "triangle" })} />
-        <Btn id="insert.shape.star" icon={Star} label="Star" hint="Insert a star" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "star" })} />
+      <RibbonGroup label={t("ribbon.insert.shapes")}>
+        <Btn id="insert.shape.rect" icon={Square} label={t("ribbon.insert.shapeRect")} hint={t("ribbon.insert.shapeRectHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rect" })} />
+        <Btn id="insert.shape.rounded" icon={SquareDashed} label={t("ribbon.insert.shapeRounded")} hint={t("ribbon.insert.shapeRoundedHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rounded-rect" })} />
+        <Btn id="insert.shape.ellipse" icon={Ellipse} label={t("ribbon.insert.shapeEllipse")} hint={t("ribbon.insert.shapeEllipseHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "ellipse" })} />
+        <Btn id="insert.shape.line" icon={LineHorizontal} label={t("ribbon.insert.shapeLine")} hint={t("ribbon.insert.shapeLineHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "line" })} />
+        <Btn id="insert.shape.arrow" icon={ArrowRightIcon} label={t("ribbon.insert.shapeArrow")} hint={t("ribbon.insert.shapeArrowHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "arrow" })} />
+        <Btn id="insert.shape.triangle" icon={Triangle} label={t("ribbon.insert.shapeTriangle")} hint={t("ribbon.insert.shapeTriangleHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "triangle" })} />
+        <Btn id="insert.shape.star" icon={StarIcon} label={t("ribbon.insert.shapeStar")} hint={t("ribbon.insert.shapeStarHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "star" })} />
       </RibbonGroup>
 
-      <RibbonGroup label="Stickers">
-        <RibbonMenu id="insert.sticker" icon={Star} label="Stickers" hint="Insert a built-in sticker" width={320}>
+      <RibbonGroup label={t("ribbon.insert.stickers")}>
+        <RibbonMenu id="insert.sticker" icon={Star} label={t("ribbon.insert.stickers")} hint={t("ribbon.insert.stickersMenuHint")} width={320}>
           {(close) => (
             <div className="p-1">
               {ink?.STICKERS?.map((sticker) => (
@@ -528,20 +524,19 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label="Text & Notes">
-        <Btn id="insert.textbox" icon={Square} label="Text box" hint="Insert a text box" onClick={() => ink?.addObject?.("textbox", 100, 100)} />
-        <Btn id="insert.sticky" icon={Square} label="Sticky note" hint="Insert a sticky note" onClick={() => ink?.addObject?.("sticky", 100, 100)} />
+      <RibbonGroup label={t("ribbon.insert.textNotes")}>
+        <Btn id="insert.textbox" icon={SquarePen} label={t("ribbon.insert.textbox")} hint={t("ribbon.insert.textboxHint")} onClick={() => ink?.addObject?.("textbox", 100, 100)} />
+        <Btn id="insert.sticky" icon={StickyNote} label={t("ribbon.insert.sticky")} hint={t("ribbon.insert.stickyHint")} onClick={() => ink?.addObject?.("sticky", 100, 100)} />
       </RibbonGroup>
 
-      <RibbonGroup label="Time and calendar">
-        <Btn id="insert.today" icon={CalendarPlus} label="Today" hint="Open or create today's daily note" shortcut="Ctrl+Alt+D" onClick={() => goTo(today, JOURNAL_TEMPLATE)} />
-        <Btn id="insert.yesterday" icon={CalendarClock} label="Yesterday" hint="Open yesterday's note" onClick={() => goTo(shiftDay(today, -1), JOURNAL_TEMPLATE)} />
-        <Btn id="insert.tomorrow" icon={CalendarCheck} label="Tomorrow" hint="Open or create tomorrow's note" onClick={() => goTo(shiftDay(today, 1), JOURNAL_TEMPLATE)} />
+      <RibbonGroup label={t("ribbon.insert.timeCalendar")}>
+        <Btn id="insert.today" icon={CalendarPlus} label={t("ribbon.insert.today")} hint={t("ribbon.insert.todayHint")} shortcut="Ctrl+Alt+D" onClick={() => goTo(today, JOURNAL_TEMPLATE)} />
+        <Btn id="insert.yesterday" icon={CalendarClock} label={t("ribbon.insert.yesterday")} hint={t("ribbon.insert.yesterdayHint")} onClick={() => goTo(shiftDay(today, -1), JOURNAL_TEMPLATE)} />
+        <Btn id="insert.tomorrow" icon={CalendarCheck} label={t("ribbon.insert.tomorrow")} hint={t("ribbon.insert.tomorrowHint")} onClick={() => goTo(shiftDay(today, 1), JOURNAL_TEMPLATE)} />
         <Btn
           id="insert.prevDay"
           icon={ArrowLeft}
-          label="Previous"
-          hint="The day, week or month before this note"
+          label={t("ribbon.insert.prevDay")} hint={t("ribbon.insert.prevDayHint")}
           disabled={!prev}
           disabledReason="This note's title is not a date, week (2026-W45) or month (2026-11)"
           onClick={() => goTo(prev, prev.includes("W") ? weeklyTemplate(prev) : prev.length === 7 ? monthlyTemplate(prev) : JOURNAL_TEMPLATE)}
@@ -549,24 +544,22 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         <Btn
           id="insert.nextDay"
           icon={ArrowRight}
-          label="Next"
-          hint="The day, week or month after this note"
+          label={t("ribbon.insert.nextDay")} hint={t("ribbon.insert.nextDayHint")}
           disabled={!next}
           disabledReason="This note's title is not a date, week (2026-W45) or month (2026-11)"
           onClick={() => goTo(next, next.includes("W") ? weeklyTemplate(next) : next.length === 7 ? monthlyTemplate(next) : JOURNAL_TEMPLATE)}
         />
-        <Btn id="insert.thisWeek" icon={CalendarRange} label="This week" hint="Open or create this week's note, e.g. 2026-W45" onClick={() => goTo(weekKey(now()), weeklyTemplate(weekKey(now())))} />
-        <Btn id="insert.thisMonth" icon={CalendarDays} label="This month" hint="Open or create this month's note, e.g. 2026-11" onClick={() => goTo(monthKey(now()), monthlyTemplate(monthKey(now())))} />
-        <Btn id="insert.date" icon={CalendarDays} label="Today's date" hint="Insert 2026-11-06 style date" shortcut="Ctrl+Alt+T" edit={(s) => insertText(s, dateKey())} />
-        <Btn id="insert.time" icon={Clock} label="Time" hint="Insert the current time" edit={(s) => insertText(s, DATE_FORMATS.find((f) => f.id === "time24").make(now()))} />
+        <Btn id="insert.thisWeek" icon={CalendarRange} label={t("ribbon.insert.thisWeek")} hint={t("ribbon.insert.thisWeekHint")} onClick={() => goTo(weekKey(now()), weeklyTemplate(weekKey(now())))} />
+        <Btn id="insert.thisMonth" icon={Calendar} label={t("ribbon.insert.thisMonth")} hint={t("ribbon.insert.thisMonthHint")} onClick={() => goTo(monthKey(now()), monthlyTemplate(monthKey(now())))} />
+        <Btn id="insert.date" icon={CalendarDays} label={t("ribbon.insert.date")} hint={t("ribbon.insert.dateHint")} shortcut="Ctrl+Alt+T" edit={(s) => insertText(s, dateKey())} />
+        <Btn id="insert.time" icon={Clock} label={t("ribbon.insert.time")} hint={t("ribbon.insert.timeHint")} edit={(s) => insertText(s, DATE_FORMATS.find((f) => f.id === "time24").make(now()))} />
         <Btn
           id="insert.logEntry"
           icon={ListOrdered}
-          label="Log entry"
-          hint="Start a new time-stamped log line"
+          label={t("ribbon.insert.logEntry")} hint={t("ribbon.insert.logEntryHint")}
           edit={(s) => insertText(s, `- ${DATE_FORMATS.find((f) => f.id === "time24").make(now())} `)}
         />
-        <RibbonMenu id="insert.dateFormats" icon={CalendarDays} label="Formats" hint="Every date and time format" width={280}>
+        <RibbonMenu id="insert.dateFormats" icon={CalendarClock} label={t("ribbon.insert.dateFormats")} hint={t("ribbon.insert.dateFormatsHint")} width={280}>
           {(close) =>
             DATE_FORMATS.map((item) => (
               <MenuItem key={item.id} onClick={() => { run(insertText(selection, item.make(now()))); close(); }}>
@@ -576,7 +569,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
             ))
           }
         </RibbonMenu>
-        <RibbonMenu id="insert.linkDay" icon={Link2} label="Link day" hint="Insert a [[link]] to a day note" width={200}>
+        <RibbonMenu id="insert.linkDay" icon={Calendar} label={t("ribbon.insert.linkDay")} hint={t("ribbon.insert.linkDayHint")} width={200}>
           {(close) =>
             [["Today", 0], ["Yesterday", -1], ["Tomorrow", 1], ["In a week", 7], ["A week ago", -7]].map(([label, n]) => (
               <MenuItem key={label} onClick={() => { run(insertText(selection, `[[${shiftDay(today, n)}]]`)); close(); }}>
@@ -586,7 +579,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
             ))
           }
         </RibbonMenu>
-        <RibbonMenu id="insert.templates" icon={BookOpenCheck} label="Templates" hint="Ready-made journal blocks" width={240}>
+        <RibbonMenu id="insert.templates" icon={BookOpenCheck} label={t("ribbon.insert.templates")} hint={t("ribbon.insert.templatesHint")} width={240}>
           {(close) =>
             JOURNAL_TEMPLATES.map((item) => (
               <MenuItem key={item.id} onClick={() => { run(insertBlock(selection, item.text.replace(/\n$/, ""))); close(); }}>
@@ -597,7 +590,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label="Cards">
+      <RibbonGroup label={t("ribbon.insert.cards")}>
         <CardComposer
           id="insert.card"
           body={body}

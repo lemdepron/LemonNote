@@ -8,6 +8,13 @@ import BoardView from "@/components/table/BoardView";
 import GalleryView from "@/components/table/GalleryView";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { COLUMN_TYPES, makeColumn, uid } from "@/lib/table";
 import { cn } from "@/lib/utils";
 
@@ -200,17 +207,18 @@ export default function TablePage() {
             </label>
             <label className="basis-[130px]">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">type</span>
-              <select
-                value={draft.type}
-                onChange={(event) => setDraft({ ...draft, type: event.target.value })}
-                className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40"
-              >
-                {COLUMN_TYPES.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={draft.type} onValueChange={(type) => setDraft({ ...draft, type })}>
+                <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {COLUMN_TYPES.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             {draft.type === "select" && (
               <label className="flex-1 basis-[180px]">
@@ -226,18 +234,19 @@ export default function TablePage() {
             {draft.type === "relation" && (
               <label className="flex-1 basis-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">links to</span>
-                <select
-                  value={draft.targetTableId}
-                  onChange={(event) => setDraft({ ...draft, targetTableId: event.target.value })}
-                  className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40"
-                >
-                  <option value="">Choose a table…</option>
-                  {tables.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                <Select value={draft.targetTableId} onValueChange={(targetTableId) => setDraft({ ...draft, targetTableId })}>
+                  <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+                    <SelectValue placeholder="Choose a table…" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value="">Choose a table…</SelectItem>
+                    {tables.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
             )}
             <Button onClick={addColumn} size="sm" className="h-9 rounded-lg bg-primary px-3 text-[12.5px] text-primary-foreground hover:bg-primary/90">

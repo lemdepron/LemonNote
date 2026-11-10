@@ -5,6 +5,7 @@ import { db } from "@/api/localDb";
 import SpaceListPage from "@/components/shell/SpaceListPage";
 import { makeTable } from "@/lib/table";
 import { relativeTime } from "@/lib/vault";
+import { confirm } from "@/components/ui/use-dialog";
 
 export default function TablesHome() {
   const [items, setItems] = useState([]);
@@ -27,7 +28,8 @@ export default function TablesHome() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Delete this table and its rows?")) return;
+    const ok = await confirm("Delete this table and its rows?", { danger: true });
+    if (!ok) return;
     await db.entities.DataTable.delete(id);
     load();
   };

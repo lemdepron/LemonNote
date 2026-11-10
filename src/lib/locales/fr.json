@@ -127,22 +127,29 @@
       "noteType": "Type de note",
       "noteFormatAria": "Format de note",
       "noteFormatTitle": "Le type de toute la note",
-      "ai": "IA",
-      "ai.translate": "Traduire",
-      "ai.translateHint": "Traduire le texte sélectionné ou la note entière dans une autre langue",
-      "ai.summarize": "Résumer",
-      "ai.summarizeHint": "Créer un résumé concis du texte sélectionné ou de la note",
-      "ai.fixGrammar": "Corriger la grammaire",
-      "ai.fixGrammarHint": "Corriger la grammaire, l'orthographe et la ponctuation",
-      "ai.continue": "Continuer l'écriture",
-      "ai.continueHint": "Continuer l'écriture à partir de la position du curseur",
-      "ai.arabicEnglish": "Arabe ↔ Anglais",
-      "ai.arabicEnglishHint": "Traduction rapide entre l'arabe et l'anglais",
-      "ai.preview": "Résultat IA",
-      "ai.replace": "Remplacer la sélection",
-      "ai.insertBelow": "Insérer en dessous",
-      "ai.copy": "Copier",
-      "ai.discard": "Annuler"
+      "ai": {
+        "label": "IA",
+        "translate": "Traduire",
+        "translateHint": "Traduire le texte sélectionné ou la note entière dans une autre langue",
+        "summarize": "Résumer",
+        "summarizeHint": "Créer un résumé concis du texte sélectionné ou de la note",
+        "fixGrammar": "Corriger la grammaire",
+        "fixGrammarHint": "Corriger la grammaire, l'orthographe et la ponctuation",
+        "continue": "Continuer l'écriture",
+        "continueHint": "Continuer l'écriture à partir de la position du curseur",
+        "arabicEnglish": "Arabe ↔ Anglais",
+        "arabicEnglishHint": "Traduction rapide entre l'arabe et l'anglais",
+        "preview": "Résultat IA",
+        "replace": "Remplacer la sélection",
+        "insertBelow": "Insérer en dessous",
+        "copy": "Copier",
+        "discard": "Annuler"
+      }
+    },
+    "share": {
+      "copiedAs": "Copié en tant que {label}.",
+      "copyRichTextFallback": "Copié en tant que {label} (texte enrichi non supporté, repli vers texte brut).",
+      "copyFailed": "Échec de la copie : {error}"
     }
   },
   "fileMenu": {
@@ -503,5 +510,23 @@
         "discard": "Annuler"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "Rechercher dans chaque note, titre et corps…",
+    "backupTooltip": "Sauvegarde",
+    "favourites": "Favoris",
+    "tags": "Étiquettes",
+    "recent": {
+      "all": "Tous",
+      "today": "Aujourd'hui",
+      "week": "7 jours",
+      "month": "30 jours"
+    },
+    "includeDeleted": "Inclure les supprimés",
+    "clearFilters": "Effacer les filtres"
+  },
+  "common": {
+    "clearSearch": "Effacer la recherche",
+    "removeTag": "Supprimer l'étiquette {tag}"
   }
 }

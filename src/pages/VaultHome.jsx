@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, Search, Share2, Table2, X } from "lucide-react";
+import { Archive, ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, Search, Share2, Star, Table2, X } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -12,6 +12,9 @@ import Backup from "@/components/vault/Backup";
 import { collectTags, escapeRegExp, noteLinks, noteTags, relativeTime } from "@/lib/vault";
 import FindTagsPanel from "@/components/tags/FindTagsPanel";
 import { useNavigate } from "react-router-dom";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 const SURFACES = [
   { to: "/journal", label: "Daily journal", hint: "one page per day", icon: CalendarDays },
@@ -25,6 +28,7 @@ const SURFACES = [
 ];
 
 export default function VaultHome() {
+  const { t } = useI18n();
   const {
     notes,
     trashedNotes,
@@ -51,6 +55,78 @@ export default function VaultHome() {
   const [findTagsOpen, setFindTagsOpen] = useState(false);
   const searchRef = useRef(null);
 
+  // Filter chips state (synced with URL and VaultSidebar)
+  const [chipFavourites, setChipFavourites] = useState(showFavourites);
+  const [chipTags, setChipTags] = useState([]); // array of tag strings
+  const [chipRecentFilter, setChipRecentFilter] = useState(recentFilter);
+  const [chipIncludeDeleted, setChipIncludeDeleted] = useState(includeDeleted);
+  const [backupPopoverOpen, setBackupPopoverOpen] = useState(false);
+
+  // Sync chip state with VaultSidebar state
+  useEffect(() => {
+    setChipFavourites(showFavourites);
+  }, [showFavourites]);
+
+  useEffect(() => {
+    setChipRecentFilter(recentFilter);
+  }, [recentFilter]);
+
+  useEffect(() => {
+    setChipIncludeDeleted(includeDeleted);
+  }, [includeDeleted]);
+
+  const patchParams = (changes) => {
+    const next = Object.fromEntries(params.entries());
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value) next[key] = value;
+      else delete next[key];
+    });
+    setParams(next, { replace: true });
+  };
+
+  const setQuery = (value) => patchParams({ q: value });
+  const toggleTag = (tag) => patchParams({ tag: params.get("tag") === tag ? "" : tag });
+
+  // Filter chips handlers
+  const handleFavouritesToggle = () => {
+    const next = !chipFavourites;
+    setChipFavourites(next);
+    setShowFavourites(next);
+  };
+
+  const handleRecentFilterChange = (filterId) => {
+    setChipRecentFilter(filterId);
+    setRecentFilter(filterId);
+  };
+
+  const handleIncludeDeletedToggle = () => {
+    const next = !chipIncludeDeleted;
+    setChipIncludeDeleted(next);
+    setIncludeDeleted(next);
+  };
+
+  const handleTagChipAdd = (tag) => {
+    if (!chipTags.includes(tag)) {
+      setChipTags([...chipTags, tag]);
+    }
+  };
+
+  const handleTagChipRemove = (tag) => {
+    setChipTags(chipTags.filter((t) => t !== tag));
+  };
+
+  const clearAllFilters = () => {
+    setChipFavourites(false);
+    setShowFavourites(false);
+    setChipTags([]);
+    setChipRecentFilter("all");
+    setRecentFilter("all");
+    setChipIncludeDeleted(false);
+    setIncludeDeleted(false);
+  };
+
+  const hasActiveFilters = chipFavourites || chipTags.length > 0 || chipRecentFilter !== "all" || chipIncludeDeleted;
+
   useEffect(() => {
     const onKey = (event) => {
       const target = event.target;
@@ -65,18 +141,6 @@ export default function VaultHome() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const patchParams = (changes) => {
-    const next = Object.fromEntries(params.entries());
-    Object.entries(changes).forEach(([key, value]) => {
-      if (value) next[key] = value;
-      else delete next[key];
-    });
-    setParams(next, { replace: true });
-  };
-
-  const setQuery = (value) => patchParams({ q: value });
-  const toggleTag = (tag) => patchParams({ tag: params.get("tag") === tag ? "" : tag });
-
   useEffect(() => {
     const term = query.trim();
     if (term.length < 2) {
@@ -88,7 +152,7 @@ export default function VaultHome() {
     const timer = setTimeout(async () => {
       const pattern = escapeRegExp(term);
       const page = await db.entities.Note.filter(
-        includeDeleted
+        chipIncludeDeleted
           ? {
               $or: [
                 { title: { $regex: pattern, $options: "i" } },
@@ -108,7 +172,7 @@ export default function VaultHome() {
       setSearching(false);
     }, 220);
     return () => clearTimeout(timer);
-  }, [query, includeDeleted]);
+  }, [query, chipIncludeDeleted]);
 
   const tags = useMemo(() => collectTags(notes), [notes]);
   const linkCount = useMemo(() => notes.reduce((total, note) => total + noteLinks(note).length, 0), [notes]);
@@ -119,8 +183,6 @@ export default function VaultHome() {
   const isSearching = query.trim().length >= 2;
 
   const handleCreateFolder = async (folderPath) => {
-    // Folders are just strings on notes, so we don't need to do anything special
-    // The folder will exist once a note is moved there
     await reload();
   };
 
@@ -145,8 +207,8 @@ export default function VaultHome() {
               ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search every note, title and body…"
-              aria-label="Search your vault"
+              placeholder={t("vault.searchPlaceholder")}
+              aria-label={t("header.searchVault")}
               className="h-14 w-full rounded-xl border border-border bg-card/50 pl-12 pr-20 text-[15px] text-foreground outline-none transition focus:border-primary/40 focus:bg-card focus:ring-4 focus:ring-primary/5"
             />
             <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
@@ -154,7 +216,7 @@ export default function VaultHome() {
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  aria-label="Clear search"
+                  aria-label={t("common.clearSearch")}
                   className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -164,6 +226,21 @@ export default function VaultHome() {
                   /
                 </kbd>
               )}
+              {/* Backup button - opens as popover */}
+              <Popover open={backupPopoverOpen} onOpenChange={setBackupPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t("vault.backupTooltip")}
+                    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                  >
+                    <Archive className="h-3.5 w-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[520px] max-h-[75vh] p-0">
+                  <Backup />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -171,9 +248,108 @@ export default function VaultHome() {
             {notes.length} notes · {tags.length} tags · {linkCount} links
           </p>
 
-          <Backup />
+          {/* Filter chips row */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {/* Favourites chip */}
+            <button
+              type="button"
+              onClick={handleFavouritesToggle}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono transition",
+                chipFavourites
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-card border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+              aria-pressed={chipFavourites}
+            >
+              <Star className={cn("h-3.5 w-3.5 flex-shrink-0", chipFavourites ? "fill-current" : "")} />
+              {t("vault.favourites")}
+            </button>
 
-          <div className="mt-7 grid gap-2 sm:grid-cols-3">
+            {/* Tags chip - opens FindTagsPanel */}
+            <button
+              type="button"
+              onClick={() => setFindTagsOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono transition",
+                chipTags.length > 0
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-card border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+              aria-pressed={chipTags.length > 0}
+            >
+              <span className="h-3.5 w-3.5 flex-shrink-0" />
+              {t("vault.tags")}
+              {chipTags.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono">
+                  {chipTags.length}
+                </span>
+              )}
+            </button>
+
+            {/* Selected tags as removable chips */}
+            {chipTags.map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-1 text-[11px] font-mono">
+                #{tag}
+                <button
+                  type="button"
+                  onClick={() => handleTagChipRemove(tag)}
+                  className="p-0.5 rounded-full hover:bg-primary/20 transition"
+                  aria-label={t("common.removeTag", { tag })}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+
+            {/* Recent filter chips */}
+            {RECENT_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => handleRecentFilterChange(filter.id)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono transition",
+                  chipRecentFilter === filter.id
+                    ? "bg-primary/15 text-primary border border-primary/30"
+                    : "bg-card border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+                aria-pressed={chipRecentFilter === filter.id}
+              >
+                {t(`vault.recent.${filter.id}`)}
+              </button>
+            ))}
+
+            {/* Include deleted chip */}
+            <button
+              type="button"
+              onClick={handleIncludeDeletedToggle}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono transition",
+                chipIncludeDeleted
+                  ? "bg-destructive/15 text-destructive border border-destructive/30"
+                  : "bg-card border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+              aria-pressed={chipIncludeDeleted}
+            >
+              {t("vault.includeDeleted")}
+            </button>
+
+            {/* Clear filters action */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono text-muted-foreground bg-card border border-border/70 transition hover:text-foreground hover:bg-accent"
+              >
+                <X className="h-3.5 w-3.5" />
+                {t("vault.clearFilters")}
+              </button>
+            )}
+          </div>
+
+          {/* Shortcut cards - single slim row */}
+          <div className="mt-7 flex flex-wrap gap-2">
             {SURFACES.map((surface) => {
               const Icon = surface.icon;
               return (
@@ -345,7 +521,6 @@ export default function VaultHome() {
             onSelect={toggleTag}
             noteCount={notes.length}
             linkCount={linkCount}
-            onFindTags={() => setFindTagsOpen(true)}
           />
         </div>
       </main>

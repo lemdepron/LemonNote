@@ -23,10 +23,10 @@
           root.style.colorScheme = dark ? "dark" : "light";
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute("content", dark ? "#0d0f13" : "#f9f7f2");
-          // Interface language: Arabic turns the whole app right-to-left before first paint.
+          // Interface language: Arabic, Persian, Urdu turn the whole app right-to-left before first paint.
           var lang = stored["settings:lang"];
-          if (lang === "ar") {
-            root.lang = "ar";
+          if (lang === "ar" || lang === "fa" || lang === "ur") {
+            root.lang = lang;
             root.dir = "rtl";
           }
         } catch (error) {
@@ -36,8 +36,6 @@
     </script>
     <title>LemonNote — local-first knowledge workspace</title>
     <meta name="description" content="LemonNote is a local-first knowledge workspace: plain markdown notes connected by wiki-links, backlinks, tags and instant full-text search." />
-    <link rel="icon" href="/src-tauri/icons/icon.png" type="image/png" />
-    <link rel="icon" href="/src-tauri/icons/icon.ico" type="image/x-icon" />
   </head>
   <body>
     <div id="root"></div>

@@ -43,6 +43,7 @@ export default function InkBoard({
   onSendToBack,
   editingObjectId,
   setEditingObjectId,
+  selectedObjectIds = [],
   className,
   height,
   autoFit = false,
@@ -294,6 +295,7 @@ export default function InkBoard({
         onSendToBack={live.current.onSendToBack}
         editingObjectId={live.current.editingObjectId}
         setEditingObjectId={live.current.setEditingObjectId}
+        selectedObjectIds={selectedObjectIds}
         scale={engineRef.current?.camera?.scale || 1}
       />
       <canvas

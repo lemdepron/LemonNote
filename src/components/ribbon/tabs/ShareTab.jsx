@@ -28,6 +28,7 @@ import { exportBackup } from "@/lib/backup";
 import { tableAt } from "@/lib/ribbon-actions";
 import { exportTableToXlsx, exportTableToCsv, downloadBlob } from "@/lib/table-import-export";
 import { toast } from "@/lib/toast";
+import { t } from "@/lib/i18n";
 
 export function ShareTab() {
   const { body, noteId, noteTitle, typography, selection, value } = useRibbon();
@@ -54,12 +55,12 @@ export function ShareTab() {
     try {
       const result = await fn(note);
       if (result === false) {
-        toast.info(`Copied as ${label} (rich text not supported, fell back to plain text).`);
+        toast.info(t("share.copyRichTextFallback", { label }));
       } else {
-        toast.success(`Copied as ${label}.`);
+        toast.success(t("share.copiedAs", { label }));
       }
     } catch (err) {
-      toast.error(`Copy failed: ${err.message}`);
+      toast.error(t("share.copyFailed", { error: err.message }));
     }
   };
 
@@ -190,7 +191,7 @@ export function ShareTab() {
         />
         <Btn 
           id="share.exportPdf" 
-          icon={FileSpreadsheet} 
+          icon={FileText} 
           label="PDF (.pdf)" 
           hint="Export as PDF using note's page settings" 
           onClick={() => handleExport(exportPdf, "PDF")} 

@@ -7,6 +7,9 @@ import {
   hitTestObject,
   getHandleAt,
   transformObject,
+  transformGroup,
+  getGroupedObjects,
+  getGroupBounds,
   OBJECT_TYPES,
 } from "@/lib/ink/objects";
 import { cn } from "@/lib/utils";
@@ -31,6 +34,7 @@ export default function FloatingObjects({
   onSendToBack,
   editingObjectId,
   setEditingObjectId,
+  selectedObjectIds = [],
   scale = 1,
 }) {
   const canvasRef = useRef(null);
@@ -156,7 +160,7 @@ export default function FloatingObjects({
     const sortedObjects = [...objects].sort((a, b) => (a.zOrder || 0) - (b.zOrder || 0));
 
     sortedObjects.forEach((object) => {
-      const isSelected = onSelectObject && onSelectObject(object.id);
+      const isSelected = selectedObjectIds.includes(object.id);
       const isEditing = object.id === editingObjectId;
 
       switch (object.type) {
@@ -179,7 +183,7 @@ export default function FloatingObjects({
         drawHandles(ctx, object, scale);
       }
     });
-  }, [objects, camera, dpr, scale, editingObjectId, onSelectObject]);
+  }, [objects, camera, dpr, scale, editingObjectId, selectedObjectIds]);
 
   // Draw selection handles for an object
   const drawHandles = (ctx, object, scale) => {
@@ -254,7 +258,7 @@ export default function FloatingObjects({
     if (editingObjectId) return;
 
     // Check for handle hit first
-    const selectedObject = onSelectObject ? objects.find((o) => onSelectObject(o.id)) : null;
+    const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
     if (selectedObject && !editingObjectId) {
       const world = screenToWorld(screenX, screenY);
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
@@ -267,6 +271,7 @@ export default function FloatingObjects({
           startY: world.y,
           startBounds: { x: selectedObject.x, y: selectedObject.y, width: selectedObject.width, height: selectedObject.height },
           startRotation: selectedObject.rotation || 0,
+          groupId: selectedObject.groupId, // Track group for grouped operations
         };
         canvas.setPointerCapture(event.pointerId);
         return;
@@ -276,7 +281,8 @@ export default function FloatingObjects({
     // Check for object hit
     const object = getObjectAt(screenX, screenY);
     if (object) {
-      onSelectObject?.(object.id);
+      // Pass event for multi-selection support (Ctrl/Cmd/Shift click)
+      onSelectObject?.(object.id, event);
       const world = screenToWorld(screenX, screenY);
       dragStateRef.current = {
         type: "move",
@@ -285,12 +291,13 @@ export default function FloatingObjects({
         startY: world.y,
         startBounds: { x: object.x, y: object.y, width: object.width, height: object.height },
         startRotation: object.rotation || 0,
+        groupId: object.groupId,
       };
       canvas.setPointerCapture(event.pointerId);
     } else {
-      onSelectObject?.(null);
+      onSelectObject?.(null, event);
     }
-  }, [objects, screenToWorld, getObjectAt, onSelectObject, editingObjectId, camera.scale]);
+  }, [objects, screenToWorld, getObjectAt, onSelectObject, editingObjectId, camera.scale, selectedObjectIds]);
 
   // Handle pointer move
   const onPointerMove = useCallback((event) => {
@@ -302,7 +309,7 @@ export default function FloatingObjects({
     const world = screenToWorld(screenX, screenY);
 
     // Update hover handle cursor
-    const selectedObject = onSelectObject ? objects.find((o) => onSelectObject(o.id)) : null;
+    const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
     if (selectedObject && !editingObjectId && !dragStateRef.current) {
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
       if (handle) {
@@ -328,45 +335,78 @@ export default function FloatingObjects({
       const currentObject = objects.find((o) => o.id === drag.objectId);
       if (!currentObject) return;
 
-      let updated;
-      if (drag.type === "move") {
-        updated = transformObject(currentObject, {
-          type: "move",
-          startX: drag.startX,
-          startY: drag.startY,
-          currentX: world.x,
-          currentY: world.y,
-          startBounds: drag.startBounds,
-          startRotation: drag.startRotation,
-        });
-      } else if (drag.type === "resize") {
-        updated = transformObject(currentObject, {
-          type: "resize",
-          id: drag.handleId,
-          startX: drag.startX,
-          startY: drag.startY,
-          currentX: world.x,
-          currentY: world.y,
-          startBounds: drag.startBounds,
-          startRotation: drag.startRotation,
-        });
-      } else if (drag.type === "rotate") {
-        updated = transformObject(currentObject, {
-          type: "rotate",
-          startX: drag.startX,
-          startY: drag.startY,
-          currentX: world.x,
-          currentY: world.y,
-          startBounds: drag.startBounds,
-          startRotation: drag.startRotation,
-        });
-      }
+      // If object is in a group, apply transform to entire group
+      if (drag.groupId) {
+        let updatedObjects;
+        if (drag.type === "move") {
+          const dx = world.x - drag.startX;
+          const dy = world.y - drag.startY;
+          updatedObjects = transformGroup(objects, drag.groupId, { type: "move", dx, dy });
+        } else if (drag.type === "resize") {
+          // For resize, we need to calculate scale from the handle drag
+          // This is simplified - in practice, we'd need more complex logic
+          updatedObjects = transformGroup(objects, drag.groupId, { type: "move", dx: world.x - drag.startX, dy: world.y - drag.startY });
+        } else if (drag.type === "rotate") {
+          // For rotate, calculate angle from center
+          const bounds = getGroupBounds(objects, drag.groupId);
+          if (bounds) {
+            const startAngle = Math.atan2(drag.startY - bounds.centerY, drag.startX - bounds.centerX);
+            const currentAngle = Math.atan2(world.y - bounds.centerY, world.x - bounds.centerX);
+            const angle = currentAngle - startAngle;
+            updatedObjects = transformGroup(objects, drag.groupId, { type: "rotate", angle });
+          }
+        }
 
-      if (updated) {
-        onUpdateObject?.(drag.objectId, updated);
+        if (updatedObjects) {
+          // Apply updates to all objects in group
+          updatedObjects.forEach((obj) => {
+            if (drag.groupId && getGroupedObjects(objects, drag.groupId).some((g) => g.id === obj.id)) {
+              onUpdateObject?.(obj.id, obj);
+            }
+          });
+        }
+      } else {
+        // Single object transform (existing logic)
+        let updated;
+        if (drag.type === "move") {
+          updated = transformObject(currentObject, {
+            type: "move",
+            startX: drag.startX,
+            startY: drag.startY,
+            currentX: world.x,
+            currentY: world.y,
+            startBounds: drag.startBounds,
+            startRotation: drag.startRotation,
+          });
+        } else if (drag.type === "resize") {
+          updated = transformObject(currentObject, {
+            type: "resize",
+            id: drag.handleId,
+            startX: drag.startX,
+            startY: drag.startY,
+            currentX: world.x,
+            currentY: world.y,
+            startBounds: drag.startBounds,
+            startRotation: drag.startRotation,
+          });
+        } else if (drag.type === "rotate") {
+          updated = transformObject(currentObject, {
+            type: "rotate",
+            startX: drag.startX,
+            startY: drag.startY,
+            currentX: world.x,
+            currentY: world.y,
+            startBounds: drag.startBounds,
+            startRotation: drag.startRotation,
+          });
+        }
+
+        if (updated) {
+          onUpdateObject?.(drag.objectId, updated);
+        }
       }
     }
-  }, [objects, screenToWorld, getObjectAt, onSelectObject, onUpdateObject, editingObjectId, camera.scale]);
+  }, [objects, screenToWorld, getObjectAt, onSelectObject, onUpdateObject, editingObjectId, camera.scale, selectedObjectIds]);
 
   // Handle pointer up
   const onPointerUp = useCallback((event) => {

@@ -23,6 +23,7 @@ import { readHistory, rememberColor } from "@/lib/ink/palette";
 import { createCoordinateGraph } from "@/lib/ink/shapes";
 import { relativeTime } from "@/lib/vault";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import {
   FountainPenIcon, BallpointPenIcon, CalligraphyPenIcon, HighlighterIcon,
   WatercolorBrushIcon, PencilIcon, EraserIcon, LassoIcon, HandIcon,
@@ -85,6 +86,7 @@ function normalizeHex(hex) {
 const INSERT_SPACE_TOAST_KEY = "inkInsertSpaceToastShown";
 
 export function InkDrawTab({ ink }) {
+  const { t } = useI18n();
   const { tool, onTool, engine } = ink;
   const [favPens, setFavPens] = useState(() => readFavPens());
 
@@ -219,7 +221,7 @@ export function InkDrawTab({ ink }) {
               >
                 <span className="block w-4 rounded-full" style={{ height: preview.height / 2 + 2, background: preview.color }} />
                 {brushLabel(pen.brush).split(" ")[0]}
-                <RemovePenIcon className="absolute -right-1 -top-1 h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
+                <RemovePenIcon className="absolute -end-1 -top-1 h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
               </button>
             );
           })}
@@ -334,6 +336,7 @@ function brushLabel(id) {
 /* ---------------------------------- Color ---------------------------------- */
 
 export function InkColorTab({ ink }) {
+  const { t } = useI18n();
   const { tool, onTool } = ink;
   const recent = readHistory().slice(0, 12);
   const [hexInput, setHexInput] = useState(tool.color);
@@ -459,6 +462,7 @@ export function InkColorTab({ ink }) {
 /* --------------------------------- Select ---------------------------------- */
 
 export function InkSelectTab({ ink }) {
+  const { t } = useI18n();
   const { tool, selection, engine, objectSelection, selectedObjectId, objects, deleteObject, bringToFront, sendToBack } = ink;
   const strokeCount = selection.ids.length;
   const obj = selectedObjectId ? objects.find((o) => o.id === selectedObjectId) : null;
@@ -516,6 +520,7 @@ export function InkSelectTab({ ink }) {
 /* ---------------------------------- Paper ---------------------------------- */
 
 export function InkPaperTab({ ink }) {
+  const { t } = useI18n();
   const { page, pageIndex } = ink;
   const paper = page.paper || {};
   return (
@@ -548,6 +553,7 @@ export function InkPaperTab({ ink }) {
 /* -------------------------------- Smart ink -------------------------------- */
 
 export function InkSmartTab({ ink }) {
+  const { t } = useI18n();
   const { recognition } = ink;
   const busy = Boolean(recognition.busy);
   return (
@@ -583,6 +589,7 @@ export function InkSmartTab({ ink }) {
 const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 
 export function InkAudioTab({ ink }) {
+  const { t } = useI18n();
   const { page, recording, replay } = ink;
   const audio = page.audio;
   return (
@@ -644,6 +651,7 @@ const INK_CONTEXT = { markdown: true, offReason: "", selection: { value: "", sta
  * (see useInkPage in NotePage): until it exists the tab offers to start one.
  */
 export function InkTab({ noteInk }) {
+  const { t } = useI18n();
   const [sub, setSub] = useState(() => {
     const saved = readPref("inkRibbonTab", "draw");
     return SUBTABS.some(([id]) => id === saved) ? saved : "draw";

@@ -6,6 +6,13 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import TaskLine from "@/components/tasks/TaskLine";
 import { collectTasks, nextState, setTaskState, TASK_STATES, TASK_FILTERS, filterTasks, sortTasks } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function TasksPage() {
   const { notes, loading, reload } = useVault();
@@ -85,15 +92,16 @@ export default function TasksPage() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="font-mono text-[10px] text-muted-foreground">Sort:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-[10px] text-foreground outline-none focus:border-primary/40"
-          >
-            <option value="dueDate">Due date</option>
-            <option value="state">State</option>
-            <option value="noteTitle">Note title</option>
-          </select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-[10px] text-foreground outline-none focus:border-primary/40">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="dueDate">Due date</SelectItem>
+              <SelectItem value="state">State</SelectItem>
+              <SelectItem value="noteTitle">Note title</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (

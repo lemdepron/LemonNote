@@ -1,8 +1,8 @@
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowUpAZ, ArrowRight, Bold, Brush, Code, Copy, Eraser,
+  AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowUpAZ, ArrowRight, ArrowLeftRight, Bold, Brush, Code, Copy, Eraser,
   FlipHorizontal2, Hash, Highlighter, IndentDecrease, IndentIncrease, Italic, List, ListChecks, ListOrdered, ListX, Merge, Minus,
   Quote, Redo2, Scissors, SquareDashedMousePointer, Strikethrough, Trash2,
-  Underline, Undo2, WrapText, Pilcrow, ArrowLeftRight,
+  Underline, Undo2, WrapText, Pilcrow, MoveHorizontal,
   Circle, CircleCheck, Timer, ListRestart, CircleDashed, Search,
   Globe, Languages, Wand2,
 } from "lucide-react";
@@ -24,6 +24,15 @@ import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { TagGroup } from "@/components/ribbon/tabs/TagGroup";
 import { isAIEnabled, callAI, buildPrompt, getAIErrorMessage } from "@/lib/ai";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
 
 const CYCLE = { TODO: "DOING", DOING: "DONE", DONE: "TODO" };
 
@@ -260,7 +269,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         ))}
         <Btn id="home.ltr" icon={Pilcrow} label={tr("ribbon.home.ltr")} hint={tr("ribbon.home.ltrHint")} edit={(s) => setBlock(s, { dir: "ltr" })} />
         <Btn id="home.rtl" icon={FlipHorizontal2} label={tr("ribbon.home.rtl")} hint={tr("ribbon.home.rtlHint")} edit={(s) => setBlock(s, { dir: "rtl" })} />
-        <Btn id="home.dirAuto" icon={ArrowLeftRight} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
+        <Btn id="home.dirAuto" icon={MoveHorizontal} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
       </RibbonGroup>
 
       <RibbonGroup label={tr("ribbon.home.lines")}>
@@ -385,23 +394,23 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
       </RibbonGroup>
 
       <RibbonGroup label={tr("ribbon.home.noteType")}>
-        <select
-          value={format}
-          onChange={(event) => onFormat?.(event.target.value)}
-          aria-label={tr("ribbon.home.noteFormatAria")}
-          title={tr("ribbon.home.noteFormatTitle")}
-          className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]"
-        >
-          {FORMAT_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.ids.map((id) => (
-                <option key={id} value={id}>
-                  {formatLabel(id)}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Select value={format} onValueChange={onFormat}>
+          <SelectTrigger aria-label={tr("ribbon.home.noteFormatAria")} className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]">
+            <SelectValue placeholder={tr("ribbon.home.noteFormatTitle")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {FORMAT_GROUPS.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.ids.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {formatLabel(id)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
       </RibbonGroup>
 
       {/* AI Preview Panel */}

@@ -127,22 +127,29 @@
       "noteType": "نوٹ کی قسم",
       "noteFormatAria": "نوٹ فارمیٹ",
       "noteFormatTitle": "پوری نوٹ کی قسم",
-      "ai": "اے آئی",
-      "ai.translate": "ترجمہ",
-      "ai.translateHint": "مُنتخب ٹیکسٹ یا پوری نوٹ کا دوسری زبان میں ترجمہ کریں",
-      "ai.summarize": "خلاصہ",
-      "ai.summarizeHint": "مُنتخب ٹیکسٹ یا نوٹ کا مختصر خلاصہ بنائیں",
-      "ai.fixGrammar": "گرامر درست کریں",
-      "ai.fixGrammarHint": "گرامر، املا، اور وقفے درست کریں",
-      "ai.continue": "لکھنا جاری رکھیں",
-      "ai.continueHint": "کرسর پوزیشن سے لکھنا جاری رکھیں",
-      "ai.arabicEnglish": "عربی ↔ انگریزی",
-      "ai.arabicEnglishHint": "عربی اور انگریزی میں فوری ترجمہ",
-      "ai.preview": "اے آئی نتیجہ",
-      "ai.replace": "سلیکشن کو تبدیل کریں",
-      "ai.insertBelow": "نیچے داخل کریں",
-      "ai.copy": "کاپی",
-      "ai.discard": "منسوخ کریں"
+      "ai": {
+        "label": "اے آئی",
+        "translate": "ترجمہ",
+        "translateHint": "مُنتخب ٹیکسٹ یا پوری نوٹ کا دوسری زبان میں ترجمہ کریں",
+        "summarize": "خلاصہ",
+        "summarizeHint": "مُنتخب ٹیکسٹ یا نوٹ کا مختصر خلاصہ بنائیں",
+        "fixGrammar": "گرامر درست کریں",
+        "fixGrammarHint": "گرامر، املا، اور وقفے درست کریں",
+        "continue": "لکھنا جاری رکھیں",
+        "continueHint": "کرسর پوزیشن سے لکھنا جاری رکھیں",
+        "arabicEnglish": "عربی ↔ انگریزی",
+        "arabicEnglishHint": "عربی اور انگریزی میں فوری ترجمہ",
+        "preview": "اے آئی نتیجہ",
+        "replace": "سلیکشن کو تبدیل کریں",
+        "insertBelow": "نیچے داخل کریں",
+        "copy": "کاپی",
+        "discard": "منسوخ کریں"
+      }
+    },
+    "share": {
+      "copiedAs": "{label} کے طور پر کاپی کیا گیا۔",
+      "copyRichTextFallback": "{label} کے طور پر کاپی کیا گیا (ریچ ٹیکسٹ سپورٹڈ نہیں، سادہ متن پر واپس آئے)۔",
+      "copyFailed": "کاپی ناکام: {error}"
     }
   },
   "fileMenu": {
@@ -508,5 +515,23 @@
         "discard": "منسوخ کریں"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "ہر نوٹ، عنوان اور متن میں تلاش کریں…",
+    "backupTooltip": "بیک اپ",
+    "favourites": "پسندیدہ",
+    "tags": "ٹےگز",
+    "recent": {
+      "all": "سب",
+      "today": "آج",
+      "week": "7 دن",
+      "month": "30 دن"
+    },
+    "includeDeleted": "حذف شدہ شامل کریں",
+    "clearFilters": "فلٹرز صاف کریں"
+  },
+  "common": {
+    "clearSearch": "تلاش صاف کریں",
+    "removeTag": "ٹےگ {tag} ہٹائیں"
   }
 }

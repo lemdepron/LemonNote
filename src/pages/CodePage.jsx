@@ -7,6 +7,13 @@ import CodeEditor from "@/components/code/CodeEditor";
 import FindReplace from "@/components/code/FindReplace";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { LANGUAGES } from "@/lib/code-languages";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function CodePage() {
   const { id } = useParams();
@@ -111,18 +118,18 @@ export default function CodePage() {
             aria-label="File name"
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-mono text-[16px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
           />
-          <select
-            value={file.language}
-            onChange={(event) => patch({ language: event.target.value })}
-            aria-label="Language"
-            className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[11px] text-muted-foreground outline-none transition focus:border-primary/40"
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.id} value={language.id}>
-                {language.label}
-              </option>
-            ))}
-          </select>
+          <Select value={file.language} onValueChange={(lang) => patch({ language: lang })}>
+            <SelectTrigger aria-label="Language" className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[11px] text-muted-foreground outline-none transition focus:border-primary/40">
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {LANGUAGES.map((language) => (
+                <SelectItem key={language.id} value={language.id}>
+                  {language.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button
             type="button"
             onClick={() => setFindOpen((open) => !open)}

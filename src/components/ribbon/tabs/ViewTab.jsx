@@ -18,6 +18,7 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
+  LayoutGrid,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, useRibbon } from "@/components/ribbon/RibbonKit";
@@ -202,7 +203,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 4. Page Display */}
-      <RibbonGroup label="Page display" icon={FileText}>
+      <RibbonGroup label="Page display" icon={LayoutGrid}>
         <Btn
           id="view.ruler"
           icon={Ruler}

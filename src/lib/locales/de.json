@@ -127,22 +127,29 @@
       "noteType": "Notiztyp",
       "noteFormatAria": "Notizformat",
       "noteFormatTitle": "Typ der gesamten Notiz",
-      "ai": "KI",
-      "ai.translate": "Übersetzen",
-      "ai.translateHint": "Ausgewählten Text oder gesamte Notiz in eine andere Sprache übersetzen",
-      "ai.summarize": "Zusammenfassen",
-      "ai.summarizeHint": "Kurze Zusammenfassung des ausgewählten Textes oder der Notiz erstellen",
-      "ai.fixGrammar": "Grammatik korrigieren",
-      "ai.fixGrammarHint": "Grammatik, Rechtschreibung und Zeichensetzung korrigieren",
-      "ai.continue": "Weiter schreiben",
-      "ai.continueHint": "Ab Cursor-Position weiter schreiben",
-      "ai.arabicEnglish": "Arabisch ↔ Englisch",
-      "ai.arabicEnglishHint": "Schnellübersetzung zwischen Arabisch und Englisch",
-      "ai.preview": "KI-Ergebnis",
-      "ai.replace": "Auswahl ersetzen",
-      "ai.insertBelow": "Darunter einfügen",
-      "ai.copy": "Kopieren",
-      "ai.discard": "Verwerfen"
+      "ai": {
+        "label": "KI",
+        "translate": "Übersetzen",
+        "translateHint": "Ausgewählten Text oder gesamte Notiz in eine andere Sprache übersetzen",
+        "summarize": "Zusammenfassen",
+        "summarizeHint": "Kurze Zusammenfassung des ausgewählten Textes oder der Notiz erstellen",
+        "fixGrammar": "Grammatik korrigieren",
+        "fixGrammarHint": "Grammatik, Rechtschreibung und Zeichensetzung korrigieren",
+        "continue": "Weiter schreiben",
+        "continueHint": "Ab Cursor-Position weiter schreiben",
+        "arabicEnglish": "Arabisch ↔ Englisch",
+        "arabicEnglishHint": "Schnellübersetzung zwischen Arabisch und Englisch",
+        "preview": "KI-Ergebnis",
+        "replace": "Auswahl ersetzen",
+        "insertBelow": "Darunter einfügen",
+        "copy": "Kopieren",
+        "discard": "Verwerfen"
+      }
+    },
+    "share": {
+      "copiedAs": "Als {label} kopiert.",
+      "copyRichTextFallback": "Als {label} kopiert (Rich Text nicht unterstützt, als Plain Text eingefügt).",
+      "copyFailed": "Kopieren fehlgeschlagen: {error}"
     }
   },
   "fileMenu": {
@@ -508,5 +515,23 @@
         "discard": "Verwerfen"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "Jede Notiz, Titel und Text durchsuchen…",
+    "backupTooltip": "Backup",
+    "favourites": "Favoriten",
+    "tags": "Tags",
+    "recent": {
+      "all": "Alle",
+      "today": "Heute",
+      "week": "7 Tage",
+      "month": "30 Tage"
+    },
+    "includeDeleted": "Gelöschte einbeziehen",
+    "clearFilters": "Filter löschen"
+  },
+  "common": {
+    "clearSearch": "Suche löschen",
+    "removeTag": "Tag {tag} entfernen"
   }
 }

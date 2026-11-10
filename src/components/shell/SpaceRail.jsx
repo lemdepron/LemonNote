@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronsLeft, ChevronsRight, Trash2, ChevronDown, ExternalLink, Settings } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Trash2, ChevronDown, RefreshCw, Settings } from "lucide-react";
 import { SPACES, spaceForPath } from "@/lib/spaces";
 import { readPref, writePref } from "@/lib/preferences";
 import { useI18n } from "@/lib/i18n";
@@ -77,7 +77,7 @@ export default function SpaceRail() {
   const moreSpaces = [
     { id: "queries", label: t("rail.spaces.queries"), path: "/queries", icon: SPACES.find(s => s.id === "queries")?.icon },
     { id: "extensions", label: t("rail.spaces.extensions"), path: "/extensions", icon: SPACES.find(s => s.id === "extensions")?.icon },
-    { id: "sync", label: t("rail.spaces.sync"), path: "#", icon: ExternalLink, disabled: true, soon: true, title: t("rail.syncTitle") },
+    { id: "sync", label: t("rail.spaces.sync"), path: "#", icon: RefreshCw, disabled: true, soon: true, title: t("rail.syncTitle") },
   ];
 
   return (

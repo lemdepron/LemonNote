@@ -127,22 +127,29 @@
       "noteType": "Tipo de nota",
       "noteFormatAria": "Formato de nota",
       "noteFormatTitle": "Tipo de toda la nota",
-      "ai": "IA",
-      "ai.translate": "Traducir",
-      "ai.translateHint": "Traducir texto seleccionado o toda la nota a otro idioma",
-      "ai.summarize": "Resumir",
-      "ai.summarizeHint": "Crear resumen conciso del texto seleccionado o la nota",
-      "ai.fixGrammar": "Corregir gramática",
-      "ai.fixGrammarHint": "Corregir gramática, ortografía y puntuación",
-      "ai.continue": "Continuar escribiendo",
-      "ai.continueHint": "Continuar escribiendo desde la posición del cursor",
-      "ai.arabicEnglish": "Árabe ↔ Inglés",
-      "ai.arabicEnglishHint": "Traducción rápida entre árabe e inglés",
-      "ai.preview": "Resultado IA",
-      "ai.replace": "Reemplazar selección",
-      "ai.insertBelow": "Insertar abajo",
-      "ai.copy": "Copiar",
-      "ai.discard": "Descartar"
+      "ai": {
+        "label": "IA",
+        "translate": "Traducir",
+        "translateHint": "Traducir texto seleccionado o toda la nota a otro idioma",
+        "summarize": "Resumir",
+        "summarizeHint": "Crear resumen conciso del texto seleccionado o la nota",
+        "fixGrammar": "Corregir gramática",
+        "fixGrammarHint": "Corregir gramática, ortografía y puntuación",
+        "continue": "Continuar escribiendo",
+        "continueHint": "Continuar escribiendo desde la posición del cursor",
+        "arabicEnglish": "Árabe ↔ Inglés",
+        "arabicEnglishHint": "Traducción rápida entre árabe e inglés",
+        "preview": "Resultado IA",
+        "replace": "Reemplazar selección",
+        "insertBelow": "Insertar abajo",
+        "copy": "Copiar",
+        "discard": "Descartar"
+      }
+    },
+    "share": {
+      "copiedAs": "Copiado como {label}.",
+      "copyRichTextFallback": "Copiado como {label} (texto enriquecido no soportado, se usó texto plano).",
+      "copyFailed": "Error al copiar: {error}"
     }
   },
   "fileMenu": {
@@ -508,5 +515,23 @@
         "discard": "Descartar"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "Buscar en cada nota, título y cuerpo…",
+    "backupTooltip": "Respaldo",
+    "favourites": "Favoritos",
+    "tags": "Etiquetas",
+    "recent": {
+      "all": "Todos",
+      "today": "Hoy",
+      "week": "7 días",
+      "month": "30 días"
+    },
+    "includeDeleted": "Incluir eliminados",
+    "clearFilters": "Limpiar filtros"
+  },
+  "common": {
+    "clearSearch": "Limpiar búsqueda",
+    "removeTag": "Eliminar etiqueta {tag}"
   }
 }

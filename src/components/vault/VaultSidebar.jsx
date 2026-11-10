@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, ChevronDown, Folder, FolderPlus, FolderOpen, Star, Trash2, MoreHorizontal } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderPlus, FolderOpen, Trash2, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -120,24 +120,6 @@ export default function VaultSidebar({
 
   return (
     <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
-      {/* Favourites toggle */}
-      <section>
-        <button
-          type="button"
-          onClick={onToggleFavourites}
-          className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-[11px] transition",
-            showFavourites
-              ? "bg-primary/10 text-primary border border-primary/30"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground border border-transparent"
-          )}
-        >
-          <Star className={cn("h-3.5 w-3.5 flex-shrink-0", showFavourites ? "fill-current" : "")} />
-          <span>Favourites</span>
-          <span className="ml-auto text-[10px] text-muted-foreground/60">{showFavourites ? "★" : "☆"}</span>
-        </button>
-      </section>
-
       {/* Recent filters */}
       <section>
         <p className="nb-label mb-2">Recent</p>
@@ -273,23 +255,6 @@ export default function VaultSidebar({
             );
           })}
         </div>
-      </section>
-
-      {/* Include deleted toggle */}
-      <section>
-        <label className="flex items-center gap-2 rounded-lg px-2 py-1.5 font-mono text-[11px] transition hover:bg-accent cursor-pointer">
-          <input
-            type="checkbox"
-            checked={includeDeleted}
-            onChange={(e) => onToggleIncludeDeleted(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary"
-          />
-          <Trash2 className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-          <span>Include deleted</span>
-          {trashedCount > 0 && (
-            <span className="ml-auto text-[10px] text-destructive/80">{trashedCount}</span>
-          )}
-        </label>
       </section>
 
       {/* Folder create/rename dialog */}

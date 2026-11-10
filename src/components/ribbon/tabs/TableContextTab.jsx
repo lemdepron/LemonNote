@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import {
-  ArrowDownAZ, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUpAZ, ArrowUp, ArrowDown, CopyPlus,
+  ArrowDownAZ, ArrowLeft, ArrowRight, ArrowUpAZ, ArrowUp, ArrowDown, CopyPlus,
   Sigma, TableProperties, Wand2, Download, Eraser, FileSpreadsheet, Upload, FileX,
+  RotateCw,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import TablePicker from "@/components/ribbon/TablePicker";
@@ -189,7 +190,7 @@ export function TableContextTab({ signals, shortcuts }) {
         <Btn {...t({ id: "table.moveColLeft", icon: ArrowLeft, label: "Col left", hint: "Move this column left", edit: op("column-left") })} />
         <Btn {...t({ id: "table.moveColRight", icon: ArrowRight, label: "Col right", hint: "Move this column right", edit: op("column-right") })} />
         <Btn {...t({ id: "table.duplicateRow", icon: CopyPlus, label: "Duplicate row", hint: "Copy this row below itself", edit: op("duplicate-row") })} />
-        <Btn {...t({ id: "table.transpose", icon: ArrowLeftRight, label: "Transpose", hint: "Swap rows and columns", edit: op("transpose") })} />
+        <Btn {...t({ id: "table.transpose", icon: RotateCw, label: "Transpose", hint: "Swap rows and columns", edit: op("transpose") })} />
       </RibbonGroup>
 
       <RibbonGroup label="Data">

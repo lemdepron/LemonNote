@@ -1,6 +1,15 @@
 import { createContext, useContext, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+} from "@/components/ui/select";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -25,37 +34,35 @@ export function Btn({ edit, onClick, ...props }) {
   );
 }
 
-const SELECT_CLASS =
-  "h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40 min-w-[72px]";
-
 /** Native dropdown. `groups` = [{ label, options: [{ value, label }] }] or `options` = [{ value, label }]. */
 export function RibbonSelect({ value, onChange, options, groups, title, placeholder, disabled }) {
   return (
-    <select
-      value={value ?? ""}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      title={title}
-      aria-label={title}
-      className={SELECT_CLASS}
-    >
-      {placeholder !== undefined && <option value="">{placeholder}</option>}
-      {groups
-        ? groups.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.options.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </optgroup>
-          ))
-        : options.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-    </select>
+    <Select value={value ?? ""} onValueChange={onChange} disabled={disabled}>
+      <SelectTrigger className={cn("h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40 min-w-[72px]")} aria-label={title}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        {placeholder !== undefined && (
+          <SelectItem value="">{placeholder}</SelectItem>
+        )}
+        {groups
+          ? groups.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.options.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))
+          : options.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -189,10 +196,11 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
  * The tab strip plus the panel that holds the active tab's groups. Shared by the
  * note ribbon and the ink ribbon so both look and behave the same.
  * Sticky at the top with a solid background so content doesn't show through.
+ * Uses --app-header-h CSS variable (set by VaultHeader) to sit below the header.
  */
-export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className }) {
+export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className, isFirstTabActive }) {
   return (
-    <div className={cn("mt-6 sticky top-0 z-10", className)}>
+    <div className={cn("mt-6 sticky z-10", className)} style={{ top: "var(--app-header-h, 4rem)" }}>
       <div role="tablist" aria-label={t("ribbon.tabsAria")} className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
         {leading}
         {tabs.map((item) => (
@@ -215,7 +223,11 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, cla
       <div className="overflow-x-auto bg-background border-b border-border">
         <div
           role="tabpanel"
-          className="flex w-max min-w-full items-stretch divide-x divide-border rounded-xl rounded-tl-none border border-border bg-card"
+          className={cn(
+            "flex w-max min-w-full items-stretch divide-x divide-border border border-border bg-card",
+            "rounded-xl",
+            isFirstTabActive ? "rounded-tl-none" : ""
+          )}
         >
           {children}
           {trailing}

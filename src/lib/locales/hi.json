@@ -127,22 +127,29 @@
       "noteType": "नोट प्रकार",
       "noteFormatAria": "नोट फॉर्मेट",
       "noteFormatTitle": "पूरे नोट का प्रकार",
-      "ai": "AI",
-      "ai.translate": "अनुवाद",
-      "ai.translateHint": "चयनित टेक्स्ट या पूरे नोट का दूसरी भाषा में अनुवाद करें",
-      "ai.summarize": "सारांश",
-      "ai.summarizeHint": "चयनित टेक्स्ट या नोट का संक्षिप्त सारांश बनाएँ",
-      "ai.fixGrammar": "व्याकरण सुधारें",
-      "ai.fixGrammarHint": "व्याकरण, वर्तनी, और विराम चिह्न सुधारें",
-      "ai.continue": "लिखना जारी रखें",
-      "ai.continueHint": "कर्सर स्थिति से लिखना जारी रखें",
-      "ai.arabicEnglish": "अरबी ↔ अंग्रेज़ी",
-      "ai.arabicEnglishHint": "अरबी और अंग्रेज़ी के बीच त्वरित अनुवाद",
-      "ai.preview": "AI परिणाम",
-      "ai.replace": "चयन बदलें",
-      "ai.insertBelow": "नीचे डालें",
-      "ai.copy": "कॉपी",
-      "ai.discard": "त्यागें"
+      "ai": {
+        "label": "AI",
+        "translate": "अनुवाद",
+        "translateHint": "चयनित टेक्स्ट या पूरे नोट का दूसरी भाषा में अनुवाद करें",
+        "summarize": "सारांश",
+        "summarizeHint": "चयनित टेक्स्ट या नोट का संक्षिप्त सारांश बनाएँ",
+        "fixGrammar": "व्याकरण सुधारें",
+        "fixGrammarHint": "व्याकरण, वर्तनी, और विराम चिह्न सुधारें",
+        "continue": "लिखना जारी रखें",
+        "continueHint": "कर्सर स्थिति से लिखना जारी रखें",
+        "arabicEnglish": "अरबी ↔ अंग्रेज़ी",
+        "arabicEnglishHint": "अरबी और अंग्रेज़ी के बीच त्वरित अनुवाद",
+        "preview": "AI परिणाम",
+        "replace": "चयन बदलें",
+        "insertBelow": "नीचे डालें",
+        "copy": "कॉपी",
+        "discard": "त्यागें"
+      }
+    },
+    "share": {
+      "copiedAs": "{label} के रूप में कॉपी किया गया।",
+      "copyRichTextFallback": "{label} के रूप में कॉपी किया गया (रिच टेक्स्ट समर्थित नहीं, प्लेन टेक्स्ट पर वापस)।",
+      "copyFailed": "कॉपी विफल: {error}"
     }
   },
   "fileMenu": {
@@ -508,5 +515,23 @@
         "discard": "त्यागें"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "हर नोट, शीर्षक और बॉडी में खोजें…",
+    "backupTooltip": "बैकअप",
+    "favourites": "पसंदीदा",
+    "tags": "टैग्स",
+    "recent": {
+      "all": "सभी",
+      "today": "आज",
+      "week": "7 दिन",
+      "month": "30 दिन"
+    },
+    "includeDeleted": "हटाए गए शामिल करें",
+    "clearFilters": "फिल्टर साफ़ करें"
+  },
+  "common": {
+    "clearSearch": "खोज साफ़ करें",
+    "removeTag": "टैग {tag} हटाएँ"
   }
 }

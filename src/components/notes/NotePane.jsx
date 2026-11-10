@@ -31,6 +31,7 @@ import { emitEvent, runHook } from "@/lib/extensions";
 import { buildLinkIndex, extractInlineTags, extractWikiLinks, extractHeadings, escapeRegExp, plainText } from "@/lib/vault";
 import { cn } from "@/lib/utils";
 import FindTagsPanel from "@/components/tags/FindTagsPanel";
+import { confirm } from "@/components/ui/use-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { usePaneFocus } from "@/context/PaneFocusContext";
 
 const MODES = [
@@ -268,7 +276,8 @@ export default function NotePane({
 
   const removeInk = async () => {
     if (!inkId) return;
-    if (!window.confirm("Delete all handwriting in this note? This cannot be undone.")) return;
+    const ok = await confirm("Delete all handwriting in this note? This cannot be undone.", { danger: true });
+    if (!ok) return;
     await deletePage(inkId).catch(() => {});
     setInkId(null);
     touch();
@@ -276,7 +285,8 @@ export default function NotePane({
 
   const attachInk = async (pageId) => {
     if (inkId && inkId !== pageId) {
-      if (!window.confirm("Replace this note's handwriting with the selected page? The current handwriting is deleted.")) return;
+      const ok = await confirm("Replace this note's handwriting with the selected page? The current handwriting is deleted.", { danger: true });
+      if (!ok) return;
       await deletePage(inkId).catch(() => {});
     }
     setInkId(pageId);
@@ -1158,30 +1168,29 @@ export default function NotePane({
                     onClick={() => setZoom((z) => (typeof z === "number" ? Math.max(50, z - 10) : 100))}
                     title="Zoom out"
                   />
-                  <select
-                    value={typeof zoom === "number" ? String(zoom) : zoom}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                  <Select value={typeof zoom === "number" ? String(zoom) : zoom} onValueChange={(val) => {
                       if (val === "page-width" || val === "one-page" || val === "two-pages") {
                         setZoom(val);
                       } else {
                         setZoom(Math.max(50, Math.min(300, Number(val))));
                       }
-                    }}
-                    className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40"
-                    title="Zoom"
-                  >
-                    <option value="50">50%</option>
-                    <option value="75">75%</option>
-                    <option value="100">100%</option>
-                    <option value="125">125%</option>
-                    <option value="150">150%</option>
-                    <option value="200">200%</option>
-                    <option value="300">300%</option>
-                    <option value="page-width">Page Width</option>
-                    <option value="one-page">One Page</option>
-                    <option value="two-pages">Multiple Pages</option>
-                  </select>
+                    }}>
+                    <SelectTrigger className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40" title="Zoom">
+                      <SelectValue placeholder="Zoom" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="50">50%</SelectItem>
+                      <SelectItem value="75">75%</SelectItem>
+                      <SelectItem value="100">100%</SelectItem>
+                      <SelectItem value="125">125%</SelectItem>
+                      <SelectItem value="150">150%</SelectItem>
+                      <SelectItem value="200">200%</SelectItem>
+                      <SelectItem value="300">300%</SelectItem>
+                      <SelectItem value="page-width">Page Width</SelectItem>
+                      <SelectItem value="one-page">One Page</SelectItem>
+                      <SelectItem value="two-pages">Multiple Pages</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <ZoomIn
                     className="h-3.5 w-3.5 text-muted-foreground"
                     onClick={() => setZoom((z) => (typeof z === "number" ? Math.min(300, z + 10) : 100))}
@@ -1372,7 +1381,7 @@ export default function NotePane({
                     touch();
                   }}
                   typography={typography}
-                  onTypography={(next) => {
+                  onTypography={async (next) => {
                     const normalized = normalizeStyle(next);
                     if (noteInk.hasPage && noteInk.markCount > 0) {
                       const current = typography || {};
@@ -1384,9 +1393,8 @@ export default function NotePane({
                         (normalized.pageWidth && normalized.pageWidth !== current.pageWidth) ||
                         (normalized.pageLineHeight && normalized.pageLineHeight !== current.pageLineHeight);
                       if (layoutChanged) {
-                        if (!window.confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?")) {
-                          return;
-                        }
+                        const ok = await confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?", { danger: true });
+                        if (!ok) return;
                       }
                     }
                     setTypography(normalized);

@@ -5,6 +5,7 @@ import { db } from "@/api/localDb";
 import SpaceListPage from "@/components/shell/SpaceListPage";
 import { makeCanvas } from "@/lib/canvas";
 import { relativeTime } from "@/lib/vault";
+import { confirm } from "@/components/ui/use-dialog";
 
 export default function CanvasHome() {
   const [items, setItems] = useState([]);
@@ -27,7 +28,8 @@ export default function CanvasHome() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Delete this canvas and all its cards?")) return;
+    const ok = await confirm("Delete this canvas and all its cards?", { danger: true });
+    if (!ok) return;
     await db.entities.Canvas.delete(id);
     load();
   };

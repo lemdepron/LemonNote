@@ -204,11 +204,6 @@ export default function NoteRibbon({
     toast.success(`Applied "${template.name}".`);
   };
 
-  // Expose for FilePanel to use
-  if (typeof window !== "undefined") {
-    window.__applyTemplate = handleApplyTemplate;
-  }
-
   const leading = (
     <RibbonButton
       icon={FileText}
@@ -227,6 +222,7 @@ export default function NoteRibbon({
         tab={activeTab}
         onTab={chooseTab}
         leading={<><QuickAccess />{leading}</>}
+        isFirstTabActive={activeTab === "home"}
         trailing={
           (images?.busy || images?.error) && (
             <div
@@ -266,6 +262,7 @@ export default function NoteRibbon({
           isNew={!noteId}
           selection={selection}
           noteBody={body}
+          onApplyTemplate={handleApplyTemplate}
         />
       )}
 

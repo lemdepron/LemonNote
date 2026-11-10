@@ -21,6 +21,7 @@ import ExtensionsPage from '@/pages/ExtensionsPage';
 import ManifestPage from '@/pages/ManifestPage';
 import TrashPage from '@/pages/TrashPage';
 import SettingsPage from '@/pages/SettingsPage';
+import DevIconsPage from '@/pages/DevIconsPage';
 import ExtensionRuntime from '@/components/extensions/ExtensionRuntime';
 import { Toaster } from '@/components/ui/toaster';
 import { withPageErrorBoundary } from '@/components/PageErrorBoundary';
@@ -96,6 +97,9 @@ function App() {
             {/* Ink now lives in the Ink tab of every note; old links land on the vault. */}
             <Route path="/ink" element={<Navigate to="/" replace />} />
             <Route path="/ink/:id" element={<Navigate to="/" replace />} />
+            {import.meta.env.DEV && (
+              <Route path="/dev/icons" element={<DevIconsPage />} />
+            )}
             <Route path="*" element={<PageNotFound />} />
           </Route>
         </Routes>

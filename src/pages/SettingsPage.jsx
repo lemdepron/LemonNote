@@ -5,6 +5,13 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select as SelectComponent,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -52,13 +59,18 @@ function FieldLabel({ children, htmlFor }) {
 
 function Select({ id, value, onChange, options, className }) {
   return (
-    <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={cn("h-9 w-full rounded-md border border-border/80 bg-card/60 px-3 text-[13px] text-foreground outline-none transition focus:border-primary/40", className)}>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
+    <SelectComponent value={value} onValueChange={onChange}>
+      <SelectTrigger id={id} className={cn("h-9 w-full", className)}>
+        <SelectValue placeholder="" />
+      </SelectTrigger>
+      <SelectContent position="popper">
+        {options.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </SelectComponent>
   );
 }
 

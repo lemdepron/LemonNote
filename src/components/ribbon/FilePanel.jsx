@@ -21,7 +21,18 @@ import {
   Lock,
   Unlock,
   Key,
+  ChevronLeft,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { db } from "@/api/localDb";
 import { toast } from "@/lib/toast";
 import { backlinksFor, plainText, isNoteLocked } from "@/lib/vault";
@@ -100,7 +111,7 @@ const BUILTIN_TEMPLATES = [
   },
 ];
 
-export function FilePanel({ note, onClose, isNew, selection }) {
+export function FilePanel({ note, onClose, isNew, selection, noteBody, onApplyTemplate }) {
   const { formatDateTime, formatNumber } = useI18n();
   const [activeSection, setActiveSection] = useState("info");
   const [templates, setTemplates] = useState([]);
@@ -110,6 +121,27 @@ export function FilePanel({ note, onClose, isNew, selection }) {
   const [renameValue, setRenameValue] = useState("");
   const [newTemplateBody, setNewTemplateBody] = useState("");
   const [newTemplateName, setNewTemplateName] = useState("");
+
+  // Alert dialog states
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
+  const [alertDialogTitle, setAlertDialogTitle] = useState("");
+  const [alertDialogDesc, setAlertDialogDesc] = useState("");
+  const [alertDialogAction, setAlertDialogAction] = useState(null);
+  const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+  const [promptDialogTitle, setPromptDialogTitle] = useState("");
+  const [promptDialogValue, setPromptDialogValue] = useState("");
+  const [promptDialogConfirm, setPromptDialogConfirm] = useState(null);
+
+  // Handle Escape key to close panel
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   // Load templates on mount
   useEffect(() => {
@@ -154,32 +186,37 @@ export function FilePanel({ note, onClose, isNew, selection }) {
 
   const createFromTemplate = async (template) => {
     if (isNew) {
-      // For new notes, just fill the editor
       onClose();
-      // The parent NotePage will handle this via a callback
-      if (window.__applyTemplate) window.__applyTemplate(template);
+      onApplyTemplate?.(template);
     } else {
-      // For existing notes, we'd need to confirm replacement
-      if (confirm(`Replace current note with "${template.name}"? This cannot be undone.`)) {
+      // For existing notes, confirm replacement
+      setAlertDialogTitle(t("fileMenu.templates.confirmReplaceTitle"));
+      setAlertDialogDesc(t("fileMenu.templates.confirmReplaceDesc", { name: template.name }));
+      setAlertDialogAction(() => {
         onClose();
-        if (window.__applyTemplate) window.__applyTemplate(template);
-      }
+        onApplyTemplate?.(template);
+      });
+      setAlertDialogOpen(true);
     }
   };
 
   const deleteTemplate = async (template) => {
     if (template.isBuiltin) {
-      toast.error("Built-in templates cannot be deleted.");
+      toast.error(t("fileMenu.templates.builtinCannotDelete"));
       return;
     }
-    if (!confirm(`Delete template "${template.name}"?`)) return;
-    try {
-      await db.entities.Template.delete(template.id);
-      toast.success(`Deleted "${template.name}".`);
-      loadTemplates();
-    } catch (err) {
-      toast.error(`Failed to delete: ${err.message}`);
-    }
+    setAlertDialogTitle(t("fileMenu.templates.confirmDeleteTitle"));
+    setAlertDialogDesc(t("fileMenu.templates.confirmDeleteDesc", { name: template.name }));
+    setAlertDialogAction(async () => {
+      try {
+        await db.entities.Template.delete(template.id);
+        toast.success(t("fileMenu.templates.deleted", { name: template.name }));
+        loadTemplates();
+      } catch (err) {
+        toast.error(t("fileMenu.templates.deleteFailed", { error: err.message }));
+      }
+    });
+    setAlertDialogOpen(true);
   };
 
   const startRename = (template) => {
@@ -213,9 +250,9 @@ export function FilePanel({ note, onClose, isNew, selection }) {
       if (format === "markdown") exportMarkdown(note);
       else if (format === "html") exportHtml(note);
       else if (format === "pdf") exportPdf(note);
-      toast.success(`Exported as ${format.toUpperCase()}.`);
+      toast.success(t("fileMenu.printExport.exported", { format: format.toUpperCase() }));
     } catch (err) {
-      toast.error(`Export failed: ${err.message}`);
+      toast.error(t("fileMenu.printExport.exportFailed", { error: err.message }));
     }
   };
 
@@ -224,8 +261,23 @@ export function FilePanel({ note, onClose, isNew, selection }) {
     window.location.href = "/settings";
   };
 
-  // Encryption handlers
-  const handleLockNote = async () => {
+  // Encryption dialog states
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [lockPassword, setLockPassword] = useState("");
+  const [lockConfirmPassword, setLockConfirmPassword] = useState("");
+  const [lockStep, setLockStep] = useState(1); // 1 = enter password, 2 = confirm, 3 = warning
+
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState("");
+
+  const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
+  const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
+  const [changeNewPassword, setChangeNewPassword] = useState("");
+  const [changeConfirmPassword, setChangeConfirmPassword] = useState("");
+  const [changeStep, setChangeStep] = useState(1); // 1 = current, 2 = new, 3 = confirm
+
+  // Encryption handlers using inline forms
+  const handleLockNote = () => {
     if (isNew) {
       toast.error(t("fileMenu.encryption.cannotLockNew"));
       return;
@@ -238,60 +290,59 @@ export function FilePanel({ note, onClose, isNew, selection }) {
       toast.error(t("fileMenu.encryption.emptyNote"));
       return;
     }
+    setLockPassword("");
+    setLockConfirmPassword("");
+    setLockStep(1);
+    setLockDialogOpen(true);
+  };
 
-    // Show password confirmation dialog
-    const password = window.prompt(t("fileMenu.encryption.enterPassword"));
-    if (!password) return;
-    const confirmPassword = window.prompt(t("fileMenu.encryption.confirmPassword"));
-    if (password !== confirmPassword) {
-      toast.error(t("fileMenu.encryption.passwordsDontMatch"));
-      return;
-    }
-
-    // Show warning
-    const confirmed = window.confirm(t("fileMenu.encryption.warning"));
-    if (!confirmed) return;
-
-    try {
-      const encryptedBody = await encrypt(note.body, password);
-      await db.entities.Note.update(note.id, {
-        is_encrypted: true,
-        encrypted_body: encryptedBody,
-        encryption_version: 1,
-        title_encrypted: false,
-        body: "", // Clear the plaintext body
-      });
-      toast.success(t("fileMenu.encryption.locked"));
-      onClose();
-      // Reload the note page to show lock screen
-      window.location.reload();
-    } catch (err) {
-      toast.error(`${t("fileMenu.encryption.lockFailed")}: ${err.message}`);
+  const handleLockConfirm = async () => {
+    if (lockStep === 1) {
+      if (!lockPassword) {
+        toast.error(t("fileMenu.encryption.enterPassword"));
+        return;
+      }
+      setLockStep(2);
+    } else if (lockStep === 2) {
+      if (lockPassword !== lockConfirmPassword) {
+        toast.error(t("fileMenu.encryption.passwordsDontMatch"));
+        return;
+      }
+      setLockStep(3);
+    } else if (lockStep === 3) {
+      // Warning confirmed, do the encryption
+      try {
+        const encryptedBody = await encrypt(note.body, lockPassword);
+        await db.entities.Note.update(note.id, {
+          is_encrypted: true,
+          encrypted_body: encryptedBody,
+          encryption_version: 1,
+          title_encrypted: false,
+          body: "",
+        });
+        toast.success(t("fileMenu.encryption.locked"));
+        setLockDialogOpen(false);
+        onClose();
+        window.location.reload();
+      } catch (err) {
+        toast.error(`${t("fileMenu.encryption.lockFailed")}: ${err.message}`);
+      }
     }
   };
 
-  const handleUnlockNote = async () => {
+  const handleUnlockNote = () => {
     if (!isNoteLocked(note)) {
       toast.error(t("fileMenu.encryption.notLocked"));
       return;
     }
+    setUnlockPassword("");
+    setUnlockDialogOpen(true);
+  };
 
-    const password = window.prompt(t("fileMenu.encryption.enterCurrentPassword"));
-    if (!password) return;
-
+  const handleUnlockConfirm = async () => {
+    if (!unlockPassword) return;
     try {
-      // Verify password by trying to decrypt
-      await decrypt(note.encrypted_body, password);
-      // If successful, remove encryption
-      await db.entities.Note.update(note.id, {
-        is_encrypted: false,
-        encrypted_body: null,
-        encryption_version: 1,
-        title_encrypted: false,
-        body: note.body, // This won't work since body is empty - need to decrypt first
-      });
-      // Actually we need to decrypt and set the body
-      const decryptedBody = await decrypt(note.encrypted_body, password);
+      const decryptedBody = await decrypt(note.encrypted_body, unlockPassword);
       await db.entities.Note.update(note.id, {
         is_encrypted: false,
         encrypted_body: null,
@@ -300,6 +351,7 @@ export function FilePanel({ note, onClose, isNew, selection }) {
         body: decryptedBody,
       });
       toast.success(t("fileMenu.encryption.unlocked"));
+      setUnlockDialogOpen(false);
       onClose();
       window.location.reload();
     } catch (err) {
@@ -307,52 +359,49 @@ export function FilePanel({ note, onClose, isNew, selection }) {
     }
   };
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     if (!isNoteLocked(note)) {
       toast.error(t("fileMenu.encryption.notLocked"));
       return;
     }
-
-    const currentPassword = window.prompt(t("fileMenu.encryption.enterCurrentPassword"));
-    if (!currentPassword) return;
-
-    // Verify current password
-    try {
-      await decrypt(note.encrypted_body, currentPassword);
-    } catch {
-      toast.error(t("fileMenu.encryption.wrongPassword"));
-      return;
-    }
-
-    const newPassword = window.prompt(t("fileMenu.encryption.enterNewPassword"));
-    if (!newPassword) return;
-    const confirmNewPassword = window.prompt(t("fileMenu.encryption.confirmNewPassword"));
-    if (newPassword !== confirmNewPassword) {
-      toast.error(t("fileMenu.encryption.passwordsDontMatch"));
-      return;
-    }
-
-    try {
-      // Decrypt with old password, encrypt with new password
-      const decryptedBody = await decrypt(note.encrypted_body, currentPassword);
-      const newEncryptedBody = await encrypt(decryptedBody, newPassword);
-      await db.entities.Note.update(note.id, {
-        encrypted_body: newEncryptedBody,
-      });
-      toast.success(t("fileMenu.encryption.passwordChanged"));
-      onClose();
-    } catch (err) {
-      toast.error(`${t("fileMenu.encryption.changeFailed")}: ${err.message}`);
-    }
+    setChangeCurrentPassword("");
+    setChangeNewPassword("");
+    setChangeConfirmPassword("");
+    setChangeStep(1);
+    setChangePasswordDialogOpen(true);
   };
 
-  // Expose handlers globally for EncryptionSection buttons
-  if (typeof window !== "undefined") {
-    window.__lockNote = handleLockNote;
-    window.__unlockNote = handleUnlockNote;
-    window.__changePassword = handleChangePassword;
-  }
-
+  const handleChangePasswordConfirm = async () => {
+    if (changeStep === 1) {
+      if (!changeCurrentPassword) return;
+      try {
+        await decrypt(note.encrypted_body, changeCurrentPassword);
+        setChangeStep(2);
+      } catch {
+        toast.error(t("fileMenu.encryption.wrongPassword"));
+      }
+    } else if (changeStep === 2) {
+      if (!changeNewPassword) return;
+      setChangeStep(3);
+    } else if (changeStep === 3) {
+      if (changeNewPassword !== changeConfirmPassword) {
+        toast.error(t("fileMenu.encryption.passwordsDontMatch"));
+        return;
+      }
+      try {
+        const decryptedBody = await decrypt(note.encrypted_body, changeCurrentPassword);
+        const newEncryptedBody = await encrypt(decryptedBody, changeNewPassword);
+        await db.entities.Note.update(note.id, {
+          encrypted_body: newEncryptedBody,
+        });
+        toast.success(t("fileMenu.encryption.passwordChanged"));
+        setChangePasswordDialogOpen(false);
+        onClose();
+      } catch (err) {
+        toast.error(`${t("fileMenu.encryption.changeFailed")}: ${err.message}`);
+      }
+    }
+  };
   // Compute info data
   const createdDate = note?.created_date ? formatDateTime(note.created_date) : "—";
   const modifiedDate = note?.updated_date ? formatDateTime(note.updated_date) : "—";
@@ -372,6 +421,22 @@ export function FilePanel({ note, onClose, isNew, selection }) {
     { id: "settings", label: t("fileMenu.sections.settings"), icon: Settings },
   ];
 
+  // General alert dialog for confirmations (template replace, delete template)
+  const alertDialogContent = (
+    <AlertDialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{alertDialogTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{alertDialogDesc}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setAlertDialogOpen(false)}>{t("fileMenu.templates.cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { alertDialogAction?.(); setAlertDialogOpen(false); }}>{t("fileMenu.templates.confirm")}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   // Render as a portal to body for proper overlay
   const panelContent = (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label={t("fileMenu.title")}>
@@ -382,21 +447,20 @@ export function FilePanel({ note, onClose, isNew, selection }) {
         aria-hidden="true"
       />
       {/* Panel */}
-      <div className="relative flex flex-col w-full max-w-sm bg-card border-e border-border/70 shadow-xl animate-in slide-in-from-left-2 duration-300">
-        {/* Header */}
+      <div className="relative flex flex-col w-full max-w-[15rem] bg-card border-e border-border/70 shadow-xl animate-in slide-in-from-left-2 duration-300">
+        {/* Header with Back button */}
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            <span className="font-medium text-[14px]">{t("fileMenu.title")}</span>
-          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-accent transition"
-            aria-label={t("fileMenu.close")}
+            className="flex items-center gap-2 font-medium text-[13px] text-muted-foreground hover:text-foreground transition"
+            aria-label={t("fileMenu.back")}
           >
-            <X className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
+            {t("fileMenu.back")}
           </button>
+          <span className="font-medium text-[14px]">{t("fileMenu.title")}</span>
+          <div className="w-8" /> {/* spacer for centering */}
         </div>
 
         {/* Navigation */}
@@ -422,17 +486,10 @@ export function FilePanel({ note, onClose, isNew, selection }) {
             );
           })}
         </nav>
-
-        {/* Footer hint */}
-        <div className="border-t border-border/60 px-3 py-2">
-          <p className="font-mono text-[10px] text-muted-foreground/70">
-            {t("fileMenu.shareComing")}
-          </p>
-        </div>
       </div>
 
       {/* Section content panels */}
-      <div className="fixed inset-y-0 start-[22rem] z-40 w-[calc(100%-22rem)] bg-background border-s border-border/70 animate-in fade-in duration-200">
+      <div className="fixed inset-y-0 start-[15rem] z-40 w-[calc(100%-15rem)] bg-background border-s border-border/70 animate-in fade-in duration-200">
         {activeSection === "info" && (
           <InfoSection
             createdDate={createdDate}
@@ -481,12 +538,41 @@ export function FilePanel({ note, onClose, isNew, selection }) {
             note={note}
             onClose={onClose}
             isNew={isNew}
+            onLock={handleLockNote}
+            onUnlock={handleUnlockNote}
+            onChangePassword={handleChangePassword}
+            lockDialogOpen={lockDialogOpen}
+            setLockDialogOpen={setLockDialogOpen}
+            lockPassword={lockPassword}
+            setLockPassword={setLockPassword}
+            lockConfirmPassword={lockConfirmPassword}
+            setLockConfirmPassword={setLockConfirmPassword}
+            lockStep={lockStep}
+            setLockStep={setLockStep}
+            handleLockConfirm={handleLockConfirm}
+            unlockDialogOpen={unlockDialogOpen}
+            setUnlockDialogOpen={setUnlockDialogOpen}
+            unlockPassword={unlockPassword}
+            setUnlockPassword={setUnlockPassword}
+            handleUnlockConfirm={handleUnlockConfirm}
+            changePasswordDialogOpen={changePasswordDialogOpen}
+            setChangePasswordDialogOpen={setChangePasswordDialogOpen}
+            changeCurrentPassword={changeCurrentPassword}
+            setChangeCurrentPassword={setChangeCurrentPassword}
+            changeNewPassword={changeNewPassword}
+            setChangeNewPassword={setChangeNewPassword}
+            changeConfirmPassword={changeConfirmPassword}
+            setChangeConfirmPassword={setChangeConfirmPassword}
+            changeStep={changeStep}
+            setChangeStep={setChangeStep}
+            handleChangePasswordConfirm={handleChangePasswordConfirm}
           />
         )}
         {activeSection === "settings" && (
           <SettingsSection onSettings={openSettings} />
         )}
       </div>
+      {alertDialogContent}
     </div>
   );
 
@@ -785,97 +871,245 @@ function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody
           <span>{t("fileMenu.printExport.openSettings")}</span>
         </button>
       </div>
-      <div className="pt-2 border-t border-border/60 text-center">
-        <p className="text-[12px] text-muted-foreground">
-          {t("fileMenu.shareComing")}
-        </p>
-      </div>
     </div>
   );
 }
 
-function EncryptionSection({ note, onClose, isNew }) {
-  const locked = isNoteLocked(note);
-  
-  return (
-    <div className="h-full p-4 space-y-4 overflow-y-auto">
-      <h3 className="nb-label">{t("fileMenu.encryption.heading")}</h3>
-      
-      {locked ? (
-        <div className="space-y-2">
-          <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
-            <div className="flex items-center gap-2 text-primary">
-              <Lock className="h-4 w-4 shrink-0" />
-              <span className="font-medium">{t("fileMenu.encryption.lockedStatus")}</span>
+function EncryptionSection({
+    note,
+    onClose,
+    isNew,
+    onLock,
+    onUnlock,
+    onChangePassword,
+    lockDialogOpen,
+    setLockDialogOpen,
+    lockPassword,
+    setLockPassword,
+    lockConfirmPassword,
+    setLockConfirmPassword,
+    lockStep,
+    setLockStep,
+    handleLockConfirm,
+    unlockDialogOpen,
+    setUnlockDialogOpen,
+    unlockPassword,
+    setUnlockPassword,
+    handleUnlockConfirm,
+    changePasswordDialogOpen,
+    setChangePasswordDialogOpen,
+    changeCurrentPassword,
+    setChangeCurrentPassword,
+    changeNewPassword,
+    setChangeNewPassword,
+    changeConfirmPassword,
+    setChangeConfirmPassword,
+    changeStep,
+    setChangeStep,
+    handleChangePasswordConfirm,
+  }) {
+    const locked = isNoteLocked(note);
+    
+    return (
+      <div className="h-full p-4 space-y-4 overflow-y-auto">
+        <h3 className="nb-label">{t("fileMenu.encryption.heading")}</h3>
+        
+        {locked ? (
+          <div className="space-y-2">
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3">
+              <div className="flex items-center gap-2 text-primary">
+                <Lock className="h-4 w-4 shrink-0" />
+                <span className="font-medium">{t("fileMenu.encryption.lockedStatus")}</span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("fileMenu.encryption.lockedDesc")}
+              </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t("fileMenu.encryption.lockedDesc")}
-            </p>
+            
+            <div className="space-y-2 pt-2 border-t border-border/60">
+              <p className="nb-label">{t("fileMenu.encryption.actions")}</p>
+              <button
+                type="button"
+                onClick={onUnlock}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
+                )}
+              >
+                <Unlock className="h-4 w-4 shrink-0" />
+                <span>{t("fileMenu.encryption.unlock")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onChangePassword}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
+                )}
+              >
+                <Key className="h-4 w-4 shrink-0" />
+                <span>{t("fileMenu.encryption.changePassword")}</span>
+              </button>
+            </div>
           </div>
-          
-          <div className="space-y-2 pt-2 border-t border-border/60">
-            <p className="nb-label">{t("fileMenu.encryption.actions")}</p>
-            <button
-              type="button"
-              onClick={() => window.__unlockNote?.()}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
-              )}
-            >
-              <Unlock className="h-4 w-4 shrink-0" />
-              <span>{t("fileMenu.encryption.unlock")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => window.__changePassword?.()}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
-              )}
-            >
-              <Key className="h-4 w-4 shrink-0" />
-              <span>{t("fileMenu.encryption.changePassword")}</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {!isNew && note?.body?.trim() ? (
-            <>
-              <div className="rounded-lg border border-border/60 bg-card/50 p-3">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Unlock className="h-4 w-4 shrink-0 opacity-50" />
-                  <span>{t("fileMenu.encryption.unlockedStatus")}</span>
+        ) : (
+          <div className="space-y-2">
+            {!isNew && note?.body?.trim() ? (
+              <>
+                <div className="rounded-lg border border-border/60 bg-card/50 p-3">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Unlock className="h-4 w-4 shrink-0 opacity-50" />
+                    <span>{t("fileMenu.encryption.unlockedStatus")}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("fileMenu.encryption.unlockedDesc")}
+                  </p>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("fileMenu.encryption.unlockedDesc")}
-                </p>
+                
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <p className="nb-label">{t("fileMenu.encryption.actions")}</p>
+                  <button
+                    type="button"
+                    onClick={onLock}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
+                    )}
+                  >
+                    <Lock className="h-4 w-4 shrink-0" />
+                    <span>{t("fileMenu.encryption.lock")}</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 px-6 py-10 text-center">
+                <p className="text-[14px] text-foreground">{t("fileMenu.encryption.cannotLockTitle")}</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{isNew ? t("fileMenu.encryption.cannotLockNewDesc") : t("fileMenu.encryption.cannotLockEmptyDesc")}</p>
               </div>
-              
-              <div className="space-y-2 pt-2 border-t border-border/60">
-                <p className="nb-label">{t("fileMenu.encryption.actions")}</p>
-                <button
-                  type="button"
-                  onClick={() => window.__lockNote?.()}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
-                  )}
-                >
-                  <Lock className="h-4 w-4 shrink-0" />
-                  <span>{t("fileMenu.encryption.lock")}</span>
-                </button>
+            )}
+          </div>
+        )}
+
+        {/* Lock Dialog */}
+        {lockDialogOpen && (
+          <AlertDialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                {lockStep === 1 && <AlertDialogTitle>{t("fileMenu.encryption.enterPassword")}</AlertDialogTitle>}
+                {lockStep === 2 && <AlertDialogTitle>{t("fileMenu.encryption.confirmPassword")}</AlertDialogTitle>}
+                {lockStep === 3 && <AlertDialogTitle>{t("fileMenu.encryption.warningTitle")}</AlertDialogTitle>}
+                {lockStep <= 2 && (
+                  <AlertDialogDescription>
+                    {lockStep === 1 ? t("fileMenu.encryption.enterPasswordDesc") : t("fileMenu.encryption.confirmPasswordDesc")}
+                  </AlertDialogDescription>
+                )}
+                {lockStep === 3 && (
+                  <AlertDialogDescription>{t("fileMenu.encryption.warning")}</AlertDialogDescription>
+                )}
+              </AlertDialogHeader>
+              {lockStep <= 2 && (
+                <div className="space-y-4">
+                  <input
+                    type="password"
+                    value={lockStep === 1 ? lockPassword : lockConfirmPassword}
+                    onChange={(e) => lockStep === 1 ? setLockPassword(e.target.value) : setLockConfirmPassword(e.target.value)}
+                    placeholder={lockStep === 1 ? t("fileMenu.encryption.passwordPlaceholder") : t("fileMenu.encryption.confirmPasswordPlaceholder")}
+                    className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40"
+                    autoFocus
+                  />
+                </div>
+              )}
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => { setLockStep(1); setLockDialogOpen(false); }}>{t("fileMenu.encryption.cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLockConfirm}>
+                  {lockStep === 1 ? t("fileMenu.encryption.next") : lockStep === 2 ? t("fileMenu.encryption.next") : t("fileMenu.encryption.lock")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
+        {/* Unlock Dialog */}
+        {unlockDialogOpen && (
+          <AlertDialog open={unlockDialogOpen} onOpenChange={setUnlockDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("fileMenu.encryption.enterCurrentPassword")}</AlertDialogTitle>
+                <AlertDialogDescription>{t("fileMenu.encryption.enterCurrentPasswordDesc")}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="space-y-4">
+                <input
+                  type="password"
+                  value={unlockPassword}
+                  onChange={(e) => setUnlockPassword(e.target.value)}
+                  placeholder={t("fileMenu.encryption.passwordPlaceholder")}
+                  className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40"
+                  autoFocus
+                />
               </div>
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border/70 px-6 py-10 text-center">
-              <p className="text-[14px] text-foreground">{t("fileMenu.encryption.cannotLockTitle")}</p>
-              <p className="mt-1 text-[12px] text-muted-foreground">{isNew ? t("fileMenu.encryption.cannotLockNewDesc") : t("fileMenu.encryption.cannotLockEmptyDesc")}</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => { setUnlockPassword(""); setUnlockDialogOpen(false); }}>{t("fileMenu.encryption.cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleUnlockConfirm}>{t("fileMenu.encryption.unlock")}</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
+        {/* Change Password Dialog */}
+        {changePasswordDialogOpen && (
+          <AlertDialog open={changePasswordDialogOpen} onOpenChange={setChangePasswordDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                {changeStep === 1 && <AlertDialogTitle>{t("fileMenu.encryption.enterCurrentPassword")}</AlertDialogTitle>}
+                {changeStep === 2 && <AlertDialogTitle>{t("fileMenu.encryption.enterNewPassword")}</AlertDialogTitle>}
+                {changeStep === 3 && <AlertDialogTitle>{t("fileMenu.encryption.confirmNewPassword")}</AlertDialogTitle>}
+                {changeStep <= 3 && (
+                  <AlertDialogDescription>
+                    {changeStep === 1 ? t("fileMenu.encryption.enterCurrentPasswordDesc") : changeStep === 2 ? t("fileMenu.encryption.enterNewPasswordDesc") : t("fileMenu.encryption.confirmNewPasswordDesc")}
+                  </AlertDialogDescription>
+                )}
+              </AlertDialogHeader>
+              <div className="space-y-4">
+                {changeStep === 1 && (
+                  <input
+                    type="password"
+                    value={changeCurrentPassword}
+                    onChange={(e) => setChangeCurrentPassword(e.target.value)}
+                    placeholder={t("fileMenu.encryption.passwordPlaceholder")}
+                    className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40"
+                    autoFocus
+                  />
+                )}
+                {changeStep === 2 && (
+                  <input
+                    type="password"
+                    value={changeNewPassword}
+                    onChange={(e) => setChangeNewPassword(e.target.value)}
+                    placeholder={t("fileMenu.encryption.newPasswordPlaceholder")}
+                    className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40"
+                    autoFocus
+                  />
+                )}
+                {changeStep === 3 && (
+                  <input
+                    type="password"
+                    value={changeConfirmPassword}
+                    onChange={(e) => setChangeConfirmPassword(e.target.value)}
+                    placeholder={t("fileMenu.encryption.confirmPasswordPlaceholder")}
+                    className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40"
+                    autoFocus
+                  />
+                )}
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => { setChangeStep(1); setChangePasswordDialogOpen(false); }}>{t("fileMenu.encryption.cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleChangePasswordConfirm}>
+                  {changeStep === 1 ? t("fileMenu.encryption.next") : changeStep === 2 ? t("fileMenu.encryption.next") : t("fileMenu.encryption.changePassword")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+    );
+  }
 
 function SettingsSection({ onSettings }) {
   return (
@@ -892,11 +1126,6 @@ function SettingsSection({ onSettings }) {
           <Settings className="h-4 w-4 shrink-0" />
           <span>{t("fileMenu.settings.openPage")}</span>
         </button>
-      </div>
-      <div className="pt-2 border-t border-border/60 text-center">
-        <p className="text-[12px] text-muted-foreground">
-          {t("fileMenu.shareComing")}
-        </p>
       </div>
     </div>
   );

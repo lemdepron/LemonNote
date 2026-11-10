@@ -6,6 +6,7 @@ import SpaceListPage from "@/components/shell/SpaceListPage";
 import { languageLabel, templateFor } from "@/lib/code-languages";
 import { relativeTime } from "@/lib/vault";
 import { uid } from "@/lib/table";
+import { confirm } from "@/components/ui/use-dialog";
 
 const STARTER_FILE = {
   name: "untitled.rs",
@@ -34,7 +35,8 @@ export default function CodeHome() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Delete this file?")) return;
+    const ok = await confirm("Delete this file?", { danger: true });
+    if (!ok) return;
     await db.entities.CodeFile.delete(id);
     load();
   };

@@ -1,4 +1,11 @@
 import { useState } from "react";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function CardForm({ notes, onCreate, onCancel }) {
   const [front, setFront] = useState("");
@@ -42,18 +49,19 @@ export default function CardForm({ notes, onCreate, onCancel }) {
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="min-w-0 flex-1 basis-[200px]">
           <span className="nb-label">source note (optional)</span>
-          <select
-            value={noteId}
-            onChange={(event) => setNoteId(event.target.value)}
-            className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40"
-          >
-            <option value="">No note</option>
-            {notes.map((note) => (
-              <option key={note.id} value={note.id}>
-                {note.title}
-              </option>
-            ))}
-          </select>
+          <Select value={noteId} onValueChange={setNoteId}>
+            <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+              <SelectValue placeholder="No note" />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              <SelectItem value="">No note</SelectItem>
+              {notes.map((note) => (
+                <SelectItem key={note.id} value={note.id}>
+                  {note.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <button
           type="submit"

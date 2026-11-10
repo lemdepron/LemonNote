@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { addAttachment } from "@/lib/attachments";
 import { caret, commit } from "@/lib/editor-bridge";
 import { imageRejection, imageSnippet, figureSnippet } from "@/lib/note-insert";
+import { getPendingFigureCaption } from "@/lib/dialog-state";
 
 /**
  * Uploads images picked from the ribbon, dropped on the editor or pasted into
@@ -26,10 +27,7 @@ export default function useNoteImages({ body, onChange }) {
     }
 
     // Check for pending figure caption
-    const pendingCaption = window.__pendingFigureCaption;
-    if (pendingCaption !== undefined) {
-      window.__pendingFigureCaption = undefined;
-    }
+    const pendingCaption = getPendingFigureCaption();
 
     setError("");
     setBusy(true);

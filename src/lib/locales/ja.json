@@ -127,22 +127,29 @@
       "noteType": "ノートタイプ",
       "noteFormatAria": "ノート形式",
       "noteFormatTitle": "ノート全体のタイプ",
-      "ai": "AI",
-      "ai.translate": "翻訳",
-      "ai.translateHint": "選択テキストまたはノート全体を別の言語に翻訳",
-      "ai.summarize": "要約",
-      "ai.summarizeHint": "選択テキストまたはノートの簡潔な要約を作成",
-      "ai.fixGrammar": "文法修正",
-      "ai.fixGrammarHint": "文法、スペル、句読点を修正",
-      "ai.continue": "続きを書く",
-      "ai.continueHint": "カーソル位置から書き続ける",
-      "ai.arabicEnglish": "アラビア語 ↔ 英語",
-      "ai.arabicEnglishHint": "アラビア語と英語のクイック翻訳",
-      "ai.preview": "AI結果",
-      "ai.replace": "選択範囲を置換",
-      "ai.insertBelow": "下に挿入",
-      "ai.copy": "コピー",
-      "ai.discard": "破棄"
+      "ai": {
+        "label": "AI",
+        "translate": "翻訳",
+        "translateHint": "選択テキストまたはノート全体を別の言語に翻訳",
+        "summarize": "要約",
+        "summarizeHint": "選択テキストまたはノートの簡潔な要約を作成",
+        "fixGrammar": "文法修正",
+        "fixGrammarHint": "文法、スペル、句読点を修正",
+        "continue": "続きを書く",
+        "continueHint": "カーソル位置から書き続ける",
+        "arabicEnglish": "アラビア語 ↔ 英語",
+        "arabicEnglishHint": "アラビア語と英語のクイック翻訳",
+        "preview": "AI結果",
+        "replace": "選択範囲を置換",
+        "insertBelow": "下に挿入",
+        "copy": "コピー",
+        "discard": "破棄"
+      }
+    },
+    "share": {
+      "copiedAs": "{label}としてコピーしました。",
+      "copyRichTextFallback": "{label}としてコピーしました（リッチテキスト未対応、プレーンテキストで代用）。",
+      "copyFailed": "コピーに失敗しました: {error}"
     }
   },
   "fileMenu": {
@@ -503,5 +510,23 @@
         "discard": "破棄"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "すべてのノート、タイトル、本文を検索…",
+    "backupTooltip": "バックアップ",
+    "favourites": "お気に入り",
+    "tags": "タグ",
+    "recent": {
+      "all": "すべて",
+      "today": "今日",
+      "week": "7日",
+      "month": "30日"
+    },
+    "includeDeleted": "削除済みを含む",
+    "clearFilters": "フィルタをクリア"
+  },
+  "common": {
+    "clearSearch": "検索をクリア",
+    "removeTag": "タグ {tag} を削除"
   }
 }

@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { Download, Loader2, Upload, AlertTriangle, FolderOpen, FileText } from "lucide-react";
+import { Download, Loader2, Upload, AlertTriangle, FolderOpen, FileText, X, SkipForward, Copy, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { exportBackup, importBackup, previewBackup } from "@/lib/backup";
-import { importFiles, previewImport } from "@/lib/import";
+import { importFiles, previewImport, importFilesWithOptions } from "@/lib/import";
 import { success, error, info } from "@/lib/toast";
 
 export default function Backup() {
@@ -13,6 +13,9 @@ export default function Backup() {
   const [importMode, setImportMode] = useState("backup"); // "backup" | "files" | "folder"
   const [importPreview, setImportPreview] = useState(null);
   const [importOptions, setImportOptions] = useState({ preserveFolders: true });
+  const [duplicateAction, setDuplicateAction] = useState("skip"); // "skip" | "rename" | "overwrite"
+  const [importProgress, setImportProgress] = useState(null); // { current, total, stage }
+  const [cancelImport, setCancelImport] = useState(false);
   const fileInput = useRef(null);
   const importFileInput = useRef(null);
   const importFolderInput = useRef(null);
@@ -144,26 +147,110 @@ export default function Backup() {
   const applyFileImport = async () => {
     if (!importPreview) return;
     setBusy(true);
-    try {
-      // Get the files again - we need to re-pick them
-      // For now, we'll show a message to re-select
+    setCancelImport(false);
+    setImportProgress({ current: 0, total: importPreview.totalFiles, stage: "preparing" });
+    
+    // Get the files again
+    const files = Array.from(importFileInput.current?.files || []);
+    if (files.length === 0) {
       info("Please select the files again to import.");
+      setBusy(false);
+      return;
+    }
+    
+    try {
+      const result = await importFilesWithOptions(files, { 
+        preserveFolderStructure: importOptions.preserveFolders,
+        duplicateAction,
+        onProgress: (update) => {
+          if (update.type === "progress") {
+            setImportProgress({ current: update.current, total: update.total, stage: "importing" });
+          }
+        },
+        onCancel: () => cancelImport,
+      });
+      
+      setImportPreview(null);
+      setImportMode("backup");
+      setImportProgress(null);
+      
+      if (result.cancelled) {
+        info(`Import cancelled. Imported ${result.imported}, skipped ${result.skipped}, renamed ${result.renamed}, overwritten ${result.overwritten}.`);
+        return;
+      }
+      
+      const total = result.notes.length;
+      const errors = result.errors.length;
+      let msg = `Imported ${total} note${total === 1 ? "" : "s"}`;
+      if (result.skipped) msg += `, skipped ${result.skipped}`;
+      if (result.renamed) msg += `, renamed ${result.renamed}`;
+      if (result.overwritten) msg += `, overwritten ${result.overwritten}`;
+      if (errors) msg += `, ${errors} error${errors !== 1 ? "s" : ""}`;
+      success(msg);
+      
+      if (errors) {
+        result.errors.forEach((e) => console.error(e));
+      }
     } catch (err) {
       error(`Import failed: ${err.message}`);
     } finally {
       setBusy(false);
+      setImportProgress(null);
     }
   };
-
+  
   const applyFolderImport = async () => {
     if (!importPreview) return;
     setBusy(true);
-    try {
+    setCancelImport(false);
+    setImportProgress({ current: 0, total: importPreview.totalFiles, stage: "preparing" });
+    
+    // Get the files again
+    const files = Array.from(importFolderInput.current?.files || []);
+    if (files.length === 0) {
       info("Please select the folder again to import.");
+      setBusy(false);
+      return;
+    }
+    
+    try {
+      const result = await importFilesWithOptions(files, { 
+        preserveFolderStructure: importOptions.preserveFolders,
+        duplicateAction,
+        onProgress: (update) => {
+          if (update.type === "progress") {
+            setImportProgress({ current: update.current, total: update.total, stage: "importing" });
+          }
+        },
+        onCancel: () => cancelImport,
+      });
+      
+      setImportPreview(null);
+      setImportMode("backup");
+      setImportProgress(null);
+      
+      if (result.cancelled) {
+        info(`Import cancelled. Imported ${result.imported}, skipped ${result.skipped}, renamed ${result.renamed}, overwritten ${result.overwritten}.`);
+        return;
+      }
+      
+      const total = result.notes.length;
+      const errors = result.errors.length;
+      let msg = `Imported ${total} note${total === 1 ? "" : "s"}`;
+      if (result.skipped) msg += `, skipped ${result.skipped}`;
+      if (result.renamed) msg += `, renamed ${result.renamed}`;
+      if (result.overwritten) msg += `, overwritten ${result.overwritten}`;
+      if (errors) msg += `, ${errors} error${errors !== 1 ? "s" : ""}`;
+      success(msg);
+      
+      if (errors) {
+        result.errors.forEach((e) => console.error(e));
+      }
     } catch (err) {
       error(`Import failed: ${err.message}`);
     } finally {
       setBusy(false);
+      setImportProgress(null);
     }
   };
 
@@ -275,6 +362,44 @@ export default function Backup() {
     const notesWithErrors = importPreview.notes.filter((n) => n.error).length;
     const notesToImport = importPreview.notes.filter((n) => !n.error).length;
     const folders = importPreview.folders.length;
+    
+    // Calculate duplicate counts
+    const duplicates = importPreview.notes.filter((n) => n.isDuplicate).length;
+    const newNotes = importPreview.notes.filter((n) => !n.error && !n.isDuplicate).length;
+
+    // Show progress bar during import
+    if (importProgress && busy) {
+      const progressPercent = importProgress.total > 0 ? Math.round((importProgress.current / importProgress.total) * 100) : 0;
+      return (
+        <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-[13px] font-medium tracking-tight">Importing…</h3>
+          </div>
+          <div className="grid gap-2 text-[12px] mb-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Stage:</span>
+              <span className="font-mono capitalize">{importProgress.stage}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Progress:</span>
+              <span className="font-mono">{importProgress.current} / {importProgress.total}</span>
+            </div>
+          </div>
+          <div className="w-full bg-background/50 rounded-full h-2 overflow-hidden">
+            <div 
+              className="bg-primary h-full rounded-full transition-all duration-300" 
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" onClick={() => setCancelImport(true)} disabled={busy}>
+              <X className="h-3.5 w-3.5 mr-1" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
@@ -292,6 +417,12 @@ export default function Backup() {
             <span className="text-muted-foreground">Notes to import:</span>
             <span className="font-mono">{notesToImport}</span>
           </div>
+          {duplicates > 0 && (
+            <div className="flex justify-between text-amber-600">
+              <span className="text-muted-foreground">Duplicates found:</span>
+              <span className="font-mono">{duplicates}</span>
+            </div>
+          )}
           {notesWithErrors > 0 && (
             <div className="flex justify-between text-destructive">
               <span className="text-muted-foreground">Errors:</span>
@@ -305,6 +436,52 @@ export default function Backup() {
             </div>
           )}
         </div>
+        
+        {/* Duplicate action selection */}
+        <div className="mb-4 p-3 rounded-lg bg-background/50 border border-border/50">
+          <label className="block text-[12px] font-medium text-muted-foreground mb-2">
+            Duplicate notes action:
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer ${duplicateAction === "skip" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"}`}>
+              <input
+                type="radio"
+                name="duplicateAction"
+                value="skip"
+                checked={duplicateAction === "skip"}
+                onChange={(e) => setDuplicateAction(e.target.value)}
+                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <SkipForward className="h-3.5 w-3.5" />
+              <span>Skip</span>
+            </label>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer ${duplicateAction === "rename" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"}`}>
+              <input
+                type="radio"
+                name="duplicateAction"
+                value="rename"
+                checked={duplicateAction === "rename"}
+                onChange={(e) => setDuplicateAction(e.target.value)}
+                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Rename</span>
+            </label>
+            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer ${duplicateAction === "overwrite" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"}`}>
+              <input
+                type="radio"
+                name="duplicateAction"
+                value="overwrite"
+                checked={duplicateAction === "overwrite"}
+                onChange={(e) => setDuplicateAction(e.target.value)}
+                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+              />
+              <Copy className="h-3.5 w-3.5" />
+              <span>Overwrite</span>
+            </label>
+          </div>
+        </div>
+        
         {importPreview.notes.slice(0, 10).map((note, i) => (
           <div key={i} className="flex items-center gap-2 text-[11px] px-2 py-1 rounded bg-background/50">
             {note.error ? (
@@ -316,6 +493,7 @@ export default function Backup() {
               <>
                 <span className="text-muted-foreground">📄</span>
                 <span className="truncate">{note.title}</span>
+                {note.isDuplicate && <span className="text-amber-600 text-[10px] bg-amber-100/50 px-1 rounded">DUPLICATE</span>}
                 {note.folder && <span className="text-muted-foreground">→ {note.folder}</span>}
                 {note.tags.length > 0 && <span className="text-primary">#{note.tags.join(" #")}</span>}
                 {note.embedCount > 0 && <span className="text-amber-600">🖼 {note.embedCount}</span>}

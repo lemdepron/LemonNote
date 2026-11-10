@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
-import { Search, Tag } from "lucide-react";
 import { BUILTIN_TAGS, getTagDef } from "@/lib/tags";
 
-export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount = 0, linkCount = 0, onFindTags }) {
+export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount = 0, linkCount = 0 }) {
   // Count tags that are built-in
   const builtinTagCounts = {};
   for (const tag of tags) {
@@ -91,21 +90,6 @@ export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount
           </div>
         </dl>
       </section>
-
-      {onFindTags && (
-        <section>
-          <p className="nb-label">Actions</p>
-          <button
-            type="button"
-            onClick={onFindTags}
-            className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card/40 px-3 py-2 font-mono text-[11px] text-muted-foreground transition hover:border-primary/40 hover:text-primary hover:bg-primary/10"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <Tag className="h-3.5 w-3.5" />
-            <span>Find Tags</span>
-          </button>
-        </section>
-      )}
 
       <p className="text-[11.5px] leading-relaxed text-muted-foreground/70">
         Flat by design. Search, tags and links are the only structure — no folders to prune.

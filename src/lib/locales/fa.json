@@ -127,22 +127,29 @@
       "noteType": "نوع یادداشت",
       "noteFormatAria": "فرمت یادداشت",
       "noteFormatTitle": "نوع کل یادداشت",
-      "ai": "هوش مصنوعی",
-      "ai.translate": "ترجمه",
-      "ai.translateHint": "متن انتخاب شده یا کل یادداشت را به زبان دیگر ترجمه کن",
-      "ai.summarize": "خلاصه‌سازی",
-      "ai.summarizeHint": "یک خلاصه مختصر از متن انتخاب شده یا یادداشت بساز",
-      "ai.fixGrammar": "اصلاح گرامر",
-      "ai.fixGrammarHint": "گرامر، املا و نشانه‌گذاری را اصلاح کن",
-      "ai.continue": "ادامه نوشتن",
-      "ai.continueHint": "از موقعیت نما ادامه بنویس",
-      "ai.arabicEnglish": "عربی ↔ انگلیسی",
-      "ai.arabicEnglishHint": "ترجمه سریع بین عربی و انگلیسی",
-      "ai.preview": "نتیجه هوش مصنوعی",
-      "ai.replace": "جایگزینی انتخاب",
-      "ai.insertBelow": "درج در پایین",
-      "ai.copy": "کپی",
-      "ai.discard": "لغو"
+      "ai": {
+        "label": "هوش مصنوعی",
+        "translate": "ترجمه",
+        "translateHint": "متن انتخاب شده یا کل یادداشت را به زبان دیگر ترجمه کن",
+        "summarize": "خلاصه‌سازی",
+        "summarizeHint": "یک خلاصه مختصر از متن انتخاب شده یا یادداشت بساز",
+        "fixGrammar": "اصلاح گرامر",
+        "fixGrammarHint": "گرامر، املا و نشانه‌گذاری را اصلاح کن",
+        "continue": "ادامه نوشتن",
+        "continueHint": "از موقعیت نما ادامه بنویس",
+        "arabicEnglish": "عربی ↔ انگلیسی",
+        "arabicEnglishHint": "ترجمه سریع بین عربی و انگلیسی",
+        "preview": "نتیجه هوش مصنوعی",
+        "replace": "جایگزینی انتخاب",
+        "insertBelow": "درج در پایین",
+        "copy": "کپی",
+        "discard": "لغو"
+      }
+    },
+    "share": {
+      "copiedAs": "به صورت {label} کپی شد.",
+      "copyRichTextFallback": "به صورت {label} کپی شد (متن غنی پشتیبانی نمی‌شود، به متن ساده بازگشت).",
+      "copyFailed": "کپی کردن با خطا مواجه شد: {error}"
     }
   },
   "fileMenu": {
@@ -508,5 +515,23 @@
         "discard": "لغو"
       }
     }
+  },
+  "vault": {
+    "searchPlaceholder": "در هر یادداشت، عنوان و متن جستجو کنید…",
+    "backupTooltip": "پشتیبان‌گیری",
+    "favourites": "معلّق‌ها",
+    "tags": "برچسب‌ها",
+    "recent": {
+      "all": "همه",
+      "today": "امروز",
+      "week": "۷ روز",
+      "month": "۳۰ روز"
+    },
+    "includeDeleted": "شامل حذف‌شده‌ها",
+    "clearFilters": "پاک کردن فیلترها"
+  },
+  "common": {
+    "clearSearch": "پاک کردن جستجو",
+    "removeTag": "حذف برچسب {tag}"
   }
 }

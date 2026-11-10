@@ -86,6 +86,7 @@ export default function NoteInkOverlay({
         onSendToBack={ink?.sendToBack}
         editingObjectId={ink?.editingObjectId}
         setEditingObjectId={ink?.setEditingObjectId}
+        selectedObjectIds={ink?.selectedObjectIds || []}
       />
     </div>
   );

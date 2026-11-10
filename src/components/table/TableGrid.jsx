@@ -1,5 +1,13 @@
 import { Trash2, X } from "lucide-react";
 import { findTable, rowLabel } from "@/lib/table";
+import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const TYPE_BADGE = {
   text: "txt",
@@ -29,14 +37,19 @@ function CellInput({ column, value, tables, onChange }) {
 
   if (column.type === "select") {
     return (
-      <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className={`${base} cursor-pointer appearance-none`}>
-        <option value="">—</option>
-        {(column.options || []).map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <Select value={value ?? ""} onValueChange={onChange}>
+        <SelectTrigger className={cn(base, "cursor-pointer")}>
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          <SelectItem value="">—</SelectItem>
+          {(column.options || []).map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
 
@@ -44,14 +57,19 @@ function CellInput({ column, value, tables, onChange }) {
     const target = findTable(tables, column.targetTableId);
     const rows = target?.rows ?? [];
     return (
-      <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className={`${base} cursor-pointer appearance-none`}>
-        <option value="">—</option>
-        {rows.map((row) => (
-          <option key={row.id} value={row.id}>
-            {rowLabel(target, row)}
-          </option>
-        ))}
-      </select>
+      <Select value={value ?? ""} onValueChange={onChange}>
+        <SelectTrigger className={cn(base, "cursor-pointer")}>
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          <SelectItem value="">—</SelectItem>
+          {rows.map((row) => (
+            <SelectItem key={row.id} value={row.id}>
+              {rowLabel(target, row)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
 

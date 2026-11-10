@@ -6,6 +6,7 @@ import { tokenColor, useTheme } from "@/lib/theme";
 import { escapeRegExp } from "@/lib/vault";
 import { toast } from "@/lib/toast";
 import { createObject, getDefaultSize, OBJECT_TYPES, SHAPE_TYPES, STICKERS } from "@/lib/ink/objects";
+import { confirm } from "@/components/ui/use-dialog";
 
 const DEFAULT_TOOL = {
   mode: "draw",
@@ -47,7 +48,7 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
   const [replay, setReplay] = useState({ playing: false, time: 0, syncing: false });
   const [objects, setObjects] = useState([]);
   const [objectSelection, setObjectSelection] = useState(null); // { id, type: 'move'|'resize'|'rotate', handle }
-  const [selectedObjectId, setSelectedObjectId] = useState(null);
+  const [selectedObjectIds, setSelectedObjectIds] = useState([]);
   const [editingObjectId, setEditingObjectId] = useState(null);
 
   const engineRef = useRef(null);
@@ -268,8 +269,29 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     toast.info("Space removed only where ink would not overlap. Some strokes limit further removal.", 4000);
   }, []);
 
-  const onSelectObject = useCallback((id) => {
-    setSelectedObjectId(id);
+  const onSelectObject = useCallback((id, event) => {
+    setSelectedObjectIds((prev) => {
+      // If no modifier keys, replace selection
+      if (!event || (!event.ctrlKey && !event.metaKey && !event.shiftKey)) {
+        return id ? [id] : [];
+      }
+      // Ctrl/Cmd + click: toggle selection
+      if (event.ctrlKey || event.metaKey) {
+        if (prev.includes(id)) {
+          return prev.filter((selectedId) => selectedId !== id);
+        }
+        return [...prev, id];
+      }
+      // Shift + click: select range (not fully implemented, just add for now)
+      if (event.shiftKey && prev.length > 0) {
+        // For simplicity, just add to selection
+        if (prev.includes(id)) {
+          return prev.filter((selectedId) => selectedId !== id);
+        }
+        return [...prev, id];
+      }
+      return prev;
+    });
   }, []);
 
   // Object management
@@ -306,12 +328,13 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
 
   const deleteSelectedObjects = useCallback(() => {
     const current = latestRef.current;
-    if (!current || !objectSelection) return;
-    const nextObjects = (current.objects || []).filter((obj) => obj.id !== objectSelection.id);
+    if (!current || !selectedObjectIds.length) return;
+    const nextObjects = (current.objects || []).filter((obj) => !selectedObjectIds.includes(obj.id));
     applyObjects(nextObjects, { history: true });
+    setSelectedObjectIds([]);
     setObjectSelection(null);
     setEditingObjectId(null);
-  }, [applyObjects, objectSelection]);
+  }, [applyObjects, selectedObjectIds]);
 
   const bringToFront = useCallback((id) => {
     const current = latestRef.current;
@@ -391,7 +414,7 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         event.preventDefault();
         engineRef.current?.deleteSelection();
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && objectSelection && !editingObjectId) {
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedObjectIds.length && !editingObjectId) {
         event.preventDefault();
         deleteSelectedObjects();
       }
@@ -401,11 +424,12 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, undo, redo, selection.ids.length, objectSelection, editingObjectId, deleteSelectedObjects, stopEditingObject]);
+  }, [active, undo, redo, selection.ids.length, selectedObjectIds.length, editingObjectId, deleteSelectedObjects, stopEditingObject]);
 
-  const clearPage = () => {
+  const clearPage = async () => {
     if (!latestRef.current?.strokes.length) return;
-    if (!window.confirm("Clear every stroke on this page?")) return;
+    const ok = await confirm("Clear every stroke on this page?", { danger: true });
+    if (!ok) return;
     engineRef.current?.setPlayback(null);
     applyStrokes([]);
   };
@@ -601,7 +625,8 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         selection,
         objectSelection,
         setObjectSelection,
-        selectedObjectId,
+        selectedObjectIds,
+        setSelectedObjectIds,
         editingObjectId,
         objects,
         engine: () => engineRef.current,

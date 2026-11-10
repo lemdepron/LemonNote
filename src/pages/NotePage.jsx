@@ -32,6 +32,7 @@ import { buildLinkIndex, extractInlineTags, extractWikiLinks, extractHeadings, e
 import { cn } from "@/lib/utils";
 import { decrypt } from "@/lib/encryption";
 import FindTagsPanel from "@/components/tags/FindTagsPanel";
+import { confirm } from "@/components/ui/use-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -293,7 +301,8 @@ export default function NotePage() {
 
   const removeInk = async () => {
     if (!inkId) return;
-    if (!window.confirm("Delete all handwriting in this note? This cannot be undone.")) return;
+    const ok = await confirm("Delete all handwriting in this note? This cannot be undone.", { danger: true });
+    if (!ok) return;
     await deletePage(inkId).catch(() => {});
     setInkId(null);
     touch();
@@ -301,7 +310,8 @@ export default function NotePage() {
 
   const attachInk = async (pageId) => {
     if (inkId && inkId !== pageId) {
-      if (!window.confirm("Replace this note's handwriting with the selected page? The current handwriting is deleted.")) return;
+      const ok = await confirm("Replace this note's handwriting with the selected page? The current handwriting is deleted.", { danger: true });
+      if (!ok) return;
       await deletePage(inkId).catch(() => {});
     }
     setInkId(pageId);
@@ -1284,30 +1294,29 @@ export default function NotePage() {
                     onClick={() => setZoom((z) => (typeof z === "number" ? Math.max(50, z - 10) : 100))}
                     title="Zoom out"
                   />
-                  <select
-                    value={typeof zoom === "number" ? String(zoom) : zoom}
-                    onChange={(e) => {
-                      const val = e.target.value;
+                  <Select value={typeof zoom === "number" ? String(zoom) : zoom} onValueChange={(val) => {
                       if (val === "page-width" || val === "one-page" || val === "two-pages") {
                         setZoom(val);
                       } else {
                         setZoom(Math.max(50, Math.min(300, Number(val))));
                       }
-                    }}
-                    className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40"
-                    title="Zoom"
-                  >
-                    <option value="50">50%</option>
-                    <option value="75">75%</option>
-                    <option value="100">100%</option>
-                    <option value="125">125%</option>
-                    <option value="150">150%</option>
-                    <option value="200">200%</option>
-                    <option value="300">300%</option>
-                    <option value="page-width">Page Width</option>
-                    <option value="one-page">One Page</option>
-                    <option value="two-pages">Multiple Pages</option>
-                  </select>
+                    }}>
+                    <SelectTrigger className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40" title="Zoom">
+                      <SelectValue placeholder="Zoom" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="50">50%</SelectItem>
+                      <SelectItem value="75">75%</SelectItem>
+                      <SelectItem value="100">100%</SelectItem>
+                      <SelectItem value="125">125%</SelectItem>
+                      <SelectItem value="150">150%</SelectItem>
+                      <SelectItem value="200">200%</SelectItem>
+                      <SelectItem value="300">300%</SelectItem>
+                      <SelectItem value="page-width">Page Width</SelectItem>
+                      <SelectItem value="one-page">One Page</SelectItem>
+                      <SelectItem value="two-pages">Multiple Pages</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <ZoomIn
                     className="h-3.5 w-3.5 text-muted-foreground"
                     onClick={() => setZoom((z) => (typeof z === "number" ? Math.min(300, z + 10) : 100))}
@@ -1485,19 +1494,19 @@ export default function NotePage() {
                 {/* Folder selector */}
                 <div className="mt-4 flex items-center gap-2">
                   <Folder className="h-3.5 w-3.5 text-muted-foreground" />
-                  <select
-                    value={folder}
-                    onChange={(e) => setFolder(e.target.value)}
-                    className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 px-2 py-1 font-mono text-[11px] text-foreground outline-none focus:border-primary/40"
-                    aria-label="Folder"
-                  >
-                    <option value="">Unfiled</option>
-                    {folders.map((f) => (
-                      <option key={f.folder} value={f.folder}>
-                        {f.folder}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={folder} onValueChange={setFolder}>
+                    <SelectTrigger className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 px-2 py-1 font-mono text-[11px] text-foreground outline-none focus:border-primary/40" aria-label="Folder">
+                      <SelectValue placeholder="Unfiled" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="">Unfiled</SelectItem>
+                      {folders.map((f) => (
+                        <SelectItem key={f.folder} value={f.folder}>
+                          {f.folder}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -1521,8 +1530,8 @@ export default function NotePage() {
                       ))}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => {
-                          const newFolder = prompt("New folder name (use / for subfolders):");
+                        onClick={async () => {
+                          const newFolder = await prompt("New folder name (use / for subfolders):");
                           if (newFolder) setFolder(newFolder.trim());
                         }}
                       >
@@ -1563,7 +1572,7 @@ export default function NotePage() {
                     touch();
                   }}
                   typography={typography}
-                  onTypography={(next) => {
+                  onTypography={async (next) => {
                     const normalized = normalizeStyle(next);
                     // Warn if changing layout on a note with ink
                     if (noteInk.hasPage && noteInk.markCount > 0) {
@@ -1576,9 +1585,8 @@ export default function NotePage() {
                         (normalized.pageWidth && normalized.pageWidth !== current.pageWidth) ||
                         (normalized.pageLineHeight && normalized.pageLineHeight !== current.pageLineHeight);
                       if (layoutChanged) {
-                        if (!window.confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?")) {
-                          return;
-                        }
+                        const ok = await confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?", { danger: true });
+                        if (!ok) return;
                       }
                     }
                     setTypography(normalized);
