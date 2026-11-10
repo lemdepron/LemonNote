@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ChevronsLeft, ChevronsRight, Trash2, ChevronDown, ExternalLink, Settings } from "lucide-react";
 import { SPACES, spaceForPath } from "@/lib/spaces";
 import { readPref, writePref } from "@/lib/preferences";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const PREF_KEY = "spaces:rail-collapsed";
@@ -20,7 +21,7 @@ function useSmallScreen() {
 }
 
 /**
- * The tab manifest rendered down the left edge.
+ * The tab manifest rendered along the leading edge (left in LTR, right in RTL).
  *
  * The rail is fixed, so the page shell reserves its width through the --rail-w
  * token set from the data-rail attribute. Collapsing is the user's decision and
@@ -28,6 +29,7 @@ function useSmallScreen() {
  * every tab label stays one gesture away without shifting the page.
  */
 export default function SpaceRail() {
+  const { t } = useI18n();
   const { pathname } = useLocation();
   const active = spaceForPath(pathname)?.id || null;
   const inBin = pathname.startsWith("/trash");
@@ -69,23 +71,24 @@ export default function SpaceRail() {
 
   // Main spaces (excluding those with rail: false)
   const mainSpaces = SPACES.filter((space) => space.rail !== false);
+  const spaceLabel = (id) => t(`rail.spaces.${id}`);
 
   // More group spaces: Queries, Plugins, Sync
   const moreSpaces = [
-    { id: "queries", label: "Queries", path: "/queries", icon: SPACES.find(s => s.id === "queries")?.icon },
-    { id: "extensions", label: "Plugins", path: "/extensions", icon: SPACES.find(s => s.id === "extensions")?.icon },
-    { id: "sync", label: "Sync", path: "#", icon: ExternalLink, disabled: true, soon: true, title: "Sync is planned" },
+    { id: "queries", label: t("rail.spaces.queries"), path: "/queries", icon: SPACES.find(s => s.id === "queries")?.icon },
+    { id: "extensions", label: t("rail.spaces.extensions"), path: "/extensions", icon: SPACES.find(s => s.id === "extensions")?.icon },
+    { id: "sync", label: t("rail.spaces.sync"), path: "#", icon: ExternalLink, disabled: true, soon: true, title: t("rail.syncTitle") },
   ];
 
   return (
     <aside
-      aria-label="Workspace tabs"
+      aria-label={t("rail.tabsAria")}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setHovered(true)}
       onBlurCapture={() => setHovered(false)}
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-border/70 bg-card/90 backdrop-blur-xl",
+        "fixed inset-y-0 start-0 z-40 flex flex-col border-e border-border/70 bg-card/90 backdrop-blur-xl",
         "transition-[width,box-shadow] duration-200 ease-out",
         open ? "w-[12.5rem]" : "w-[3.75rem]",
         open && !pinned ? "shadow-xl" : ""
@@ -99,8 +102,8 @@ export default function SpaceRail() {
             <Link
               key={space.id}
               to={space.path}
-              title={space.label}
-              aria-label={space.label}
+              title={spaceLabel(space.id)}
+              aria-label={spaceLabel(space.id)}
               aria-current={current ? "page" : undefined}
               className={cn(
                 "relative flex shrink-0 items-center rounded-md py-2 transition",
@@ -110,10 +113,10 @@ export default function SpaceRail() {
                   : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
               )}
             >
-              {current && <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-primary" />}
+              {current && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
               <Icon className="h-4 w-4 shrink-0" />
               {open && (
-                <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{space.label}</span>
+                <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{spaceLabel(space.id)}</span>
               )}
             </Link>
           );
@@ -121,8 +124,8 @@ export default function SpaceRail() {
 
         <Link
           to="/trash"
-          title="Bin"
-          aria-label="Bin"
+          title={t("rail.bin")}
+          aria-label={t("rail.bin")}
           aria-current={inBin ? "page" : undefined}
           className={cn(
             "relative flex shrink-0 items-center rounded-md py-2 transition",
@@ -130,9 +133,9 @@ export default function SpaceRail() {
             inBin ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           )}
         >
-          {inBin && <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-primary" />}
+          {inBin && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
           <Trash2 className="h-4 w-4 shrink-0" />
-          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">Bin</span>}
+          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.bin")}</span>}
         </Link>
 
         {/* More group - collapsible */}
@@ -141,7 +144,7 @@ export default function SpaceRail() {
           type="button"
           onClick={toggleMore}
           aria-expanded={moreOpen}
-          aria-label={moreOpen ? "Close more options" : "Open more options"}
+          aria-label={t("rail.moreGroupAria")}
           className={cn(
             "flex items-center gap-2 w-full rounded-md py-1.5 px-2 transition",
             open ? "justify-start" : "justify-center",
@@ -157,12 +160,12 @@ export default function SpaceRail() {
             />
           </span>
           {open && (
-            <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">More</span>
+            <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.more")}</span>
           )}
         </button>
 
         {moreOpen && (
-          <div className="flex flex-col gap-0.5 pl-0" role="group" aria-label="More options">
+          <div className="flex flex-col gap-0.5 ps-0" role="group" aria-label={t("rail.moreGroupAria")}>
             {moreSpaces.map((space) => {
               const Icon = space.icon;
               const current = active === space.id && !space.disabled;
@@ -187,21 +190,21 @@ export default function SpaceRail() {
                       : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                   )}
                 >
-                  {current && !isDisabled && <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-primary" />}
+                  {current && !isDisabled && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
                   <Icon className="h-4 w-4 shrink-0" />
                   {open && (
                     <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em] flex items-center gap-1">
                       {space.label}
                       {space.soon && (
                         <span className="px-1 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground">
-                          soon
+                          {t("rail.soon")}
                         </span>
                       )}
                     </span>
                   )}
                   {!open && space.soon && (
-                    <span className="absolute bottom-0 right-0 translate-y-1/2 translate-x-1/2 px-0.5 py-0 rounded text-[7px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground whitespace-nowrap">
-                      soon
+                    <span className="absolute bottom-0 end-0 -translate-y-1/2 translate-x-1/2 rtl:translate-x-[-50%] px-0.5 py-0 rounded text-[7px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground whitespace-nowrap">
+                      {t("rail.soon")}
                     </span>
                   )}
                 </Link>
@@ -214,14 +217,14 @@ export default function SpaceRail() {
       <div className="border-t border-border/60 px-2 py-2">
         {open && (
           <p className="px-1.5 pb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/60">
-            one workspace
+            {t("rail.oneWorkspace")}
           </p>
         )}
 
         <Link
           to="/settings"
-          title="Settings"
-          aria-label="Settings"
+          title={t("rail.settings")}
+          aria-label={t("rail.settings")}
           aria-current={active === "settings" ? "page" : undefined}
           className={cn(
             "relative flex shrink-0 items-center rounded-md py-2 transition",
@@ -231,12 +234,12 @@ export default function SpaceRail() {
               : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
           )}
         >
-          {active === "settings" && <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-primary" />}
+          {active === "settings" && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
           <Settings className="h-4 w-4 shrink-0" />
-          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">Settings</span>}
+          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.settings")}</span>}
         </Link>
 
-        <div className={cn("flex items-center gap-2 py-1", open ? "px-1" : "justify-center")} title="Local vault">
+        <div className={cn("flex items-center gap-2 py-1", open ? "px-1" : "justify-center")} title={t("rail.localVault")}>
           <img
             src="/logo-64.png"
             alt=""
@@ -244,7 +247,7 @@ export default function SpaceRail() {
             aria-hidden="true"
           />
           {open && !small && (
-            <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">local vault</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">{t("rail.localVault")}</span>
           )}
         </div>
 
@@ -253,17 +256,17 @@ export default function SpaceRail() {
             type="button"
             onClick={toggle}
             aria-pressed={pinned}
-            aria-label={collapsed ? "Pin the tab rail open" : "Collapse the tab rail"}
-            title={collapsed ? "Pin open" : "Collapse to icons"}
+            aria-label={collapsed ? t("rail.pinOpenAria") : t("rail.collapseAria")}
+            title={collapsed ? t("rail.pinOpen") : t("rail.collapse")}
             className={cn(
               "flex w-full items-center rounded-md py-1.5 text-muted-foreground transition hover:bg-accent/60 hover:text-foreground",
               open ? "gap-1.5 px-1.5" : "justify-center px-0"
             )}
           >
-            {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
+            {collapsed ? <ChevronsRight className="h-3.5 w-3.5 rtl:rotate-180" /> : <ChevronsLeft className="h-3.5 w-3.5 rtl:rotate-180" />}
             {open && (
               <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
-                {collapsed ? "pin open" : "collapse"}
+                {collapsed ? t("rail.pinOpen") : t("rail.collapse")}
               </span>
             )}
           </button>

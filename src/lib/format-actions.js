@@ -523,17 +523,17 @@ export function applyMarks(selection, marks) {
   return { next, start: s, end: e, text, caret, select };
 }
 
-/** Wraps the covered lines in a `<div data-a data-dir>` block; "left" + "ltr" removes it. */
+/** Wraps the covered lines in a `<div data-a data-dir data-il data-ir data-sb data-sa>` block; "left" + "ltr" + zero values remove it. */
 export function setBlock(selection, patch) {
   const { value } = selection;
   const { from, to, text } = lineRange(selection);
-  const pattern = /^<div((?: data-(?:a|dir)="[a-z]+")*)>\n\n([\s\S]*?)\n\n<\/div>$/;
+  const pattern = /^<div((?: data-(?:a|dir|il|ir|sb|sa)="[^"]*")*)>\n\n([\s\S]*?)\n\n<\/div>$/;
   const existing = pattern.exec(text);
-  let attrs = { a: null, dir: null };
+  let attrs = { a: null, dir: null, il: null, ir: null, sb: null, sa: null };
   let body = text;
   if (existing) {
     body = existing[2];
-    for (const m of existing[1].matchAll(/data-(a|dir)="([a-z]+)"/g)) attrs[m[1]] = m[2];
+    for (const m of existing[1].matchAll(/data-(a|dir|il|ir|sb|sa)="([^"]*)"/g)) attrs[m[1]] = m[2];
   }
   attrs = { ...attrs, ...patch };
   const same = (key) => existing && patch[key] !== undefined && existing[1].includes(`data-${key}="${patch[key]}"`);
@@ -544,10 +544,39 @@ export function setBlock(selection, patch) {
   }
   if (attrs.a === "left") attrs.a = null;
   if (attrs.dir === "ltr") attrs.dir = null;
-  const attrText = `${attrs.a ? ` data-a="${attrs.a}"` : ""}${attrs.dir ? ` data-dir="${attrs.dir}"` : ""}`;
+  // Remove zero/empty indent/spacing values
+  ["il", "ir", "sb", "sa"].forEach((key) => {
+    if (attrs[key] === "0" || attrs[key] === "0.0" || attrs[key] === "") attrs[key] = null;
+  });
+  const attrText = [
+    attrs.a ? ` data-a="${attrs.a}"` : "",
+    attrs.dir ? ` data-dir="${attrs.dir}"` : "",
+    attrs.il ? ` data-il="${attrs.il}"` : "",
+    attrs.ir ? ` data-ir="${attrs.ir}"` : "",
+    attrs.sb ? ` data-sb="${attrs.sb}"` : "",
+    attrs.sa ? ` data-sa="${attrs.sa}"` : "",
+  ].join("");
   const out = attrText ? `<div${attrText}>\n\n${body}\n\n</div>` : body;
   if (out === text) return null;
   return make(value, from, to, out, from + out.length, [from, from + out.length]);
+}
+
+/** Inserts a column break marker at the cursor. */
+export function insertColumnBreak(selection) {
+  const { value, start, end } = selection;
+  const text = `<div data-column-break="true"></div>`;
+  const lead = start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+  const tail = value[end] !== "\n" ? "\n" : "";
+  return make(value, start, end, `${lead}${text}${tail}`, start + lead.length + text.length);
+}
+
+/** Inserts a page break marker at the cursor. */
+export function insertPageBreak(selection) {
+  const { value, start, end } = selection;
+  const text = `<div data-page-break="true"></div>`;
+  const lead = start > 0 && value[start - 1] !== "\n" ? "\n" : "";
+  const tail = value[end] !== "\n" ? "\n" : "";
+  return make(value, start, end, `${lead}${text}${tail}`, start + lead.length + text.length);
 }
 
 /* --------------------------------- links ---------------------------------- */
@@ -564,6 +593,33 @@ export function wikiLink(selection) {
   const label = value.slice(start, end);
   if (label) return make(value, start, end, `[[${label}]]`, start + label.length + 4);
   return make(value, start, end, "[[]]", start + 2);
+}
+
+/** Inserts a bookmark anchor at the cursor: <span id="bm-name"></span>. */
+export function insertBookmark(selection, name) {
+  const { value, start, end } = selection;
+  const safeName = String(name).replace(/[^a-zA-Z0-9_-]/g, '-').replace(/^-+|-+$/g, '');
+  if (!safeName) return null;
+  const id = `bm-${safeName}`;
+  const text = `<span id="${id}"></span>`;
+  return make(value, start, end, text, start + text.length);
+}
+
+/** Inserts a figure with image and caption: <figure><img src="..." alt="..."><figcaption>Figure N: caption</figcaption></figure> */
+export function insertFigure(selection, src, caption) {
+  const { value, start, end } = selection;
+  const alt = caption || 'Figure';
+  const captionText = caption ? `Figure: ${caption}` : 'Figure';
+  const text = `<figure>\n<img src="${src}" alt="${alt}">\n<figcaption>${captionText}</figcaption>\n</figure>\n\n`;
+  return make(value, start, end, text, start + text.length);
+}
+
+/** Inserts a chart code block at the cursor. */
+export function insertChart(selection, config) {
+  const { value, start, end } = selection;
+  const json = JSON.stringify(config, null, 2);
+  const text = `\n\`\`\`chart\n${json}\n\`\`\`\n\n`;
+  return make(value, start, end, text, start + text.length);
 }
 
 /** Static outline of the headings in the note, written as nested bullets. */
@@ -776,4 +832,48 @@ export function dueDate(selection, key) {
       return key ? `${bare} due:${key}` : bare;
     })
   );
+}
+
+/**
+ * Toggle a line tag on the selection (add if not present, remove if present).
+ * Works on the whole note when caret is collapsed, or on selected lines.
+ */
+export function toggleLineTag(selection, tagId) {
+  const { value, start, end } = selection;
+  const normalizedTag = String(tagId).toLowerCase();
+  const marker = `{tag:${normalizedTag}}`;
+
+  // Determine scope: whole note if caret collapsed, otherwise selected lines
+  const scope = start === end ? { value, start: 0, end: value.length } : selection;
+
+  return mapLines(scope, (lines) => {
+    return lines.map((line) => {
+      const match = /^(\s*)\{tag:([a-zA-Z][a-zA-Z0-9_-]*)\}/.exec(line);
+      if (match && match[2].toLowerCase() === normalizedTag) {
+        // Tag exists - remove it
+        return match[1] + line.slice(match[0].length);
+      } else if (!match || match[2].toLowerCase() !== normalizedTag) {
+        // Tag doesn't exist or different tag - add/replace at start of line (after leading whitespace)
+        const leadingMatch = /^(\s*)/.exec(line);
+        const leading = leadingMatch ? leadingMatch[1] : "";
+        const rest = line.slice(leading.length);
+        // Remove any existing line tag first
+        const withoutTag = rest.replace(/^\{tag:[a-zA-Z][a-zA-Z0-9_-]*\}/, "").trimStart();
+        return leading + marker + " " + withoutTag;
+      }
+      return line;
+    });
+  });
+}
+
+/**
+ * Remove all line tags from the selection (or whole note if caret collapsed).
+ */
+export function clearLineTags(selection) {
+  const { value, start, end } = selection;
+  const scope = start === end ? { value, start: 0, end: value.length } : selection;
+
+  return mapLines(scope, (lines) => {
+    return lines.map((line) => line.replace(/^(\s*)\{tag:[a-zA-Z][a-zA-Z0-9_-]*\}/, "$1"));
+  });
 }

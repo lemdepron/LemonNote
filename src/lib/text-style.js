@@ -105,7 +105,29 @@ export const highlightStyle = (id) => ({ backgroundColor: HIGHLIGHT_BY_ID.get(id
 export function blockStyle(data = {}) {
   const style = {};
   if (["left", "center", "right", "justify"].includes(data["data-a"])) style.textAlign = data["data-a"];
+  // "auto" cannot be expressed as the CSS `direction` property; the reader puts the
+  // dir="auto" attribute on the block element itself, so each block follows its own content.
   if (["rtl", "ltr"].includes(data["data-dir"])) style.direction = data["data-dir"];
+  // Paragraph indentation and spacing (0.5em steps)
+  if (data["data-il"] !== undefined) {
+    const val = parseFloat(data["data-il"]);
+    if (Number.isFinite(val)) style.marginLeft = `${val}em`;
+  }
+  if (data["data-ir"] !== undefined) {
+    const val = parseFloat(data["data-ir"]);
+    if (Number.isFinite(val)) style.marginRight = `${val}em`;
+  }
+  if (data["data-sb"] !== undefined) {
+    const val = parseFloat(data["data-sb"]);
+    if (Number.isFinite(val)) style.marginTop = `${val}em`;
+  }
+  if (data["data-sa"] !== undefined) {
+    const val = parseFloat(data["data-sa"]);
+    if (Number.isFinite(val)) style.marginBottom = `${val}em`;
+  }
+  // Column break and page break markers (handled via CSS break-after)
+  if (data["data-column-break"] === "true") style.breakAfter = "column";
+  if (data["data-page-break"] === "true") style.breakAfter = "page";
   return style;
 }
 
@@ -121,9 +143,9 @@ export const SANITIZE_SCHEMA = {
   attributes: {
     ...defaultSchema.attributes,
     // hast stores data-x attributes as camelCase properties (data-f -> dataF).
-    span: ["dataF", "dataC", "dataS", "dataSc", "dataLs"],
+    span: ["dataF", "dataC", "dataS", "dataSc", "dataLs", "id"],
     mark: ["dataH"],
-    div: ["dataA", "dataDir"],
+    div: ["dataA", "dataDir", "dataIl", "dataIr", "dataSb", "dataSa", "dataColumnBreak", "dataPageBreak"],
     details: ["open"],
   },
 };
@@ -165,6 +187,148 @@ export const PAGE_MODE_KEYS = [
   "pageLineHeight",
 ];
 
+/* ---------------------------- page backgrounds ----------------------------- */
+
+export const PAGE_STYLES = [
+  { id: "default", label: "Default", description: "Plain background" },
+  { id: "grid", label: "Grid", description: "Square grid pattern" },
+  { id: "lines", label: "Lines", description: "Ruled lines pattern" },
+  { id: "blank", label: "Blank (void)", description: "No background pattern" },
+];
+
+export const DEFAULT_GRID_SIZE = 24;
+export const DEFAULT_LINE_HEIGHT = 28;
+
+/* ---------------------------- style sets ----------------------------------- */
+
+export const STYLE_SETS = [
+  {
+    id: "classic",
+    label: "Classic",
+    description: "Traditional serif for reading comfort",
+    font: "georgia",
+    headingFont: "garamond",
+    size: 16,
+    lineHeight: 1.78,
+    gap: 0.95,
+    spacing: "normal",
+  },
+  {
+    id: "modern",
+    label: "Modern",
+    description: "Clean sans-serif for contemporary feel",
+    font: "segoe",
+    headingFont: "calibri",
+    size: 16,
+    lineHeight: 1.6,
+    gap: 0.8,
+    spacing: "normal",
+  },
+  {
+    id: "compact",
+    label: "Compact",
+    description: "Tight spacing for dense notes",
+    font: "segoe",
+    headingFont: "segoe",
+    size: 14,
+    lineHeight: 1.4,
+    gap: 0.5,
+    spacing: "tight",
+  },
+  {
+    id: "report",
+    label: "Report",
+    description: "Professional layout for documents",
+    font: "calibri",
+    headingFont: "cambria",
+    size: 15,
+    lineHeight: 1.6,
+    gap: 1.2,
+    spacing: "normal",
+    width: "normal",
+    align: "justify",
+  },
+  {
+    id: "arabic",
+    label: "Arabic book",
+    description: "Optimized for Arabic text",
+    font: "arabic-typeset",
+    headingFont: "arabic-trad",
+    size: 18,
+    lineHeight: 2,
+    gap: 1.4,
+    spacing: "wide",
+    dir: "rtl",
+  },
+  {
+    id: "mono",
+    label: "Mono",
+    description: "Monospace for code and technical notes",
+    font: "consolas",
+    headingFont: "consolas",
+    size: 14,
+    lineHeight: 1.5,
+    gap: 0.7,
+    spacing: "normal",
+    editorFont: "mono",
+    editorSize: 13,
+  },
+];
+
+const STYLE_SET_BY_ID = new Map(STYLE_SETS.map((s) => [s.id, s]));
+
+/* -------------------------- paragraph spacing ------------------------------ */
+
+export const PARAGRAPH_PRESETS = [
+  { id: "tight", label: "Tight", gap: 0.5, lineHeight: 1.4 },
+  { id: "normal", label: "Normal", gap: 0.95, lineHeight: 1.78 },
+  { id: "relaxed", label: "Relaxed", gap: 1.4, lineHeight: 2 },
+  { id: "double", label: "Double", gap: 2, lineHeight: 2.3 },
+];
+
+/* ------------------------------ page borders ------------------------------- */
+
+export const PAGE_BORDERS = [
+  { id: "none", label: "None" },
+  { id: "line", label: "Line" },
+  { id: "double", label: "Double" },
+  { id: "rounded", label: "Rounded" },
+];
+
+/* ------------------------------ watermarks --------------------------------- */
+
+export const WATERMARK_ANGLES = [
+  { id: "diagonal", label: "Diagonal" },
+  { id: "horizontal", label: "Horizontal" },
+];
+
+export const DEFAULT_WATERMARK_OPACITY = 0.08;
+
+/* ------------------------------ page setup ----------------------------------- */
+
+export const PAGE_SIZES = [
+  { id: "a4", label: "A4 (210×297 mm)", width: 210, height: 297 },
+  { id: "a5", label: "A5 (148×210 mm)", width: 148, height: 210 },
+  { id: "letter", label: "Letter (8.5×11 in)", width: 215.9, height: 279.4 },
+  { id: "legal", label: "Legal (8.5×14 in)", width: 215.9, height: 355.6 },
+  { id: "custom", label: "Custom size…" },
+];
+
+export const PAGE_ORIENTATIONS = [
+  { id: "portrait", label: "Portrait" },
+  { id: "landscape", label: "Landscape" },
+];
+
+export const MARGINS = [
+  { id: "normal", label: "Normal (25.4 mm)", top: 25.4, right: 25.4, bottom: 25.4, left: 25.4 },
+  { id: "narrow", label: "Narrow (12.7 mm)", top: 12.7, right: 12.7, bottom: 12.7, left: 12.7 },
+  { id: "wide", label: "Wide (50.8 mm)", top: 50.8, right: 50.8, bottom: 50.8, left: 50.8 },
+  { id: "custom", label: "Custom margins…" },
+];
+
+export const COLUMN_COUNTS = [1, 2, 3];
+export const COLUMN_GAPS = [0.5, 1, 1.5, 2, 2.5, 3];
+
 /** Cleans a stored style object so only known keys with valid values remain. */
 export function normalizeStyle(raw) {
   const out = {};
@@ -179,13 +343,56 @@ export function normalizeStyle(raw) {
   if (LETTER_SPACING.some((item) => item.id === raw.spacing)) out.spacing = raw.spacing;
   if (WIDTHS.some((item) => item.id === raw.width)) out.width = raw.width;
   if (["left", "center", "right", "justify"].includes(raw.align)) out.align = raw.align;
-  if (["ltr", "rtl"].includes(raw.dir)) out.dir = raw.dir;
+  if (["ltr", "rtl", "auto"].includes(raw.dir)) out.dir = raw.dir;
   if (raw.indent === true) out.indent = true;
   if (raw.dropCap === true) out.dropCap = true;
   if (raw.spell === false) out.spell = false;
   // Page mode settings for ink overlay
   if (Number.isFinite(raw.pageWidth) && raw.pageWidth >= 400 && raw.pageWidth <= 1200) out.pageWidth = Math.round(raw.pageWidth);
   if (Number.isFinite(raw.pageLineHeight) && raw.pageLineHeight >= 1 && raw.pageLineHeight <= 3.5) out.pageLineHeight = raw.pageLineHeight;
+  // Page style (background pattern)
+  if (PAGE_STYLES.some((item) => item.id === raw.pageStyle)) out.pageStyle = raw.pageStyle;
+  if (Number.isFinite(raw.pageGridSize) && raw.pageGridSize >= 8 && raw.pageGridSize <= 100) out.pageGridSize = Math.round(raw.pageGridSize);
+  if (Number.isFinite(raw.pageLineHeight) && raw.pageLineHeight >= 16 && raw.pageLineHeight <= 60) out.pageLineHeight = Math.round(raw.pageLineHeight);
+  // Style set
+  if (STYLE_SET_BY_ID.has(raw.styleSet)) out.styleSet = raw.styleSet;
+  // Theme (per-note override)
+  if (typeof raw.themePreset === "string" && raw.themePreset) out.themePreset = raw.themePreset;
+  if (typeof raw.themeAccent === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.themeAccent)) out.themeAccent = raw.themeAccent;
+  if (FONT_BY_ID.has(raw.themeHeadingFont)) out.themeHeadingFont = raw.themeHeadingFont;
+  if (FONT_BY_ID.has(raw.themeBodyFont)) out.themeBodyFont = raw.themeBodyFont;
+  // Paragraph spacing preset
+  if (PARAGRAPH_PRESETS.some((item) => item.id === raw.paragraphPreset)) out.paragraphPreset = raw.paragraphPreset;
+  // Page appearance
+  if (typeof raw.pageColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.pageColor)) out.pageColor = raw.pageColor;
+  if (PAGE_BORDERS.some((item) => item.id === raw.pageBorder)) out.pageBorder = raw.pageBorder;
+  if (typeof raw.pageBorderColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.pageBorderColor)) out.pageBorderColor = raw.pageBorderColor;
+  // Watermark
+  if (typeof raw.watermarkText === "string") out.watermarkText = raw.watermarkText.slice(0, 30);
+  if (typeof raw.watermarkColor === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.watermarkColor)) out.watermarkColor = raw.watermarkColor;
+  if (Number.isFinite(raw.watermarkOpacity) && raw.watermarkOpacity >= 0 && raw.watermarkOpacity <= 1) out.watermarkOpacity = raw.watermarkOpacity;
+  if (WATERMARK_ANGLES.some((item) => item.id === raw.watermarkAngle)) out.watermarkAngle = raw.watermarkAngle;
+  // Page setup (Layout tab)
+  if (PAGE_SIZES.some((item) => item.id === raw.pageSize)) out.pageSize = raw.pageSize;
+  if (raw.pageSize === "custom" && Number.isFinite(raw.pageWidth) && raw.pageWidth > 0 && raw.pageWidth <= 1000 && Number.isFinite(raw.pageHeight) && raw.pageHeight > 0 && raw.pageHeight <= 1000) {
+    out.pageWidth = Math.round(raw.pageWidth);
+    out.pageHeight = Math.round(raw.pageHeight);
+  }
+  if (PAGE_ORIENTATIONS.some((item) => item.id === raw.pageOrientation)) out.pageOrientation = raw.pageOrientation;
+  if (MARGINS.some((item) => item.id === raw.pageMargins)) out.pageMargins = raw.pageMargins;
+  if (raw.pageMargins === "custom") {
+    ["marginTop", "marginRight", "marginBottom", "marginLeft"].forEach((key) => {
+      if (Number.isFinite(raw[key]) && raw[key] >= 0 && raw[key] <= 200) out[key] = Math.round(raw[key] * 10) / 10;
+    });
+  }
+  // Columns
+  if (COLUMN_COUNTS.includes(raw.columnCount)) out.columnCount = raw.columnCount;
+  if (COLUMN_GAPS.includes(raw.columnGap)) out.columnGap = raw.columnGap;
+  // Editor
+  if (raw.showLineNumbers === true) out.showLineNumbers = true;
+  if (["auto", "none"].includes(raw.hyphens)) out.hyphens = raw.hyphens;
+  // Per-note language (for spelling and hyphenation)
+  if (["en", "ar", "es", "fr", "de", "zh", "ja", "ko", "pt", "ru", "it", "nl", "tr", "pl", "hi"].includes(raw.language)) out.language = raw.language;
   return out;
 }
 
@@ -198,9 +405,48 @@ export function readerProps(style, hasInk = false) {
   if (s.lineHeight) css.lineHeight = s.lineHeight;
   if (s.spacing) css.letterSpacing = LETTER_SPACING.find((item) => item.id === s.spacing).value;
   if (s.align) css.textAlign = s.align;
-  if (s.dir) css.direction = s.dir;
+  // "auto" is handled per block in MarkdownView (dir="auto" on every block element).
+  if (s.dir && s.dir !== "auto") css.direction = s.dir;
   if (s.gap !== undefined) css["--nt-gap"] = `${s.gap}em`;
   if (s.headingFont) css["--nt-heading"] = fontStack(s.headingFont);
+  
+  // Columns (CSS multi-column layout)
+  if (s.columnCount && s.columnCount > 1) {
+    css.columnCount = s.columnCount;
+    css.columnGap = `${s.columnGap || 1.5}em`;
+  }
+  
+  // Hyphenation
+  if (s.hyphens) css.hyphens = s.hyphens;
+  
+  // Page style (background pattern for reading page)
+  if (s.pageStyle && s.pageStyle !== "default") {
+    css["--nt-page-style"] = s.pageStyle;
+    if (s.pageGridSize) css["--nt-page-grid-size"] = `${s.pageGridSize}px`;
+    if (s.pageLineHeight) css["--nt-page-line-height"] = `${s.pageLineHeight}px`;
+  }
+  
+  // Page color
+  if (s.pageColor) css["--nt-page-color"] = s.pageColor;
+  
+  // Page border
+  if (s.pageBorder && s.pageBorder !== "none") {
+    css["--nt-page-border"] = s.pageBorder;
+    if (s.pageBorderColor) css["--nt-page-border-color"] = s.pageBorderColor;
+  }
+  
+  // Watermark
+  if (s.watermarkText) {
+    css["--nt-watermark-text"] = `"${s.watermarkText.replace(/"/g, '\\"')}"`;
+    if (s.watermarkColor) css["--nt-watermark-color"] = s.watermarkColor;
+    if (s.watermarkOpacity !== undefined) css["--nt-watermark-opacity"] = String(s.watermarkOpacity);
+    if (s.watermarkAngle) css["--nt-watermark-angle"] = s.watermarkAngle;
+  }
+  
+  // Per-note theme overrides
+  if (s.themeAccent) css["--nt-theme-accent"] = s.themeAccent;
+  if (s.themeHeadingFont) css["--nt-theme-heading-font"] = fontStack(s.themeHeadingFont);
+  if (s.themeBodyFont) css["--nt-theme-body-font"] = fontStack(s.themeBodyFont);
   
   // Fixed page width for notes with ink (page mode)
   if (hasInk) {
@@ -227,8 +473,34 @@ export function editorProps(style, hasInk = false) {
   if (s.editorFont) css.fontFamily = fontStack(s.editorFont);
   if (s.editorSize) css.fontSize = `${s.editorSize}px`;
   if (s.lineHeight) css.lineHeight = s.lineHeight;
-  if (s.dir) css.direction = s.dir;
+  // The writing box is one <textarea>, so "auto" applies to the whole box (an HTML
+  // dir attribute, not the CSS property). Per-line direction is only possible in the reader.
+  if (s.dir && s.dir !== "auto") css.direction = s.dir;
   if (s.align && s.align !== "justify") css.textAlign = s.align;
+  
+  // Hyphenation in editor
+  if (s.hyphens) css.hyphens = s.hyphens;
+  
+  // Page style (background pattern for editor)
+  if (s.pageStyle && s.pageStyle !== "default") {
+    css["--nt-page-style"] = s.pageStyle;
+    if (s.pageGridSize) css["--nt-page-grid-size"] = `${s.pageGridSize}px`;
+    if (s.pageLineHeight) css["--nt-page-line-height"] = `${s.pageLineHeight}px`;
+  }
+  
+  // Page color
+  if (s.pageColor) css["--nt-page-color"] = s.pageColor;
+  
+  // Page border
+  if (s.pageBorder && s.pageBorder !== "none") {
+    css["--nt-page-border"] = s.pageBorder;
+    if (s.pageBorderColor) css["--nt-page-border-color"] = s.pageBorderColor;
+  }
+  
+  // Per-note theme overrides
+  if (s.themeAccent) css["--nt-theme-accent"] = s.themeAccent;
+  if (s.themeHeadingFont) css["--nt-theme-heading-font"] = fontStack(s.themeHeadingFont);
+  if (s.themeBodyFont) css["--nt-theme-body-font"] = fontStack(s.themeBodyFont);
   
   // Fixed page width for notes with ink (page mode)
   if (hasInk) {
@@ -239,7 +511,7 @@ export function editorProps(style, hasInk = false) {
     }
   }
   
-  return { style: css, spellCheck: s.spell !== false };
+  return { style: css, dir: s.dir === "auto" ? "auto" : undefined, spellCheck: s.spell !== false };
 }
 
 /* ------------------------------ symbols ----------------------------------- */

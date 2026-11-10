@@ -12,12 +12,17 @@ import {
 } from "@/lib/ink/smoothing";
 import { recognizeShape } from "@/lib/ink/shapes";
 import { tokenColor } from "@/lib/theme";
+import { nextId } from "@/lib/ink/utils";
+import {
+  renderShape,
+  renderSticker,
+  renderTextBox,
+  renderSticky,
+  OBJECT_TYPES,
+} from "@/lib/ink/objects";
 
 const MIN_SCALE = 0.18;
 const MAX_SCALE = 8;
-
-let counter = 0;
-const nextId = (prefix) => `${prefix}-${Date.now().toString(36)}-${(counter += 1).toString(36)}`;
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -33,6 +38,7 @@ export default class InkEngine {
     this.overlay = overlay;
     this.cb = callbacks;
     this.strokes = [];
+    this.objects = [];
     this.paper = { template: "grid", size: "a4", tone: "dark" };
     this.camera = { x: 0, y: 0, scale: 1 };
     this.viewport = { w: 800, h: 600, dpr: 1 };
@@ -56,6 +62,7 @@ export default class InkEngine {
     this.playback = null;
     this.panStart = null;
     this.rulerOrigin = null;
+    this.insertSpaceDrag = null; // { dragging: boolean, startY: number, lineY: number }
     this.dirtyBase = true;
     this.dirtyOverlay = true;
     this.frame = 0;
@@ -64,6 +71,11 @@ export default class InkEngine {
 
   setTransparent(transparent) {
     this.transparent = transparent;
+    this.invalidate();
+  }
+
+  setObjects(objects) {
+    this.objects = Array.isArray(objects) ? objects : [];
     this.invalidate();
   }
 
@@ -527,6 +539,77 @@ export default class InkEngine {
     this.setSelection([]);
   }
 
+  /**
+   * Insert or remove vertical space at a given Y coordinate.
+   * Positive distance = insert space (move strokes below line down)
+   * Negative distance = remove space (move strokes below line up), limited by overlaps.
+   * Returns { moved: number, limited: boolean } where limited=true if upward move was clamped.
+   */
+  insertSpace(lineY, distance) {
+    if (distance === 0) return { moved: 0, limited: false };
+
+    const strokes = this.strokes;
+    let limited = false;
+    let actualDistance = distance;
+
+    if (distance < 0) {
+      // Moving up: check for overlaps. Find the highest point of any stroke below the line.
+      // We can only move up until the lowest stroke below the line would hit the line.
+      let minGap = Infinity;
+      strokes.forEach((stroke) => {
+        if (stroke.kind === "text") {
+          const box = strokeBounds(stroke);
+          if (box && box.y > lineY) {
+            const gap = box.y - lineY;
+            if (gap < minGap) minGap = gap;
+          }
+        } else {
+          const points = toPoints(stroke);
+          points.forEach((point) => {
+            if (point.y > lineY) {
+              const gap = point.y - lineY;
+              if (gap < minGap) minGap = gap;
+            }
+          });
+        }
+      });
+      // The maximum upward movement is the minimum gap
+      if (minGap !== Infinity && -distance > minGap) {
+        actualDistance = -minGap;
+        limited = true;
+      }
+    }
+
+    // Apply the movement to all strokes below the line
+    const next = strokes.map((stroke) => {
+      if (stroke.kind === "text") {
+        const box = strokeBounds(stroke);
+        if (box && box.y > lineY) {
+          return { ...stroke, y: Number((stroke.y + actualDistance).toFixed(2)) };
+        }
+        return stroke;
+      }
+      // For regular strokes, check if any point is below the line
+      const points = toPoints(stroke);
+      const hasPointBelow = points.some((point) => point.y > lineY);
+      if (!hasPointBelow) return stroke;
+
+      // Move all points that are below the line
+      const newPoints = points.map((point) => {
+        if (point.y > lineY) {
+          return [Number((point.x).toFixed(2)), Number((point.y + actualDistance).toFixed(2))];
+        }
+        return [Number(point.x.toFixed(2)), Number(point.y.toFixed(2))];
+      });
+      return { ...stroke, points: newPoints };
+    });
+
+    this.strokes = next;
+    this.cb.onReplace?.(next);
+    this.invalidate();
+    return { moved: Math.abs(actualDistance), limited };
+  }
+
   /* ---------------------------------------------------------------- export */
 
   regionForExport() {
@@ -613,6 +696,24 @@ export default class InkEngine {
       if (this.hiddenByPlayback(stroke)) return;
       paintElement(ctx, stroke, { light });
     });
+    // Render objects on top of strokes
+    const scale = this.camera.scale;
+    this.objects.forEach((object) => {
+      switch (object.type) {
+        case OBJECT_TYPES.SHAPE:
+          renderShape(ctx, object, scale);
+          break;
+        case OBJECT_TYPES.STICKER:
+          renderSticker(ctx, object, scale);
+          break;
+        case OBJECT_TYPES.TEXTBOX:
+          renderTextBox(ctx, object, scale, false);
+          break;
+        case OBJECT_TYPES.STICKY:
+          renderSticky(ctx, object, scale, false);
+          break;
+      }
+    });
   }
 
   hiddenByPlayback(stroke) {
@@ -675,6 +776,23 @@ export default class InkEngine {
       ctx.beginPath();
       ctx.moveTo(this.rulerOrigin.x - Math.cos(angle) * span, this.rulerOrigin.y - Math.sin(angle) * span);
       ctx.lineTo(this.rulerOrigin.x + Math.cos(angle) * span, this.rulerOrigin.y + Math.sin(angle) * span);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Insert space guide line
+    if (this.insertSpaceDrag && this.insertSpaceDrag.dragging) {
+      const view = this.viewRect();
+      const lineY = this.insertSpaceDrag.lineY;
+      const startX = view.left - 10000;
+      const endX = view.right + 10000;
+      ctx.save();
+      ctx.strokeStyle = tokenColor("--primary", 0.85) || "rgba(229,181,103,0.85)";
+      ctx.lineWidth = 1.5 / scale;
+      ctx.setLineDash([8 / scale, 6 / scale]);
+      ctx.beginPath();
+      ctx.moveTo(startX, lineY);
+      ctx.lineTo(endX, lineY);
       ctx.stroke();
       ctx.restore();
     }

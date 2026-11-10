@@ -7,11 +7,15 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import NoteCard from "@/components/vault/NoteCard";
 import SearchResults from "@/components/vault/SearchResults";
 import TagRail from "@/components/vault/TagRail";
+import VaultSidebar from "@/components/vault/VaultSidebar";
 import Backup from "@/components/vault/Backup";
 import { collectTags, escapeRegExp, noteLinks, noteTags, relativeTime } from "@/lib/vault";
+import FindTagsPanel from "@/components/tags/FindTagsPanel";
+import { useNavigate } from "react-router-dom";
 
 const SURFACES = [
   { to: "/journal", label: "Daily journal", hint: "one page per day", icon: CalendarDays },
+  { to: "/calendar", label: "Calendar", hint: "tasks & journal by date", icon: CalendarDays },
   { to: "/tasks", label: "Task inbox", hint: "todo, doing, done", icon: ListChecks },
   { to: "/cards", label: "Flashcards", hint: "spaced repetition", icon: Layers },
   { to: "/graph", label: "Graph view", hint: "the vault as a network", icon: Share2 },
@@ -21,12 +25,30 @@ const SURFACES = [
 ];
 
 export default function VaultHome() {
-  const { notes, loading } = useVault();
+  const {
+    notes,
+    trashedNotes,
+    filteredNotes,
+    folders,
+    loading,
+    activeFolder,
+    setActiveFolder,
+    recentFilter,
+    setRecentFilter,
+    showFavourites,
+    setShowFavourites,
+    includeDeleted,
+    setIncludeDeleted,
+    reload,
+    RECENT_FILTERS,
+  } = useVault();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const query = params.get("q") || "";
   const activeTag = params.get("tag") || "";
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [findTagsOpen, setFindTagsOpen] = useState(false);
   const searchRef = useRef(null);
 
   useEffect(() => {
@@ -66,28 +88,45 @@ export default function VaultHome() {
     const timer = setTimeout(async () => {
       const pattern = escapeRegExp(term);
       const page = await db.entities.Note.filter(
-        {
-          trashed: { $ne: true },
-          $or: [
-            { title: { $regex: pattern, $options: "i" } },
-            { body: { $regex: pattern, $options: "i" } },
-          ],
-        },
+        includeDeleted
+          ? {
+              $or: [
+                { title: { $regex: pattern, $options: "i" } },
+                { body: { $regex: pattern, $options: "i" } },
+              ],
+            }
+          : {
+              trashed: { $ne: true },
+              $or: [
+                { title: { $regex: pattern, $options: "i" } },
+                { body: { $regex: pattern, $options: "i" } },
+              ],
+            },
         { sort: "-updated_date", limit: 40 }
       );
       setResults(page?.items ?? []);
       setSearching(false);
     }, 220);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, includeDeleted]);
 
   const tags = useMemo(() => collectTags(notes), [notes]);
   const linkCount = useMemo(() => notes.reduce((total, note) => total + noteLinks(note).length, 0), [notes]);
   const visibleNotes = useMemo(
-    () => (activeTag ? notes.filter((note) => noteTags(note).includes(activeTag)) : notes),
-    [notes, activeTag]
+    () => (activeTag ? filteredNotes.filter((note) => noteTags(note).includes(activeTag)) : filteredNotes),
+    [filteredNotes, activeTag]
   );
   const isSearching = query.trim().length >= 2;
+
+  const handleCreateFolder = async (folderPath) => {
+    // Folders are just strings on notes, so we don't need to do anything special
+    // The folder will exist once a note is moved there
+    await reload();
+  };
+
+  const handleRefresh = async () => {
+    await reload();
+  };
 
   return (
     <div className="nb-shell min-h-screen">
@@ -157,8 +196,8 @@ export default function VaultHome() {
           </div>
         </section>
 
-        <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_248px]">
-          <div className="min-w-0">
+        <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_248px_280px]">
+          <div className="min-w-0 lg:col-span-2">
             {isSearching ? (
               <section>
                 <div className="flex items-baseline justify-between">
@@ -168,7 +207,7 @@ export default function VaultHome() {
                   )}
                 </div>
                 <div className="mt-3">
-                  <SearchResults query={query.trim()} results={results} loading={searching || loading} />
+                  <SearchResults query={query.trim()} results={results} loading={searching || loading} onRestore={reload} />
                 </div>
               </section>
             ) : (
@@ -188,10 +227,35 @@ export default function VaultHome() {
                   </div>
                 )}
 
+                {/* Favourites section */}
+                {showFavourites && visibleNotes.length > 0 && (
+                  <section className="mb-6">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <h2 className="text-[13px] font-medium tracking-tight flex items-center gap-2">
+                        <span className="text-yellow-400">★</span> Favourites
+                      </h2>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {visibleNotes.filter((n) => n.favourite).length} notes
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {visibleNotes.filter((n) => n.favourite).slice(0, 6).map((note) => (
+                        <NoteCard key={note.id} note={note} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+
                 <section>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
                     <h2 className="text-[13px] font-medium tracking-tight">
-                      {activeTag ? `Tagged #${activeTag}` : "Recent notes"}
+                      {activeTag
+                        ? `Tagged #${activeTag}`
+                        : activeFolder !== undefined
+                        ? activeFolder
+                          ? `Folder: ${activeFolder}`
+                          : "Unfiled"
+                        : "Recent notes"}
                     </h2>
                     <span className="font-mono text-[10px] text-muted-foreground">
                       {visibleNotes.length} notes
@@ -232,15 +296,24 @@ export default function VaultHome() {
                     <ul className="mt-2 divide-y divide-border/50">
                       {visibleNotes.map((note) => (
                         <li key={note.id}>
-                          <Link
-                            to={`/note/${note.id}`}
-                            className="flex items-center gap-3 rounded-md px-2 py-2.5 transition hover:bg-card/50"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              if (e.ctrlKey || e.metaKey) {
+                                e.preventDefault();
+                                window.open(`/note/${note.id}`, "_blank");
+                                return;
+                              }
+                              navigate(`/note/${note.id}`);
+                            }}
+                            className="flex items-center gap-3 rounded-md px-2 py-2.5 transition hover:bg-card/50 w-full text-left"
                           >
                             <span className="truncate text-[13.5px] text-foreground/90">{note.title}</span>
+                            {note.favourite && <span className="text-yellow-400">★</span>}
                             <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
                               {relativeTime(note.updated_date)}
                             </span>
-                          </Link>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -250,15 +323,41 @@ export default function VaultHome() {
             )}
           </div>
 
+          <VaultSidebar
+            folders={folders}
+            activeFolder={activeFolder}
+            onSelectFolder={setActiveFolder}
+            recentFilter={recentFilter}
+            onSetRecentFilter={setRecentFilter}
+            showFavourites={showFavourites}
+            onToggleFavourites={setShowFavourites}
+            includeDeleted={includeDeleted}
+            onToggleIncludeDeleted={setIncludeDeleted}
+            onCreateFolder={handleCreateFolder}
+            onRefresh={handleRefresh}
+            noteCount={notes.length}
+            trashedCount={trashedNotes.length}
+          />
+
           <TagRail
             tags={tags}
             activeTag={activeTag}
             onSelect={toggleTag}
             noteCount={notes.length}
             linkCount={linkCount}
+            onFindTags={() => setFindTagsOpen(true)}
           />
         </div>
       </main>
+      {findTagsOpen && (
+        <FindTagsPanel
+          notes={notes}
+          onOpenNote={(noteId, lineNumber) => {
+            navigate(`/note/${noteId}`);
+          }}
+          onClose={() => setFindTagsOpen(false)}
+        />
+      )}
     </div>
   );
 }

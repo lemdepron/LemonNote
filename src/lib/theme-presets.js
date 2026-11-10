@@ -153,6 +153,15 @@ const SPEC = [
   ["cloud-nine", "Cloud nine", "light", "blend", 212, 216, 222],
   ["opal", "Opal", "light", "blend", 292, 300, 286],
 
+  /* Fruit-themed presets */
+  ["lemon-shapes", "Lemon shapes", "light", "waves", 54, 56, 40],
+  ["strawberry", "Strawberry", "light", "dots", 346, 350, 340],
+  ["watermelon", "Watermelon", "light", "blend", 140, 132, 340],
+  ["banana", "Banana", "light", "paper", 52, 50, 38],
+  ["apple", "Apple", "light", "grain", 12, 120, 10],
+  ["orange", "Orange", "light", "gradient", 32, 36, 24],
+  ["cocoanut", "Cocoanut", "light", "paper", 28, 32, 20],
+
   ["midnight-grid", "Midnight grid", "dark", "plain", 220, 220, 218],
   ["ink-black", "Ink black", "dark", "plain", 250, 246, 244],
   ["gunmetal", "Gunmetal", "dark", "plain", 200, 204, 206],

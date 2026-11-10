@@ -1,17 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  AtSign, Braces, ChevronsDownUp, Footprints, Hash, ImagePlus, Link, Link2, ListOrdered, ListTree, MessageSquareQuote,
+  AtSign, BarChart, Bookmark, Braces, ChevronsDownUp, Footprints, Hash, ImagePlus, Link, Link2, ListOrdered, ListTree, MessageSquareQuote,
   Minus, Omega, SquareCode, TextQuote, Clock, CornerDownLeft, CalendarPlus, CalendarClock, CalendarCheck, CalendarRange, CalendarDays,
-  BookOpenCheck, ArrowLeft, ArrowRight,
+  BookOpenCheck, ArrowLeft, ArrowRight, FileVideo, Paperclip, Mic, MicOff, Square, Circle, Triangle, Star, Minus as LineIcon,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import TablePicker from "@/components/ribbon/TablePicker";
 import CardComposer from "@/components/ribbon/CardComposer";
 import { Btn, MenuItem, MenuLabel, RibbonMenu, TextGrid, useRibbon } from "@/components/ribbon/RibbonKit";
 import {
-  fenceAt, footnoteParts, insertBlock, linkWithUrl, outlineOf, toggleWrap, wikiLink, wrapSelectionInFence,
+  fenceAt, footnoteParts, insertBlock, insertBookmark, insertChart, linkWithUrl, outlineOf, toggleWrap, wikiLink, wrapSelectionInFence,
 } from "@/lib/format-actions";
-import { insertText, tableInsert } from "@/lib/ribbon-actions";
+import { insertText, tableAt, tableInsert } from "@/lib/ribbon-actions";
 import { DATE_FORMATS, JOURNAL_TEMPLATES, monthKey, monthlyTemplate, neighbourTitle, weekKey, weeklyTemplate } from "@/lib/journal-tools";
 import { shiftDay } from "@/lib/journal";
 import { SYMBOLS } from "@/lib/text-style";
@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { JOURNAL_TEMPLATE, dateKey } from "@/lib/journal";
 import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
+import { addAttachment } from "@/lib/attachments";
+import { toast } from "@/lib/toast";
 
 const FIELD =
   "h-8 w-full rounded-md border border-border/80 bg-background/60 px-2 text-[12.5px] text-foreground outline-none focus:border-primary/40";
@@ -65,7 +67,7 @@ const CALLOUTS = [
 
 /* --------------------------------- Insert --------------------------------- */
 
-export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteTitle }) {
+export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteTitle, ink }) {
   const navigate = useNavigate();
   const { selection, run, value } = useRibbon();
   const now = () => new Date();
@@ -103,6 +105,140 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
   const matches = (label, id) => !filter || `${label} ${id}`.toLowerCase().includes(filter.toLowerCase());
   const snippets = LANGUAGES.filter((item) => item.template);
 
+  // Refs for hidden file inputs
+  const gifInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingBlob, setRecordingBlob] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+  // Format file size for display
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Handle GIF file selection
+  const handleGifSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+
+    // Validate file type
+    const allowedTypes = ["image/gif", "image/webp", "image/apng"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please select a GIF, WebP, or APNG file.");
+      return;
+    }
+
+    try {
+      const attachment = await addAttachment(file);
+      const snippet = `\n![${file.name.replace(/\.[^.]+$/, "")}](${attachment.ref})\n\n`;
+      const at = selection;
+      const start = Math.min(at.start ?? value.length, value.length);
+      const end = Math.min(at.end ?? start, value.length);
+      run({
+        start,
+        end,
+        text: snippet,
+        caret: start + snippet.length,
+        next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
+      });
+    } catch {
+      toast.error("Failed to insert GIF.");
+    }
+  };
+
+  // Handle file attachment selection
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = "";
+
+    // Check size limit (default 25MB)
+    const MAX_SIZE = 25 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error(`File must be under ${formatSize(MAX_SIZE)}.`);
+      return;
+    }
+
+    try {
+      const attachment = await addAttachment(file);
+      const snippet = `\n[${file.name} (${formatSize(file.size)})](${attachment.ref})\n\n`;
+      const at = selection;
+      const start = Math.min(at.start ?? value.length, value.length);
+      const end = Math.min(at.end ?? start, value.length);
+      run({
+        start,
+        end,
+        text: snippet,
+        caret: start + snippet.length,
+        next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
+      });
+    } catch {
+      toast.error("Failed to attach file.");
+    }
+  };
+
+  // Handle audio recording toggle
+  const handleAudioToggle = async () => {
+    if (isRecording) {
+      // Stop recording
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    // Start recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) audioChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        setRecordingBlob(blob);
+
+        // Save as attachment and insert into note
+        try {
+          const file = new File([blob], `recording-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+          const attachment = await addAttachment(file);
+          const snippet = `\n![audio](${attachment.ref})\n\n`;
+          const at = selection;
+          const start = Math.min(at.start ?? value.length, value.length);
+          const end = Math.min(at.end ?? start, value.length);
+          run({
+            start,
+            end,
+            text: snippet,
+            caret: start + snippet.length,
+            next: `${value.slice(0, start)}${snippet}${value.slice(end)}`,
+          });
+        } catch {
+          toast.error("Failed to save recording.");
+        }
+      };
+
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      toast.info("Recording… click again to stop.");
+    } catch (err) {
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        toast.error("Microphone permission denied. Please allow microphone access in your browser settings.");
+      } else {
+        toast.error("Failed to start recording.");
+      }
+    }
+  };
+
   return (
     <>
       <RibbonGroup label="Pictures">
@@ -115,10 +251,53 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
           placeholder="https://…/picture.png"
           build={(s, url) => insertText(s, `![${s.value.slice(s.start, s.end) || "image"}](${url})`)}
         />
+        <Btn
+          id="insert.figure"
+          icon={ImagePlus}
+          label="Figure"
+          hint="Insert an image with a caption (Figure N: caption)"
+          onClick={() => {
+            const caption = prompt('Figure caption (optional):');
+            if (caption === null) return; // User cancelled
+            // Store caption and trigger image picker
+            window.__pendingFigureCaption = caption;
+            onPickImage();
+          }}
+        />
+      </RibbonGroup>
+
+      <RibbonGroup label="Media">
+        <Btn
+          id="insert.gif"
+          icon={FileVideo}
+          label="GIF"
+          hint="Insert an animated GIF, WebP or APNG from your computer"
+          onClick={() => gifInputRef.current?.click()}
+        />
+        <Btn
+          id="insert.file"
+          icon={Paperclip}
+          label="Attach file"
+          hint="Attach any file (PDF, Word, zip, etc.) — opens in viewer or downloads"
+          onClick={() => fileInputRef.current?.click()}
+        />
+        <Btn
+          id="insert.audio"
+          icon={isRecording ? MicOff : Mic}
+          label="Record audio"
+          hint={isRecording ? "Stop recording" : "Record audio from microphone"}
+          active={isRecording}
+          onClick={handleAudioToggle}
+        />
       </RibbonGroup>
 
       <RibbonGroup label="Links">
         <Btn id="insert.noteLink" icon={Link2} label="Note link" hint="Link another note with [[ ]]" edit={wikiLink} />
+        <Btn id="insert.bookmark" icon={Bookmark} label="Bookmark" hint="Insert a named anchor at the cursor" edit={(s) => {
+          const name = prompt('Bookmark name:');
+          if (!name) return null;
+          return insertBookmark(s, name);
+        }} />
         <UrlMenu id="insert.webLink" icon={Link} label="Web link" hint="Turn the selection into a web link" placeholder="https://example.com" build={linkWithUrl} />
         <UrlMenu
           id="insert.email"
@@ -129,6 +308,37 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
           build={(s, mail) => linkWithUrl(s, `mailto:${mail}`)}
         />
         <UrlMenu id="insert.tag" icon={Hash} label="Tag" hint="Insert a #tag" placeholder="tag-name" build={(s, tag) => insertText(s, `#${tag.replace(/^#/, "")} `)} />
+      </RibbonGroup>
+
+      {/* Bookmarks menu - lists all bookmarks in the current note */}
+      <RibbonGroup label="Bookmarks">
+        <RibbonMenu id="insert.bookmarks" icon={Bookmark} label="Bookmarks" hint="Jump to a bookmark in this note" width={240}>
+          {(close) => {
+            const bookmarks = [...value.matchAll(/<span id="(bm-[^"]+)"><\/span>/g)].map(m => m[1]);
+            if (!bookmarks.length) {
+              return (
+                <MenuItem disabled className="text-muted-foreground px-2 py-1 text-[11px]">
+                  No bookmarks in this note
+                </MenuItem>
+              );
+            }
+            return bookmarks.map((bm) => (
+              <MenuItem
+                key={bm}
+                onClick={() => {
+                  const id = bm;
+                  const el = document.getElementById(id);
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                  close();
+                }}
+              >
+                {bm.replace(/^bm-/, '')}
+              </MenuItem>
+            ));
+          }}
+        </RibbonMenu>
       </RibbonGroup>
 
       <RibbonGroup label="Blocks">
@@ -180,6 +390,26 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
           edit={(s) => insertBlock(s, outlineOf(value))}
         />
         <Btn id="insert.quoteBlock" icon={TextQuote} label="Quote" hint="Block quote" edit={(s) => insertBlock(s, "> ", 2)} />
+        <Btn
+          id="insert.chart"
+          icon={BarChart}
+          label="Chart"
+          hint="Insert a chart from a table (bar, line, pie)"
+          disabled={!tableAt(value, selection.start)}
+          disabledReason="Put the cursor inside a table first"
+          onClick={() => {
+            const tableCount = (value.match(/\|.*\|/g) || []).length;
+            if (!tableCount) return;
+            const type = prompt('Chart type (bar, line, pie):', 'bar');
+            if (!type || !['bar', 'line', 'pie'].includes(type)) return;
+            const tableIndex = prompt(`Table index (0 to ${tableCount - 1}):`, '0');
+            if (tableIndex === null) return;
+            const idx = parseInt(tableIndex, 10);
+            if (isNaN(idx) || idx < 0 || idx >= tableCount) return;
+            const title = prompt('Chart title (optional):', '');
+            run(insertChart(selection, { type, table: idx, title: title || undefined }));
+          }}
+        />
       </RibbonGroup>
 
       <RibbonGroup label="Symbols">
@@ -262,6 +492,47 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
+      <RibbonGroup label="Shapes">
+        <Btn id="insert.shape.rect" icon={Square} label="Rectangle" hint="Insert a rectangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rect" })} />
+        <Btn id="insert.shape.rounded" icon={Square} label="Rounded rect" hint="Insert a rounded rectangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rounded-rect" })} />
+        <Btn id="insert.shape.ellipse" icon={Circle} label="Ellipse" hint="Insert an ellipse" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "ellipse" })} />
+        <Btn id="insert.shape.line" icon={LineIcon} label="Line" hint="Insert a line" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "line" })} />
+        <Btn id="insert.shape.arrow" icon={LineIcon} label="Arrow" hint="Insert an arrow" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "arrow" })} />
+        <Btn id="insert.shape.triangle" icon={Triangle} label="Triangle" hint="Insert a triangle" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "triangle" })} />
+        <Btn id="insert.shape.star" icon={Star} label="Star" hint="Insert a star" onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "star" })} />
+      </RibbonGroup>
+
+      <RibbonGroup label="Stickers">
+        <RibbonMenu id="insert.sticker" icon={Star} label="Stickers" hint="Insert a built-in sticker" width={320}>
+          {(close) => (
+            <div className="p-1">
+              {ink?.STICKERS?.map((sticker) => (
+                <button
+                  key={sticker.id}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    ink?.addObject?.("sticker", 100, 100, { stickerId: sticker.id });
+                    close();
+                  }}
+                  className="h-10 w-10 rounded-md border border-border/70 p-1 transition hover:bg-accent hover:border-primary/50"
+                  title={sticker.label}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-full w-full text-foreground">
+                    {sticker.paths.map((path, i) => <path key={i} d={path} />)}
+                  </svg>
+                </button>
+              ))}
+            </div>
+          )}
+        </RibbonMenu>
+      </RibbonGroup>
+
+      <RibbonGroup label="Text & Notes">
+        <Btn id="insert.textbox" icon={Square} label="Text box" hint="Insert a text box" onClick={() => ink?.addObject?.("textbox", 100, 100)} />
+        <Btn id="insert.sticky" icon={Square} label="Sticky note" hint="Insert a sticky note" onClick={() => ink?.addObject?.("sticky", 100, 100)} />
+      </RibbonGroup>
+
       <RibbonGroup label="Time and calendar">
         <Btn id="insert.today" icon={CalendarPlus} label="Today" hint="Open or create today's daily note" shortcut="Ctrl+Alt+D" onClick={() => goTo(today, JOURNAL_TEMPLATE)} />
         <Btn id="insert.yesterday" icon={CalendarClock} label="Yesterday" hint="Open yesterday's note" onClick={() => goTo(shiftDay(today, -1), JOURNAL_TEMPLATE)} />
@@ -337,6 +608,21 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
           openSignal={signals.card}
         />
       </RibbonGroup>
+
+      {/* Hidden file inputs for GIF and file attachments */}
+      <input
+        ref={gifInputRef}
+        type="file"
+        accept="image/gif,image/webp,image/apng"
+        className="hidden"
+        onChange={handleGifSelect}
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
     </>
   );
 }

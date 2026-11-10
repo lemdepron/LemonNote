@@ -11,6 +11,7 @@ import { applyAttr, toggleItalic, toggleWrap, toggleComment, fenceAt, stepFontSi
 import { commit, useEditorSnapshot } from "@/lib/editor-bridge";
 import { shortcutMatches } from "@/lib/shortcuts";
 import { readPref, writePref } from "@/lib/preferences";
+import { useI18n } from "@/lib/i18n";
 import { RibbonContext, RibbonFrame } from "@/components/ribbon/RibbonKit";
 import { TabErrorBoundary } from "@/components/ribbon/TabErrorBoundary";
 import QuickAccess from "@/components/ribbon/QuickAccess";
@@ -82,7 +83,9 @@ export function initialRibbonTab() {
 
 export default function NoteRibbon({
   body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
+  onFindTags,
 }) {
+  const { t: tr } = useI18n();
   const navigate = useNavigate();
   const fileRef = useRef(null);
   const [signals, setSignals] = useState({ card: 0, table: 0, code: 0 });
@@ -209,22 +212,21 @@ export default function NoteRibbon({
   const leading = (
     <RibbonButton
       icon={FileText}
-      label="File"
-      hint="File menu (Ctrl+Shift+F)"
+      label={tr("ribbon.file")}
+      hint={tr("ribbon.fileHint")}
       onClick={handleFileOpen}
       active={filePanelOpen}
-      className="border-r border-border/60 mr-0.5"
+      className="border-e border-border/60 me-0.5"
     />
   );
 
   return (
     <RibbonContext.Provider value={context}>
       <RibbonFrame
-        tabs={visibleTabs}
+        tabs={visibleTabs.map((item) => ({ ...item, label: tr(`ribbon.tabs.${item.id}`) }))}
         tab={activeTab}
         onTab={chooseTab}
-        leading={<QuickAccess />}
-        leading={leading}
+        leading={<><QuickAccess />{leading}</>}
         trailing={
           (images?.busy || images?.error) && (
             <div
@@ -240,13 +242,13 @@ export default function NoteRibbon({
         }
       >
         {activeTab === "home" && (
-          <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} /></TabErrorBoundary>
+          <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} onFindTags={onFindTags} /></TabErrorBoundary>
         )}
         {activeTab === "insert" && (
-          <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} /></TabErrorBoundary>
+          <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} /></TabErrorBoundary>
         )}
         {activeTab === "design" && <TabErrorBoundary><DesignTab /></TabErrorBoundary>}
-        {activeTab === "layout" && <TabErrorBoundary><LayoutTab /></TabErrorBoundary>}
+        {activeTab === "layout" && <TabErrorBoundary><LayoutTab ink={noteInk?.ink} /></TabErrorBoundary>}
         {activeTab === "view" && <TabErrorBoundary><ViewTab /></TabErrorBoundary>}
         {activeTab === "share" && <TabErrorBoundary><ShareTab /></TabErrorBoundary>}
         {activeTab === "ink" && <TabErrorBoundary><InkTab noteInk={noteInk} /></TabErrorBoundary>}
@@ -262,6 +264,8 @@ export default function NoteRibbon({
             setNoteForPanel(null);
           }}
           isNew={!noteId}
+          selection={selection}
+          noteBody={body}
         />
       )}
 

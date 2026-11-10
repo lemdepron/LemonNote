@@ -43,12 +43,22 @@ export default function NoteInkOverlay({
     engine.resize(contentWidth, contentHeight, Math.min(window.devicePixelRatio || 1, 2));
   }, [contentWidth, contentHeight]);
 
-  if (!noteInk.hasPage || noteInk.markCount === 0) {
+  // Sync objects to engine
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.setObjects?.(noteInk.board?.objects || []);
+  }, [noteInk.board?.objects]);
+
+  if (!noteInk.hasPage || (noteInk.markCount === 0 && (noteInk.board?.objects?.length || 0) === 0)) {
     return null;
   }
 
   // Only show overlay when contentRef is available
   if (!contentRef) return null;
+
+  const ink = noteInk.ink;
+  const board = noteInk.board;
 
   return (
     <div
@@ -63,11 +73,19 @@ export default function NoteInkOverlay({
       }}
     >
       <InkBoard
-        {...noteInk.board}
+        {...board}
         transparent
         autoFit={false}
         className="absolute inset-0"
         height={contentHeight}
+        // Object callbacks from ink
+        onSelectObject={ink?.onSelectObject ?? (() => {})}
+        onUpdateObject={ink?.updateObject}
+        onDeleteObject={ink?.deleteObject}
+        onBringToFront={ink?.bringToFront}
+        onSendToBack={ink?.sendToBack}
+        editingObjectId={ink?.editingObjectId}
+        setEditingObjectId={ink?.setEditingObjectId}
       />
     </div>
   );

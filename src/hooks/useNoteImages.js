@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
-import { db } from "@/api/localDb";
+import { addAttachment } from "@/lib/attachments";
 import { caret, commit } from "@/lib/editor-bridge";
-import { imageRejection, imageSnippet } from "@/lib/note-insert";
+import { imageRejection, imageSnippet, figureSnippet } from "@/lib/note-insert";
 
 /**
  * Uploads images picked from the ribbon, dropped on the editor or pasted into
  * it, then writes a plain markdown image at the caret. The note stores the
  * markdown, so the uploaded file needs a permanent URL to keep rendering.
+ * Images are stored as attachments in the _files store and referenced as
+ * ![name](local:<id>) in the markdown.
  */
 export default function useNoteImages({ body, onChange }) {
   const bodyRef = useRef(body);
@@ -23,6 +25,12 @@ export default function useNoteImages({ body, onChange }) {
       return;
     }
 
+    // Check for pending figure caption
+    const pendingCaption = window.__pendingFigureCaption;
+    if (pendingCaption !== undefined) {
+      window.__pendingFigureCaption = undefined;
+    }
+
     setError("");
     setBusy(true);
     // Taken before the upload so the picture lands where the writer left the caret.
@@ -30,8 +38,12 @@ export default function useNoteImages({ body, onChange }) {
     try {
       const parts = [];
       for (const file of list) {
-        const { file_url } = await db.integrations.Core.UploadPublicFile({ file });
-        parts.push(imageSnippet(file_url, file.name.replace(/\.[^.]+$/, "")));
+        const attachment = await addAttachment(file);
+        if (pendingCaption !== undefined) {
+          parts.push(figureSnippet(attachment.ref, pendingCaption));
+        } else {
+          parts.push(imageSnippet(attachment.ref, file.name.replace(/\.[^.]+$/, "")));
+        }
       }
       const value = at.value || bodyRef.current || "";
       const start = Math.min(at.start ?? value.length, value.length);

@@ -1,14 +1,21 @@
 import { useRef, useState } from "react";
-import { Download, Loader2, Upload } from "lucide-react";
+import { Download, Loader2, Upload, AlertTriangle, FolderOpen, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { exportBackup, importBackup, previewBackup } from "@/lib/backup";
-import { success, error } from "@/lib/toast";
+import { importFiles, previewImport } from "@/lib/import";
+import { success, error, info } from "@/lib/toast";
 
 export default function Backup() {
   const [mode, setMode] = useState("merge");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null); // { data, counts }
+  const [importMode, setImportMode] = useState("backup"); // "backup" | "files" | "folder"
+  const [importPreview, setImportPreview] = useState(null);
+  const [importOptions, setImportOptions] = useState({ preserveFolders: true });
   const fileInput = useRef(null);
+  const importFileInput = useRef(null);
+  const importFolderInput = useRef(null);
 
   const dateStamp = () => new Date().toISOString().slice(0, 10);
 
@@ -28,7 +35,15 @@ export default function Backup() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(url);
-      success("Backup downloaded.");
+      
+      let msg = "Backup downloaded.";
+      if (backup._fileSizeFormatted) {
+        msg += ` Size: ${backup._fileSizeFormatted}.`;
+        if (backup._fileSize > 50 * 1024 * 1024) {
+          msg += " Large backup — consider using a dedicated backup tool.";
+        }
+      }
+      success(msg);
     } catch (err) {
       error(`Export failed: ${err.message}`);
     } finally {
@@ -79,6 +94,129 @@ export default function Backup() {
     }
   };
 
+  // --- Markdown/Folder Import ---
+  const handleImportFilesPick = () => {
+    importFileInput.current?.click();
+  };
+
+  const handleImportFolderPick = () => {
+    importFolderInput.current?.click();
+  };
+
+  const handleImportFiles = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    event.target.value = "";
+    
+    setBusy(true);
+    try {
+      const preview = await previewImport(files, { 
+        preserveFolderStructure: importOptions.preserveFolders 
+      });
+      setImportPreview(preview);
+      setImportMode("files");
+    } catch (err) {
+      error(`Could not preview files: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImportFolder = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    event.target.value = "";
+    
+    setBusy(true);
+    try {
+      const preview = await previewImport(files, { 
+        preserveFolderStructure: importOptions.preserveFolders 
+      });
+      setImportPreview(preview);
+      setImportMode("folder");
+    } catch (err) {
+      error(`Could not preview folder: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyFileImport = async () => {
+    if (!importPreview) return;
+    setBusy(true);
+    try {
+      // Get the files again - we need to re-pick them
+      // For now, we'll show a message to re-select
+      info("Please select the files again to import.");
+    } catch (err) {
+      error(`Import failed: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const applyFolderImport = async () => {
+    if (!importPreview) return;
+    setBusy(true);
+    try {
+      info("Please select the folder again to import.");
+    } catch (err) {
+      error(`Import failed: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmFileImport = (files) => {
+    setBusy(true);
+    importFiles(files, { 
+      preserveFolderStructure: importOptions.preserveFolders,
+      onProgress: (update) => {
+        // Could show progress here
+      }
+    }).then((result) => {
+      setImportPreview(null);
+      setImportMode("backup");
+      const total = result.notes.length;
+      const errors = result.errors.length;
+      success(
+        `Imported ${total} note${total === 1 ? "" : "s"}${errors ? `, ${errors} error${errors !== 1 ? "s" : ""}` : ""}.`
+      );
+      if (errors) {
+        result.errors.forEach((e) => console.error(e));
+      }
+    }).catch((err) => {
+      error(`Import failed: ${err.message}`);
+    }).finally(() => {
+      setBusy(false);
+    });
+  };
+
+  const confirmFolderImport = (files) => {
+    setBusy(true);
+    importFiles(files, { 
+      preserveFolderStructure: importOptions.preserveFolders,
+      onProgress: (update) => {
+        // Could show progress here
+      }
+    }).then((result) => {
+      setImportPreview(null);
+      setImportMode("backup");
+      const total = result.notes.length;
+      const errors = result.errors.length;
+      success(
+        `Imported ${total} note${total === 1 ? "" : "s"}${errors ? `, ${errors} error${errors !== 1 ? "s" : ""}` : ""}.`
+      );
+      if (errors) {
+        result.errors.forEach((e) => console.error(e));
+      }
+    }).catch((err) => {
+      error(`Import failed: ${err.message}`);
+    }).finally(() => {
+      setBusy(false);
+    });
+  };
+
   const countsTable = () => {
     if (!preview) return null;
     const rows = Object.entries(preview.tables).map(([name, table]) => (
@@ -123,6 +261,103 @@ export default function Backup() {
     </p>
   ) : null;
 
+  const sizeWarn = preview?.data?._fileSizeFormatted ? (
+    <div className="mt-3 flex items-center gap-2 text-[12px] text-amber-600 dark:text-amber-400">
+      <AlertTriangle className="h-3.5 w-3.5" />
+      <span>Backup contains attachments: {preview.data._fileSizeFormatted}</span>
+    </div>
+  ) : null;
+
+  // Import preview UI for markdown/files
+  const importPreviewUI = () => {
+    if (!importPreview) return null;
+    const isFolder = importMode === "folder";
+    const notesWithErrors = importPreview.notes.filter((n) => n.error).length;
+    const notesToImport = importPreview.notes.filter((n) => !n.error).length;
+    const folders = importPreview.folders.length;
+
+    return (
+      <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 className="text-[13px] font-medium tracking-tight">
+            {isFolder ? "Confirm folder import" : "Confirm file import"}
+          </h3>
+        </div>
+        <div className="grid gap-2 text-[12px] mb-4">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Files found:</span>
+            <span className="font-mono">{importPreview.totalFiles}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Notes to import:</span>
+            <span className="font-mono">{notesToImport}</span>
+          </div>
+          {notesWithErrors > 0 && (
+            <div className="flex justify-between text-destructive">
+              <span className="text-muted-foreground">Errors:</span>
+              <span className="font-mono">{notesWithErrors}</span>
+            </div>
+          )}
+          {folders > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Folders:</span>
+              <span className="font-mono">{folders}</span>
+            </div>
+          )}
+        </div>
+        {importPreview.notes.slice(0, 10).map((note, i) => (
+          <div key={i} className="flex items-center gap-2 text-[11px] px-2 py-1 rounded bg-background/50">
+            {note.error ? (
+              <>
+                <span className="text-destructive">✗</span>
+                <span className="truncate text-destructive">{note.title}: {note.error}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">📄</span>
+                <span className="truncate">{note.title}</span>
+                {note.folder && <span className="text-muted-foreground">→ {note.folder}</span>}
+                {note.tags.length > 0 && <span className="text-primary">#{note.tags.join(" #")}</span>}
+                {note.embedCount > 0 && <span className="text-amber-600">🖼 {note.embedCount}</span>}
+              </>
+            )}
+          </div>
+        ))}
+        {importPreview.notes.length > 10 && (
+          <p className="text-[11px] text-muted-foreground mt-2">… and {importPreview.notes.length - 10} more</p>
+        )}
+        <div className="mt-4 flex gap-2">
+          <label className="flex items-center gap-2 text-[12px] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={importOptions.preserveFolders}
+              onChange={(e) => setImportOptions({ ...importOptions, preserveFolders: e.target.checked })}
+              className="h-3.5 w-3.5 rounded border-border/80 bg-card/60 text-primary focus:ring-2 focus:ring-primary/20"
+            />
+            Preserve folder structure
+          </label>
+          <button
+            type="button"
+            onClick={() => { setImportPreview(null); setImportMode("backup"); }}
+            className="flex h-9 items-center gap-1.5 rounded-md border border-border/60 bg-background px-3 font-mono text-[12px] text-muted-foreground transition hover:bg-accent"
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <Button onClick={() => {
+            if (isFolder) {
+              importFolderInput.current?.click();
+            } else {
+              importFileInput.current?.click();
+            }
+          }} disabled={busy}>
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Import"}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="mt-10 rounded-xl border border-border/60 bg-card/40 p-6 sm:p-8">
       <div className="flex items-baseline justify-between gap-3">
@@ -132,7 +367,7 @@ export default function Backup() {
             Export or import your whole vault
           </h2>
           <p className="mt-2 text-[12.5px] text-muted-foreground">
-            One .json file with every note, canvas, table, code file, ink drawing and flashcard.
+            One .json file with every note, canvas, table, code file, ink drawing, flashcard, and attachments.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -145,6 +380,42 @@ export default function Backup() {
             Import backup
           </Button>
         </div>
+      </div>
+
+      <Separator className="my-6" />
+      
+      <div>
+        <p className="nb-label">Import from files</p>
+        <h3 className="mt-1 font-display text-[18px] leading-tight tracking-tight">
+          Import Markdown files or Obsidian vault
+        </h3>
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          Select .md/.txt files or a folder. Subfolders become note folders. Wikilinks [[...]] and tags #tag are preserved.
+          Image embeds ![[image.png]] are converted to attachments.
+        </p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Button onClick={handleImportFilesPick} disabled={busy} className="flex items-center gap-2">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+          Import .md/.txt files
+        </Button>
+        <Button onClick={handleImportFolderPick} disabled={busy} className="flex items-center gap-2">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderOpen className="h-3.5 w-3.5" />}
+          Import folder (Obsidian vault)
+        </Button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={importOptions.preserveFolders}
+            onChange={(e) => setImportOptions({ ...importOptions, preserveFolders: e.target.checked })}
+            className="h-3.5 w-3.5 rounded border-border/80 bg-card/60 text-primary focus:ring-2 focus:ring-primary/20"
+          />
+          Preserve folder structure as note folders
+        </label>
       </div>
 
       <div className="mt-4 flex items-center gap-2">
@@ -177,6 +448,33 @@ export default function Backup() {
         onChange={handleFileInput}
       />
 
+      {importPreviewUI()}
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".json"
+        hidden
+        onChange={handleFileInput}
+      />
+      <input
+        ref={importFileInput}
+        type="file"
+        accept=".md,.markdown,.txt"
+        multiple
+        hidden
+        onChange={handleImportFiles}
+      />
+      <input
+        ref={importFolderInput}
+        type="file"
+        accept=".md,.markdown,.txt"
+        multiple
+        webkitdirectory
+        hidden
+        onChange={handleImportFolder}
+      />
+
       {preview ? (
         <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
           <div className="flex items-baseline justify-between mb-3">
@@ -185,6 +483,7 @@ export default function Backup() {
               {preview.data.exportedAt ?? "unknown date"}
             </span>
           </div>
+          {sizeWarn}
           {countsTable()}
           <div className="mt-4 flex gap-2">
             <button

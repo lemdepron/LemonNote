@@ -4,6 +4,8 @@ import { rememberColor } from "@/lib/ink/palette";
 import { loadPage, savePage } from "@/lib/ink/store";
 import { tokenColor, useTheme } from "@/lib/theme";
 import { escapeRegExp } from "@/lib/vault";
+import { toast } from "@/lib/toast";
+import { createObject, getDefaultSize, OBJECT_TYPES, SHAPE_TYPES, STICKERS } from "@/lib/ink/objects";
 
 const DEFAULT_TOOL = {
   mode: "draw",
@@ -43,6 +45,10 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
   const [handwriting, setHandwriting] = useState({ query: "", matches: [], searching: false });
   const [recording, setRecording] = useState(false);
   const [replay, setReplay] = useState({ playing: false, time: 0, syncing: false });
+  const [objects, setObjects] = useState([]);
+  const [objectSelection, setObjectSelection] = useState(null); // { id, type: 'move'|'resize'|'rotate', handle }
+  const [selectedObjectId, setSelectedObjectId] = useState(null);
+  const [editingObjectId, setEditingObjectId] = useState(null);
 
   const engineRef = useRef(null);
   const registryRef = useRef(new Map());
@@ -95,6 +101,8 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     futureRef.current = [];
     dirtyRef.current = false;
     setSelection({ ids: [], bounds: null });
+    setObjectSelection(null);
+    setEditingObjectId(null);
     setRecognition(EMPTY_RECOGNITION);
     setHandwriting({ query: "", matches: [], searching: false });
     if (!id) {
@@ -106,7 +114,7 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     }
     setLoading(true);
     loadPage(id)
-      .then(({ page: record, strokes, registry }) => {
+      .then(({ page: record, strokes, objects: loadedObjects, registry }) => {
         if (!alive) return;
         registryRef.current = registry;
         const paper = {
@@ -114,10 +122,11 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
           tone: themeRef.current === "light" ? "light" : "dark",
           ...(record.paper || {}),
         };
-        const next = { ...record, strokes, paper };
+        const next = { ...record, strokes, objects: loadedObjects || [], paper };
         setTool((current) => ({ ...current, color: inkForTone(paper.tone) }));
         latestRef.current = next;
         setPage(next);
+        setObjects(loadedObjects || []);
         setStatus("idle");
         setLoading(false);
       })
@@ -126,6 +135,7 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         registryRef.current = new Map();
         latestRef.current = null;
         setPage(null);
+        setObjects([]);
         setLoading(false);
       });
     return () => {
@@ -150,6 +160,25 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
       const updated = { ...current, strokes: next };
       latestRef.current = updated;
       setPage(updated);
+      markDirty();
+    },
+    [markDirty]
+  );
+
+  const applyObjects = useCallback(
+    (next, { history = true } = {}) => {
+      const current = latestRef.current;
+      if (!current) return;
+      const now = Date.now();
+      if (history) {
+        pastRef.current = [...pastRef.current.slice(-59), current.objects];
+        futureRef.current = [];
+        lastHistoryRef.current = now;
+      }
+      const updated = { ...current, objects: next };
+      latestRef.current = updated;
+      setPage(updated);
+      setObjects(next);
       markDirty();
     },
     [markDirty]
@@ -235,6 +264,83 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     setTool((current) => ({ ...current, color: hex, mode: "draw" }));
   }, []);
 
+  const handleInsertSpaceLimited = useCallback(() => {
+    toast.info("Space removed only where ink would not overlap. Some strokes limit further removal.", 4000);
+  }, []);
+
+  const onSelectObject = useCallback((id) => {
+    setSelectedObjectId(id);
+  }, []);
+
+  // Object management
+  const addObject = useCallback((type, x, y, overrides = {}) => {
+    const current = latestRef.current;
+    if (!current) return;
+    const { width, height } = getDefaultSize(type, overrides.shapeType);
+    const newObject = createObject(type, x, y, width, height, overrides);
+    const nextObjects = [...(current.objects || []), newObject];
+    applyObjects(nextObjects, { history: true });
+    setObjectSelection({ id: newObject.id, type: "move" });
+    return newObject;
+  }, [applyObjects]);
+
+  const updateObject = useCallback((id, changes, options = {}) => {
+    const current = latestRef.current;
+    if (!current) return;
+    const nextObjects = (current.objects || []).map((obj) =>
+      obj.id === id ? { ...obj, ...changes } : obj
+    );
+    // Allow history: true to be passed for explicit user actions (like Layout tab)
+    // Default to false for coalescing rapid updates (dragging handles)
+    applyObjects(nextObjects, { history: options.history === true });
+  }, [applyObjects]);
+
+  const deleteObject = useCallback((id) => {
+    const current = latestRef.current;
+    if (!current) return;
+    const nextObjects = (current.objects || []).filter((obj) => obj.id !== id);
+    applyObjects(nextObjects, { history: true });
+    if (objectSelection?.id === id) setObjectSelection(null);
+    if (editingObjectId === id) setEditingObjectId(null);
+  }, [applyObjects, objectSelection, editingObjectId]);
+
+  const deleteSelectedObjects = useCallback(() => {
+    const current = latestRef.current;
+    if (!current || !objectSelection) return;
+    const nextObjects = (current.objects || []).filter((obj) => obj.id !== objectSelection.id);
+    applyObjects(nextObjects, { history: true });
+    setObjectSelection(null);
+    setEditingObjectId(null);
+  }, [applyObjects, objectSelection]);
+
+  const bringToFront = useCallback((id) => {
+    const current = latestRef.current;
+    if (!current) return;
+    const objects = current.objects || [];
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const maxZ = Math.max(...objects.map((o) => o.zOrder || 0), 0);
+    updateObject(id, { zOrder: maxZ + 1 }, { history: true });
+  }, [updateObject]);
+
+  const sendToBack = useCallback((id) => {
+    const current = latestRef.current;
+    if (!current) return;
+    const objects = current.objects || [];
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const minZ = Math.min(...objects.map((o) => o.zOrder || 0), 0);
+    updateObject(id, { zOrder: minZ - 1 }, { history: true });
+  }, [updateObject]);
+
+  const startEditingObject = useCallback((id) => {
+    setEditingObjectId(id);
+  }, []);
+
+  const stopEditingObject = useCallback(() => {
+    setEditingObjectId(null);
+  }, []);
+
   const updateTool = useCallback((changes) => {
     setTool((current) => ({ ...current, ...changes }));
   }, []);
@@ -245,9 +351,12 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     const previous = pastRef.current[pastRef.current.length - 1];
     pastRef.current = pastRef.current.slice(0, -1);
     futureRef.current = [...futureRef.current, current.strokes];
-    const updated = { ...current, strokes: previous };
+    // Also restore objects if they were saved
+    const prevObjects = pastRef.current[pastRef.current.length - 1]?.objects || current.objects;
+    const updated = { ...current, strokes: previous, objects: prevObjects };
     latestRef.current = updated;
     setPage(updated);
+    setObjects(prevObjects);
     markDirty();
   }, [markDirty]);
 
@@ -257,9 +366,12 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     const next = futureRef.current[futureRef.current.length - 1];
     futureRef.current = futureRef.current.slice(0, -1);
     pastRef.current = [...pastRef.current, current.strokes];
-    const updated = { ...current, strokes: next };
+    // Also restore objects if they were saved
+    const nextObjects = futureRef.current[futureRef.current.length - 1]?.objects || current.objects;
+    const updated = { ...current, strokes: next, objects: nextObjects };
     latestRef.current = updated;
     setPage(updated);
+    setObjects(nextObjects);
     markDirty();
   }, [markDirty]);
 
@@ -279,10 +391,17 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         event.preventDefault();
         engineRef.current?.deleteSelection();
       }
+      if ((event.key === "Delete" || event.key === "Backspace") && objectSelection && !editingObjectId) {
+        event.preventDefault();
+        deleteSelectedObjects();
+      }
+      if (event.key === "Escape" && editingObjectId) {
+        stopEditingObject();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, undo, redo, selection.ids.length]);
+  }, [active, undo, redo, selection.ids.length, objectSelection, editingObjectId, deleteSelectedObjects, stopEditingObject]);
 
   const clearPage = () => {
     if (!latestRef.current?.strokes.length) return;
@@ -480,6 +599,11 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         pageIndex,
         zoom,
         selection,
+        objectSelection,
+        setObjectSelection,
+        selectedObjectId,
+        editingObjectId,
+        objects,
         engine: () => engineRef.current,
         canUndo: pastRef.current.length > 0,
         canRedo: futureRef.current.length > 0,
@@ -505,11 +629,25 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         onScrub: scrub,
         onClearAudio: clearAudio,
         onOpenPage,
+        // Object management
+        addObject,
+        updateObject,
+        deleteObject,
+        deleteSelectedObjects,
+        bringToFront,
+        sendToBack,
+        startEditingObject,
+        stopEditingObject,
+        onSelectObject,
+        SHAPE_TYPES,
+        STICKERS,
+        OBJECT_TYPES,
       }
     : null;
 
   const board = {
     strokes,
+    objects,
     paper: page?.paper,
     tool,
     initialCamera: page?.camera,
@@ -519,7 +657,8 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     onCamera: handleCamera,
     onPickColor: handlePickColor,
     onEngine: handleEngine,
+    onInsertSpaceLimited: handleInsertSpaceLimited,
   };
 
-  return { loading, page, status, ink, board, markCount: strokes.length, pageIndex, patch };
+  return { loading, page, status, ink, board, markCount: strokes.length, pageIndex, patch, objects };
 }

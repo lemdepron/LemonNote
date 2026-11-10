@@ -4,24 +4,38 @@ import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
 import TaskLine from "@/components/tasks/TaskLine";
-import { collectTasks, nextState, setTaskState, TASK_STATES } from "@/lib/tasks";
+import { collectTasks, nextState, setTaskState, TASK_STATES, TASK_FILTERS, filterTasks, sortTasks } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
 
 export default function TasksPage() {
   const { notes, loading, reload } = useVault();
   const navigate = useNavigate();
   const [filter, setFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState("dueDate");
   const [busy, setBusy] = useState(false);
 
-  const tasks = useMemo(() => collectTasks(notes), [notes]);
+  const allTasks = useMemo(() => collectTasks(notes), [notes]);
+  const filteredTasks = useMemo(() => filterTasks(allTasks, filter), [allTasks, filter]);
+  const sortedTasks = useMemo(() => sortTasks(filteredTasks, sortBy), [filteredTasks, sortBy]);
+
   const counts = useMemo(
     () =>
-      TASK_STATES.reduce((acc, state) => {
-        acc[state.id] = tasks.filter((task) => task.state === state.id).length;
+      TASK_FILTERS.reduce((acc, f) => {
+        acc[f.id] = filterTasks(allTasks, f.id).length;
         return acc;
       }, {})
     ,
-    [tasks]
+    [allTasks]
+  );
+
+  const stateCounts = useMemo(
+    () =>
+      TASK_STATES.reduce((acc, state) => {
+        acc[state.id] = allTasks.filter((task) => task.state === state.id).length;
+        return acc;
+      }, {})
+    ,
+    [allTasks]
   );
 
   const cycle = async (task) => {
@@ -48,37 +62,38 @@ export default function TasksPage() {
           Write <span className="font-mono text-[12px] text-foreground/80">TODO</span>,{" "}
           <span className="font-mono text-[12px] text-foreground/80">DOING</span> or{" "}
           <span className="font-mono text-[12px] text-foreground/80">DONE</span> at the start of any list line —
-          click a task here to move it along.
+          click a task here to move it along. Add <span className="font-mono text-[12px] text-foreground/80">due:YYYY-MM-DD HH:MM</span> for due dates.
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setFilter("ALL")}
-            className={cn(
-              "rounded-md border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition",
-              filter === "ALL"
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border/70 text-muted-foreground hover:text-foreground"
-            )}
-          >
-            all · {tasks.length}
-          </button>
-          {TASK_STATES.map((state) => (
+          {TASK_FILTERS.map((f) => (
             <button
-              key={state.id}
+              key={f.id}
               type="button"
-              onClick={() => setFilter(state.id)}
+              onClick={() => setFilter(f.id)}
               className={cn(
                 "rounded-md border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] transition",
-                filter === state.id
+                filter === f.id
                   ? "border-primary/40 bg-primary/10 text-primary"
                   : "border-border/70 text-muted-foreground hover:text-foreground"
               )}
             >
-              {state.label} · {counts[state.id] ?? 0}
+              {f.label} · {counts[f.id] ?? 0}
             </button>
           ))}
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[10px] text-muted-foreground">Sort:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-[10px] text-foreground outline-none focus:border-primary/40"
+          >
+            <option value="dueDate">Due date</option>
+            <option value="state">State</option>
+            <option value="noteTitle">Note title</option>
+          </select>
         </div>
 
         {loading ? (
@@ -87,17 +102,17 @@ export default function TasksPage() {
               <div key={row} className="h-11 animate-pulse rounded-lg border border-border/60 bg-card/30" />
             ))}
           </div>
-        ) : tasks.length === 0 ? (
+        ) : sortedTasks.length === 0 ? (
           <div className="mt-8 rounded-xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
-            <p className="text-[14px]">No tasks yet.</p>
+            <p className="text-[14px]">No tasks match this filter.</p>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Add a line like “- TODO Review the outline” to any note.
+              {filter === "ALL" ? 'Add a line like "- TODO Review the outline" to any note.' : 'Try "All" filter or add due dates with due:YYYY-MM-DD HH:MM'}
             </p>
           </div>
         ) : (
           <div className="mt-8 space-y-8">
             {groups.map((state) => {
-              const rows = tasks.filter((task) => task.state === state.id);
+              const rows = sortedTasks.filter((task) => task.state === state.id);
               if (!rows.length) return null;
               return (
                 <section key={state.id}>

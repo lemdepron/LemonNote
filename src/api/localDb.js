@@ -11,13 +11,21 @@
  */
 
 const DB_NAME = "notecraft";
-const DB_VERSION = 2;
+const DB_VERSION = 5;
 const FILE_STORE = "_files";
 const USER_KEY = "notecraft:user";
 
 // Tables (one per kind of thing the app saves) and their default field values.
 const DEFAULTS = {
-  Note: { format: "markdown" },
+  Note: { 
+    format: "markdown", 
+    folder: "", 
+    favourite: false,
+    is_encrypted: false,
+    encrypted_body: null,
+    encryption_version: 1,
+    title_encrypted: false
+  },
   Canvas: {},
   DataTable: {},
   CodeFile: {},
@@ -31,6 +39,7 @@ const DEFAULTS = {
 
 let dbPromise = null;
 let dbVersionAtOpen = null;
+let dbInstance = null;
 
 function openDb() {
   if (!dbPromise) {
@@ -45,6 +54,7 @@ function openDb() {
         });
       };
       request.onsuccess = () => {
+        dbInstance = request.result;
         dbVersionAtOpen = request.result.version;
         resolve(request.result);
       };
@@ -59,8 +69,26 @@ function openDb() {
  * Clears the cached promise and cache.
  */
 export function reopenDb() {
+  closeDb();
   clearDbCache();
   return openDb();
+}
+
+/**
+ * Opens the database connection. Exported for use by other modules.
+ */
+export async function getDb() {
+  return openDb();
+}
+
+/**
+ * Close the database connection if open.
+ */
+export function closeDb() {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
 }
 
 /**
@@ -194,13 +222,25 @@ function compareBy(sort) {
 
 /* ---------- tables ---------- */
 
+function applyDefaults(name, row) {
+  const defaults = DEFAULTS[name];
+  if (!defaults) return row;
+  const result = { ...row };
+  for (const [key, value] of Object.entries(defaults)) {
+    if (result[key] === undefined) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function entity(name) {
   const find = async (query = {}, options = {}) => {
     const rows = [...(await table(name)).values()].filter((row) => matches(row, query));
     rows.sort(compareBy(options.sort));
     const start = Number(options.cursor) || 0;
     const limit = options.limit ?? 1000;
-    const items = rows.slice(start, start + limit);
+    const items = rows.slice(start, start + limit).map((row) => applyDefaults(name, row));
     const more = start + limit < rows.length;
     return { items: clone(items), has_more: more, next_cursor: more ? String(start + limit) : null };
   };
@@ -225,7 +265,7 @@ function entity(name) {
     async get(id) {
       const row = (await table(name)).get(id);
       if (!row) throw new Error(`${name} ${id} was not found`);
-      return clone(row);
+      return clone(applyDefaults(name, row));
     },
 
     async create(data) {
@@ -310,6 +350,73 @@ const readAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
+/**
+ * Store a file in the _files store.
+ * @param {File} file - The file to store
+ * @returns {Promise<{ id: string, name: string, type: string, size: number, ref: string }>}
+ */
+export async function putFile(file) {
+  if (!file || !(file instanceof Blob)) {
+    throw new Error("Expected a File or Blob");
+  }
+  const id = newId();
+  const database = await openDb();
+  await new Promise((resolve, reject) => {
+    const tx = database.transaction(FILE_STORE, "readwrite");
+    tx.objectStore(FILE_STORE).put({
+      id,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      blob: file,
+      created_date: new Date().toISOString(),
+    });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  return { id, name: file.name, type: file.type, size: file.size, ref: `local:${id}` };
+}
+
+/**
+ * Get a file from the _files store by ID.
+ * @param {string} id - The file ID
+ * @returns {Promise<{ id: string, name: string, type: string, size: number, blob: Blob, created_date: string } | null>}
+ */
+export async function getFile(id) {
+  const database = await openDb();
+  const row = await wrap(
+    database.transaction(FILE_STORE, "readonly").objectStore(FILE_STORE).get(id)
+  );
+  return row || null;
+}
+
+/**
+ * Delete a file from the _files store by ID.
+ * @param {string} id - The file ID
+ * @returns {Promise<{ success: boolean }>}
+ */
+export async function deleteFile(id) {
+  const database = await openDb();
+  await new Promise((resolve, reject) => {
+    const tx = database.transaction(FILE_STORE, "readwrite");
+    tx.objectStore(FILE_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  return { success: true };
+}
+
+/**
+ * Create an object URL for a file.
+ * @param {string} id - The file ID
+ * @returns {Promise<string>} - Object URL
+ */
+export async function createFileObjectUrl(id) {
+  const row = await getFile(id);
+  if (!row) throw new Error("File not found");
+  return URL.createObjectURL(row.blob);
+}
+
 const Core = {
   // A picture inside a note: stored as text inside the note so it needs no server.
   async UploadPublicFile({ file }) {
@@ -318,25 +425,126 @@ const Core = {
 
   // Recordings and drawings: kept as a file in the local database.
   async UploadPrivateFile({ file }) {
-    const id = newId();
-    const database = await openDb();
-    await new Promise((resolve, reject) => {
-      const tx = database.transaction(FILE_STORE, "readwrite");
-      tx.objectStore(FILE_STORE).put({ id, name: file.name, type: file.type, blob: file });
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-    return { file_uri: `local:${id}` };
+    const result = await putFile(file);
+    return { file_uri: result.ref };
   },
 
   async CreateFileSignedUrl({ file_uri }) {
     const id = String(file_uri || "").replace(/^local:/, "");
-    const database = await openDb();
-    const row = await wrap(database.transaction(FILE_STORE).objectStore(FILE_STORE).get(id));
-    if (!row) throw new Error("That file is no longer stored on this device.");
-    return { signed_url: URL.createObjectURL(row.blob) };
+    return { signed_url: await createFileObjectUrl(id) };
   },
 };
+
+/* ---------- files entity (uses _files store) ---------- */
+
+function createFilesEntity() {
+  const find = async (query = {}, options = {}) => {
+    const database = await openDb();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = database.transaction(FILE_STORE, "readonly");
+      const request = tx.objectStore(FILE_STORE).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const filtered = rows.filter((row) => matches(row, query));
+    filtered.sort(compareBy(options.sort));
+    const start = Number(options.cursor) || 0;
+    const limit = options.limit ?? 1000;
+    const items = filtered.slice(start, start + limit);
+    const more = start + limit < filtered.length;
+    return { items: clone(items), has_more: more, next_cursor: more ? String(start + limit) : null };
+  };
+
+  const build = (data) => {
+    const now = new Date().toISOString();
+    return { ...clone(data), id: data?.id || newId(), created_date: now, updated_date: now };
+  };
+
+  const patchRow = (rows, id, patch) => {
+    const row = rows.get(id);
+    if (!row) throw new Error(`Files ${id} was not found`);
+    const next = { ...row, ...clone(patch), id, updated_date: new Date().toISOString() };
+    rows.set(id, next);
+    return next;
+  };
+
+  // We need a cache for the files entity too
+  let filesCachePromise = null;
+  async function getFilesCache() {
+    if (!filesCachePromise) {
+      filesCachePromise = (async () => {
+        const database = await openDb();
+        const rows = await new Promise((resolve, reject) => {
+          const tx = database.transaction(FILE_STORE, "readonly");
+          const request = tx.objectStore(FILE_STORE).getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        return new Map(rows.map((row) => [row.id, row]));
+      })();
+    }
+    return filesCachePromise;
+  }
+
+  return {
+    list: (options) => find({}, options),
+    filter: find,
+
+    async get(id) {
+      const rows = await getFilesCache();
+      const row = rows.get(id);
+      if (!row) throw new Error(`Files ${id} was not found`);
+      return clone(row);
+    },
+
+    async create(data) {
+      const rows = await getFilesCache();
+      const row = build(data);
+      rows.set(row.id, row);
+      await persist(FILE_STORE, [row]);
+      return clone(row);
+    },
+
+    async bulkCreate(list) {
+      const rows = await getFilesCache();
+      const created = (list || []).map(build);
+      created.forEach((row) => rows.set(row.id, row));
+      await persist(FILE_STORE, created);
+      return clone(created);
+    },
+
+    async update(id, patch) {
+      const rows = await getFilesCache();
+      const next = patchRow(rows, id, patch);
+      await persist(FILE_STORE, [next]);
+      return clone(next);
+    },
+
+    async bulkUpdate(list) {
+      const rows = await getFilesCache();
+      const updated = (list || []).map(({ id, ...patch }) => patchRow(rows, id, patch));
+      await persist(FILE_STORE, updated);
+      return clone(updated);
+    },
+
+    async delete(id) {
+      const rows = await getFilesCache();
+      rows.delete(id);
+      await persist(FILE_STORE, [], [id]);
+      return { success: true };
+    },
+
+    async deleteMany(query) {
+      const rows = await getFilesCache();
+      const ids = [...rows.values()].filter((row) => matches(row, query)).map((row) => row.id);
+      ids.forEach((id) => rows.delete(id));
+      await persist(FILE_STORE, [], ids);
+      return { deleted: ids.length };
+    },
+  };
+}
+
+const FilesEntity = createFilesEntity();
 
 /* ---------- online-only features ---------- */
 
@@ -347,9 +555,19 @@ const functions = {
   },
 };
 
+const baseEntities = Object.fromEntries(Object.keys(DEFAULTS).map((name) => [name, entity(name)]));
+
 export const db = {
-  entities: Object.fromEntries(Object.keys(DEFAULTS).map((name) => [name, entity(name)])),
+  entities: {
+    ...baseEntities,
+    Files: FilesEntity,
+  },
   auth,
   integrations: { Core },
   functions,
+  // File helpers
+  putFile,
+  getFile,
+  deleteFile,
+  createFileObjectUrl,
 };

@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import RibbonButton from "@/components/ribbon/RibbonButton";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -192,7 +193,7 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
 export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className }) {
   return (
     <div className={cn("mt-6 sticky top-0 z-10", className)}>
-      <div role="tablist" aria-label="Ribbon tabs" className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
+      <div role="tablist" aria-label={t("ribbon.tabsAria")} className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
         {leading}
         {tabs.map((item) => (
           <button

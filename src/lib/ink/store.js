@@ -9,6 +9,7 @@ function pageFields(snapshot) {
     name: snapshot.name || "Untitled page",
     strokes: [],
     markCount: (snapshot.strokes || []).length,
+    objects: snapshot.objects || [],
     paper: snapshot.paper,
     camera: snapshot.camera || { x: 0, y: 0, scale: 1 },
     audio: snapshot.audio ?? null,
@@ -41,9 +42,9 @@ export async function loadPage(pageId) {
     (chunk.strokes || []).forEach((stroke) => strokes.push(unpackStroke(stroke)));
   });
   if (!registry.size) {
-    return { page: record, strokes: Array.isArray(record.strokes) ? record.strokes : [], registry };
+    return { page: record, strokes: Array.isArray(record.strokes) ? record.strokes : [], objects: record.objects || [], registry };
   }
-  return { page: record, strokes, registry };
+  return { page: record, strokes, objects: record.objects || [], registry };
 }
 
 export async function savePage(snapshot, registry) {

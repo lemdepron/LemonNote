@@ -113,3 +113,9 @@ export function codeBlockInsert(body, language) {
 export function imageSnippet(url, alt = "image") {
   return `\n![${alt || "image"}](${url})\n\n`;
 }
+
+export function figureSnippet(url, caption) {
+  const alt = caption || 'Figure';
+  const captionText = caption ? `Figure: ${caption}` : 'Figure';
+  return `<figure>\n<img src="${url}" alt="${alt}">\n<figcaption>${captionText}</figcaption>\n</figure>\n\n`;
+}

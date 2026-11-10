@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
 import ThemeToggle from "@/components/shell/ThemeToggle";
+import { useI18n } from "@/lib/i18n";
 
 export default function VaultHeader() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -57,18 +59,18 @@ export default function VaultHeader() {
           />
           <span className="hidden font-display text-[20px] leading-none tracking-tight sm:inline">LemonNote</span>
         </Link>
-        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
+        <div className="ms-auto flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
           <div className="relative min-w-0 flex-1 sm:flex-none">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={inputRef}
               value={query}
               onChange={(event) => updateQuery(event.target.value)}
-              placeholder="Search vault"
-              aria-label="Quick search"
-              className="h-9 w-full min-w-0 rounded-lg border border-border/80 bg-card/60 pl-8 pr-2 text-[13px] text-foreground outline-none transition focus:border-primary/40 focus:bg-card sm:w-56 sm:pr-12"
+              placeholder={t("header.searchVault")}
+              aria-label={t("header.quickSearchAria")}
+              className="h-9 w-full min-w-0 rounded-lg border border-border/80 bg-card/60 ps-8 pe-2 text-[13px] text-foreground outline-none transition focus:border-primary/40 focus:bg-card sm:w-56 sm:pe-12"
             />
-            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-border/70 bg-muted/60 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:block">
+            <kbd className="pointer-events-none absolute end-2 top-1/2 hidden -translate-y-1/2 rounded border border-border/70 bg-muted/60 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:block">
             /
             </kbd>
           </div>
@@ -80,7 +82,7 @@ export default function VaultHeader() {
           >
             <Link to="/note/new">
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New note</span>
+              <span className="hidden sm:inline">{t("header.newNote")}</span>
             </Link>
           </Button>
 

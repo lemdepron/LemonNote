@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import InkEngine from "@/lib/ink/engine";
+import FloatingObjects from "@/components/ink/FloatingObjects";
 import { useThemeRevision } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,8 @@ const CURSORS = {
   erase: "cursor-cell",
   pan: "cursor-grab active:cursor-grabbing",
   eyedropper: "cursor-copy",
+  insertSpace: "cursor-ns-resize",
+  select: "cursor-default",
 };
 
 /**
@@ -17,10 +20,11 @@ const CURSORS = {
  * live overlay for the in-progress stroke, lasso and selection handles.
  */
 // Tool modes that should receive pointer events on the overlay
-const INK_TOOL_MODES = ["draw", "erase", "lasso", "shape", "eyedropper", "pan"];
+const INK_TOOL_MODES = ["draw", "erase", "lasso", "shape", "eyedropper", "pan", "insertSpace", "select"];
 
 export default function InkBoard({
   strokes,
+  objects = [],
   paper,
   tool,
   initialCamera,
@@ -30,6 +34,15 @@ export default function InkBoard({
   onCamera,
   onPickColor,
   onEngine,
+  onInsertSpaceLimited,
+  // Object callbacks
+  onSelectObject,
+  onUpdateObject,
+  onDeleteObject,
+  onBringToFront,
+  onSendToBack,
+  editingObjectId,
+  setEditingObjectId,
   className,
   height,
   autoFit = false,
@@ -41,8 +54,30 @@ export default function InkBoard({
   const engineRef = useRef(null);
   const fittedRef = useRef(false);
   const themeRevision = useThemeRevision();
+  const insertSpaceDrag = useRef(null); // { dragging: boolean, startY: number, lineY: number }
   const live = useRef({});
-  live.current = { strokes, paper, tool, initialCamera, onCommit, onReplace, onSelection, onCamera, onPickColor, onEngine, autoFit };
+  live.current = {
+    strokes,
+    objects,
+    paper,
+    tool,
+    initialCamera,
+    onCommit,
+    onReplace,
+    onSelection,
+    onCamera,
+    onPickColor,
+    onEngine,
+    onInsertSpaceLimited,
+    onSelectObject,
+    onUpdateObject,
+    onDeleteObject,
+    onBringToFront,
+    onSendToBack,
+    editingObjectId,
+    setEditingObjectId,
+    autoFit,
+  };
 
   useEffect(() => {
     const engine = new InkEngine({
@@ -54,6 +89,7 @@ export default function InkBoard({
         onSelection: (ids, bounds) => live.current.onSelection?.(ids, bounds),
         onCamera: (camera) => live.current.onCamera?.(camera),
         onPickColor: (hex, alpha) => live.current.onPickColor?.(hex, alpha),
+        onInsertSpaceLimited: () => live.current.onInsertSpaceLimited?.(),
       },
       transparent,
     });
@@ -87,6 +123,11 @@ export default function InkBoard({
   useEffect(() => {
     engineRef.current?.setTool(tool);
   }, [tool]);
+
+  // Sync objects to engine for rendering in base layer (optional, for print/export)
+  useEffect(() => {
+    engineRef.current?.setObjects?.(objects);
+  }, [objects]);
 
   useEffect(() => {
     const element = wrapRef.current;
@@ -148,11 +189,53 @@ export default function InkBoard({
   const onPointerDown = (event) => {
     if (event.button === 2) event.preventDefault();
     overlayRef.current?.setPointerCapture?.(event.pointerId);
-    engineRef.current?.pointerDown(pointFrom(event));
+    const engine = engineRef.current;
+    if (!engine) return;
+    const mode = engine.tool.mode;
+    if (mode === "insertSpace") {
+      const input = pointFrom(event);
+      const world = engine.worldFromScreen(input.x, input.y);
+      const dragState = { dragging: true, startY: world.y, lineY: world.y };
+      insertSpaceDrag.current = dragState;
+      engine.insertSpaceDrag = dragState;
+      engine.dirtyOverlay = true;
+      engine.schedule();
+      return;
+    }
+    engine.pointerDown(pointFrom(event));
   };
 
   const onPointerMove = (event) => {
-    engineRef.current?.pointerMove(pointFrom(event));
+    const engine = engineRef.current;
+    if (!engine) return;
+    const mode = engine.tool.mode;
+    if (mode === "insertSpace" && insertSpaceDrag.current?.dragging) {
+      const input = pointFrom(event);
+      const world = engine.worldFromScreen(input.x, input.y);
+      insertSpaceDrag.current.lineY = world.y;
+      engine.insertSpaceDrag = insertSpaceDrag.current;
+      engine.dirtyOverlay = true;
+      engine.schedule();
+      return;
+    }
+    engine.pointerMove(pointFrom(event));
+  };
+
+  const endInsertSpace = () => {
+    const engine = engineRef.current;
+    if (!engine || !insertSpaceDrag.current?.dragging) return;
+    const drag = insertSpaceDrag.current;
+    insertSpaceDrag.current = null;
+    engine.insertSpaceDrag = null;
+    const distance = drag.lineY - drag.startY;
+    if (Math.abs(distance) < 1) return; // Ignore tiny movements
+    const result = engine.insertSpace(drag.startY, distance);
+    engine.dirtyOverlay = true;
+    engine.schedule();
+    // Notify parent about the result (for toast)
+    if (result.limited) {
+      live.current.onInsertSpaceLimited?.();
+    }
   };
 
   // Canvas paint is not CSS, so a theme switch has to repaint from the new tokens.
@@ -160,11 +243,28 @@ export default function InkBoard({
     engineRef.current?.invalidate();
   }, [themeRevision]);
 
-  const endStroke = () => engineRef.current?.pointerUp();
+  const endStroke = () => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    if (engine.tool.mode === "insertSpace") {
+      endInsertSpace();
+      return;
+    }
+    engine.pointerUp();
+  };
 
   // Determine pointer events for overlay canvas
   const isInkToolActive = INK_TOOL_MODES.includes(tool?.mode);
   const overlayPointerEvents = isInkToolActive ? "auto" : "none";
+
+  // Select object helper for FloatingObjects
+  const selectObject = useCallback((id) => {
+    onSelectObject?.(id);
+  }, [onSelectObject]);
+
+  const isObjectSelected = useCallback((id) => {
+    return onSelectObject ? onSelectObject(id) : false;
+  }, [onSelectObject]);
 
   // Wrapper styles
   const wrapperClass = transparent
@@ -181,6 +281,21 @@ export default function InkBoard({
       className={wrapperClass}
     >
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full" />
+      <FloatingObjects
+        objects={live.current.objects || []}
+        tool={tool}
+        camera={engineRef.current?.camera || { x: 0, y: 0, scale: 1 }}
+        viewport={engineRef.current?.viewport || { w: 800, h: 600, dpr: 1 }}
+        dpr={engineRef.current?.viewport?.dpr || 1}
+        onSelectObject={selectObject}
+        onUpdateObject={live.current.onUpdateObject}
+        onDeleteObject={live.current.onDeleteObject}
+        onBringToFront={live.current.onBringToFront}
+        onSendToBack={live.current.onSendToBack}
+        editingObjectId={live.current.editingObjectId}
+        setEditingObjectId={live.current.setEditingObjectId}
+        scale={engineRef.current?.camera?.scale || 1}
+      />
       <canvas
         ref={overlayRef}
         className={cn("absolute inset-0 h-full w-full touch-none", CURSORS[tool?.mode] || CURSORS.draw)}

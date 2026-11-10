@@ -8,6 +8,7 @@ import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { MenuItem, RibbonContext, RibbonMenu, RibbonSelect } from "@/components/ribbon/RibbonKit";
 import { readPref, writePref } from "@/lib/preferences";
+import { toast } from "@/lib/toast";
 import { Chip, Slider } from "@/components/ink/StudioSection";
 import BrushStudio from "@/components/ink/BrushStudio";
 import AssistStudio from "@/components/ink/AssistStudio";
@@ -26,16 +27,19 @@ import {
   FountainPenIcon, BallpointPenIcon, CalligraphyPenIcon, HighlighterIcon,
   WatercolorBrushIcon, PencilIcon, EraserIcon, LassoIcon, HandIcon,
   EyedropperIcon, ShapesIcon, CoordinateGraphIcon, SavePenIcon, RemovePenIcon,
+  InsertSpaceIcon, MousePointerIcon,
 } from "@/components/ink/icons";
 
 function getModes(tool) {
   return [
     { id: "draw", label: "Draw", icon: FountainPenIcon, hint: "Draw with the current pen" },
     { id: "shape", label: "Shapes", icon: ShapesIcon, hint: "Draw lines, boxes, circles and coordinate graphs" },
+    { id: "select", label: "Select", icon: MousePointerIcon, hint: "Select, move, resize and rotate objects" },
     { id: "lasso", label: "Lasso", icon: LassoIcon, hint: "Select marks by circling them" },
     { id: "erase", label: "Eraser", icon: () => <EraserIcon mode={tool?.eraserMode || "stroke"} />, hint: "Erase marks" },
     { id: "pan", label: "Pan", icon: HandIcon, hint: "Move the page around" },
     { id: "eyedropper", label: "Pick", icon: EyedropperIcon, hint: "Pick a colour from the page" },
+    { id: "insertSpace", label: "Insert space", icon: InsertSpaceIcon, hint: "Drag to insert or remove vertical space between ink marks" },
   ];
 }
 
@@ -78,6 +82,8 @@ function normalizeHex(hex) {
 
 /* ---------------------------------- Draw ---------------------------------- */
 
+const INSERT_SPACE_TOAST_KEY = "inkInsertSpaceToastShown";
+
 export function InkDrawTab({ ink }) {
   const { tool, onTool, engine } = ink;
   const [favPens, setFavPens] = useState(() => readFavPens());
@@ -85,6 +91,17 @@ export function InkDrawTab({ ink }) {
   useEffect(() => {
     setFavPens(readFavPens());
   }, []);
+
+  const handleToolChange = useCallback((changes) => {
+    if (changes.mode === "insertSpace") {
+      const shown = readPref(INSERT_SPACE_TOAST_KEY, "false");
+      if (shown !== "true") {
+        writePref(INSERT_SPACE_TOAST_KEY, "true");
+        toast.info("Text does not move. Ink below the line moves away from the text it was written on.", 6000);
+      }
+    }
+    onTool(changes);
+  }, [onTool]);
 
   const saveFavPen = useCallback(() => {
     const pen = {
@@ -134,11 +151,11 @@ export function InkDrawTab({ ink }) {
         {getModes(tool).map((mode) => (
           <RibbonButton
             key={mode.id}
-            icon={typeof mode.icon === "function" ? mode.icon({ tool }) : mode.icon}
+            icon={mode.icon}
             label={mode.label}
             hint={mode.hint}
             active={tool.mode === mode.id}
-            onClick={() => onTool({ mode: mode.id })}
+            onClick={() => handleToolChange({ mode: mode.id })}
           />
         ))}
       </RibbonGroup>
@@ -442,39 +459,56 @@ export function InkColorTab({ ink }) {
 /* --------------------------------- Select ---------------------------------- */
 
 export function InkSelectTab({ ink }) {
-  const { tool, selection, engine } = ink;
-  const count = selection.ids.length;
-  const none = { disabled: count === 0, disabledReason: "Select marks with the lasso first" };
+  const { tool, selection, engine, objectSelection, selectedObjectId, objects, deleteObject, bringToFront, sendToBack } = ink;
+  const strokeCount = selection.ids.length;
+  const obj = selectedObjectId ? objects.find((o) => o.id === selectedObjectId) : null;
+  const objNone = { disabled: !obj, disabledReason: "Select an object with the Select tool first" };
+  const strokeNone = { disabled: strokeCount === 0, disabledReason: "Select marks with the lasso first" };
   return (
     <>
-      <RibbonGroup label="Lasso">
+      <RibbonGroup label="Select">
+        <RibbonButton icon={MousePointerIcon} label="Select" hint="Select, move, resize and rotate objects" active={tool.mode === "select"} onClick={() => ink.onTool({ mode: "select" })} />
         <RibbonButton icon={LassoIcon} label="Lasso" hint="Select marks by circling them" active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
-        <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">{count ? `${count} selected` : "nothing selected"}</span>
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">
+          {obj ? `Object: ${obj.type}` : strokeCount ? `${strokeCount} strokes` : "nothing selected"}
+        </span>
       </RibbonGroup>
 
-      <RibbonGroup label="Actions">
-        <RibbonButton icon={Check} label="Apply" hint="Commit the move, scale or rotation" {...none} onClick={() => engine()?.commitSelection()} />
-        <RibbonButton icon={Droplets} label="Recolor" hint="Paint the selection with the current ink" {...none} onClick={() => engine()?.recolorSelection(tool.color, tool.alpha)} />
-        <RibbonButton icon={Trash2} label="Delete" hint="Delete the selected marks" shortcut="Del" {...none} onClick={() => engine()?.deleteSelection()} />
-        <RibbonButton icon={X} label="Deselect" hint="Clear the selection" {...none} onClick={() => engine()?.setSelection([])} />
-      </RibbonGroup>
+      {obj && (
+        <RibbonGroup label="Object">
+          <RibbonButton icon={Trash2} label="Delete" hint="Delete the selected object" shortcut="Del" {...objNone} onClick={() => deleteObject(obj.id)} />
+          <RibbonButton icon={Layers} label="Front" hint="Bring to front" {...objNone} onClick={() => bringToFront(obj.id)} />
+          <RibbonButton icon={Layers} label="Back" hint="Send to back" {...objNone} onClick={() => sendToBack(obj.id)} />
+        </RibbonGroup>
+      )}
 
-      <RibbonGroup label="Transform">
-        <RibbonMenu icon={SquareDashedMousePointer} label="Selection studio" hint="Move, scale and rotate the selection precisely" width={300} disabled={count === 0} disabledReason="Select marks with the lasso first">
-          {() => (
-            <SelectionStudio
-              selection={selection}
-              color={tool.color}
-              alpha={tool.alpha}
-              onTransform={(transform) => engine()?.setSelectionTransform(transform)}
-              onCommit={() => engine()?.commitSelection()}
-              onRecolor={() => engine()?.recolorSelection(tool.color, tool.alpha)}
-              onDelete={() => engine()?.deleteSelection()}
-              onClear={() => engine()?.setSelection([])}
-            />
-          )}
-        </RibbonMenu>
-      </RibbonGroup>
+      {strokeCount > 0 && (
+        <RibbonGroup label="Strokes">
+          <RibbonButton icon={Check} label="Apply" hint="Commit the move, scale or rotation" {...strokeNone} onClick={() => engine()?.commitSelection()} />
+          <RibbonButton icon={Droplets} label="Recolor" hint="Paint the selection with the current ink" {...strokeNone} onClick={() => engine()?.recolorSelection(tool.color, tool.alpha)} />
+          <RibbonButton icon={Trash2} label="Delete" hint="Delete the selected marks" shortcut="Del" {...strokeNone} onClick={() => engine()?.deleteSelection()} />
+          <RibbonButton icon={X} label="Deselect" hint="Clear the selection" {...strokeNone} onClick={() => engine()?.setSelection([])} />
+        </RibbonGroup>
+      )}
+
+      {strokeCount > 0 && (
+        <RibbonGroup label="Transform">
+          <RibbonMenu icon={SquareDashedMousePointer} label="Selection studio" hint="Move, scale and rotate the selection precisely" width={300} disabled={strokeCount === 0} disabledReason="Select marks with the lasso first">
+            {() => (
+              <SelectionStudio
+                selection={selection}
+                color={tool.color}
+                alpha={tool.alpha}
+                onTransform={(transform) => engine()?.setSelectionTransform(transform)}
+                onCommit={() => engine()?.commitSelection()}
+                onRecolor={() => engine()?.recolorSelection(tool.color, tool.alpha)}
+                onDelete={() => engine()?.deleteSelection()}
+                onClear={() => engine()?.setSelection([])}
+              />
+            )}
+          </RibbonMenu>
+        </RibbonGroup>
+      )}
     </>
   );
 }

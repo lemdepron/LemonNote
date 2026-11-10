@@ -4,6 +4,24 @@ export const escapeRegExp = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g,
 
 export const titleKey = (title = "") => title.trim().toLowerCase();
 
+/**
+ * Check if a note is encrypted (locked).
+ * @param {Object} note - Note object
+ * @returns {boolean} - True if note is encrypted
+ */
+export function isNoteLocked(note) {
+  return note?.is_encrypted === true;
+}
+
+/**
+ * Filter out locked notes from an array.
+ * @param {Array} notes - Array of notes
+ * @returns {Array} - Notes with locked ones removed
+ */
+export function filterLockedNotes(notes = []) {
+  return notes.filter((note) => !isNoteLocked(note));
+}
+
 /* ---------- wiki links ---------- */
 
 export function extractWikiLinks(markdown = "") {
@@ -21,12 +39,14 @@ export function buildLinkIndex(notes = []) {
   const index = new Map();
   notes.forEach((note) => {
     if (!note?.title) return;
+    if (isNoteLocked(note)) return; // Skip locked notes
     index.set(titleKey(note.title), note);
   });
   return index;
 }
 
 export function noteLinks(note) {
+  if (isNoteLocked(note)) return [];
   return extractWikiLinks(note?.body || "");
 }
 
@@ -35,6 +55,7 @@ export function backlinksFor(note, notes = []) {
   const key = titleKey(note.title);
   return notes.filter(
     (other) =>
+      !isNoteLocked(other) && // Skip locked notes
       other.id !== note.id &&
       extractWikiLinks(other.body || "").some((title) => titleKey(title) === key)
   );
@@ -54,13 +75,17 @@ export function extractInlineTags(markdown = "") {
 }
 
 export function noteTags(note) {
+  if (isNoteLocked(note)) return [];
   const explicit = Array.isArray(note?.tags) ? note.tags : [];
   return [...new Set([...explicit, ...extractInlineTags(note?.body || "")].map((t) => String(t).trim().toLowerCase()).filter(Boolean))];
 }
 
 export function collectTags(notes = []) {
   const counts = new Map();
-  notes.forEach((note) => noteTags(note).forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
+  notes.forEach((note) => {
+    if (isNoteLocked(note)) return;
+    noteTags(note).forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
+  });
   return [...counts.entries()].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
@@ -76,6 +101,28 @@ export function plainText(markdown = "") {
     .replace(/[#>*_~-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/* ---------- headings ---------- */
+
+export function extractHeadings(markdown = "") {
+  const lines = String(markdown || "").split("\n");
+  const headings = [];
+  let fence = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    if (fence) continue;
+    const m = /^(#{1,6})\s+(.+?)\s*#*$/.exec(line);
+    if (m) {
+      const level = m[1].length;
+      const text = m[2].trim();
+      // Generate an ID from the text for anchor linking
+      const id = text.toLowerCase().replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "");
+      headings.push({ level, text, id, line: i });
+    }
+  }
+  return headings;
 }
 
 export function snippet(markdown = "", query = "", length = 180) {
@@ -110,6 +157,102 @@ export function relativeTime(value) {
   const days = Math.round(hours / 24);
   if (days < 7) return `${days}d ago`;
   return new Date(then).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/* ---------- folders ---------- */
+
+export function noteFolder(note) {
+  return note?.folder || "";
+}
+
+export function collectFolders(notes = []) {
+  const counts = new Map();
+  notes.forEach((note) => {
+    const folder = noteFolder(note);
+    counts.set(folder, (counts.get(folder) || 0) + 1);
+  });
+  // Sort: "Unfiled" (empty string) first, then alphabetically
+  return [...counts.entries()]
+    .map(([folder, count]) => ({ folder, count }))
+    .sort((a, b) => {
+      if (a.folder === "") return -1;
+      if (b.folder === "") return 1;
+      return a.folder.localeCompare(b.folder);
+    });
+}
+
+export function getNotesInFolder(notes = [], folder) {
+  if (!folder) {
+    return notes.filter((note) => !noteFolder(note));
+  }
+  return notes.filter((note) => noteFolder(note) === folder);
+}
+
+export function getFolderPathParts(folder) {
+  if (!folder) return [];
+  return folder.split("/").filter(Boolean);
+}
+
+export function buildFolderTree(folders) {
+  const root = { name: "", children: new Map(), count: 0, fullPath: "" };
+  
+  folders.forEach(({ folder, count }) => {
+    const parts = getFolderPathParts(folder);
+    let current = root;
+    let currentPath = "";
+    
+    parts.forEach((part, index) => {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      if (!current.children.has(part)) {
+        current.children.set(part, { name: part, children: new Map(), count: 0, fullPath: currentPath });
+      }
+      current = current.children.get(part);
+    });
+    current.count = count;
+  });
+  
+  // Calculate parent counts from children
+  const calculateCounts = (node) => {
+    let total = node.count;
+    for (const child of node.children.values()) {
+      total += calculateCounts(child);
+    }
+    node.count = total;
+    return total;
+  };
+  
+  calculateCounts(root);
+  
+  return root;
+}
+
+export function flattenFolderTree(node, level = 0) {
+  const result = [];
+  if (node.name !== "") {
+    result.push({ ...node, level });
+  }
+  for (const child of node.children.values()) {
+    result.push(...flattenFolderTree(child, level + 1));
+  }
+  return result;
+}
+
+/* ---------- recent edits ---------- */
+
+export const RECENT_FILTERS = [
+  { id: "today", label: "Today", days: 1 },
+  { id: "week", label: "7 days", days: 7 },
+  { id: "month", label: "30 days", days: 30 },
+];
+
+export function filterNotesByRecent(notes = [], filterId) {
+  if (!filterId || filterId === "all") return notes;
+  
+  const filter = RECENT_FILTERS.find((f) => f.id === filterId);
+  if (!filter) return notes;
+  
+  const cutoff = new Date(Date.now() - filter.days * 24 * 60 * 60 * 1000).toISOString();
+  return notes.filter((note) => note.updated_date && note.updated_date >= cutoff);
 }
 
 /* ---------- markdown preparation ---------- */

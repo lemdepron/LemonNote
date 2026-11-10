@@ -84,6 +84,18 @@ html[data-rail="collapsed"] {
     --chart-3: 276 42% 44%;
     --chart-4: 208 55% 38%;
     --chart-5: 10 62% 44%;
+    --chart-6: 340 70% 38%;
+    --chart-7: 120 70% 26%;
+    --chart-8: 60 42% 44%;
+
+    /* Chart-specific tokens */
+    --chart-bar: var(--chart-1);
+    --chart-line: var(--chart-2);
+    --chart-text: var(--foreground);
+    --chart-axis: var(--muted-foreground);
+    --chart-grid: var(--border);
+    --chart-title: var(--foreground);
+    --chart-bg: var(--background);
 
     --shadow: 24 34% 22%;
     --scrim: 22 28% 16%;
@@ -139,6 +151,18 @@ html[data-rail="collapsed"] {
     --chart-3: 265 30% 68%;
     --chart-4: 200 40% 62%;
     --chart-5: 12 55% 65%;
+    --chart-6: 340 58% 70%;
+    --chart-7: 120 42% 63%;
+    --chart-8: 60 30% 68%;
+
+    /* Chart-specific tokens */
+    --chart-bar: var(--chart-1);
+    --chart-line: var(--chart-2);
+    --chart-text: var(--foreground);
+    --chart-axis: var(--muted-foreground);
+    --chart-grid: var(--border);
+    --chart-title: var(--foreground);
+    --chart-bg: var(--background);
 
     --shadow: 220 40% 2%;
     --scrim: 220 30% 2%;
@@ -197,18 +221,33 @@ html[data-rail="collapsed"] {
   }
 }
 
+/* Custom scrollbar for Find Tags panel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.5);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.8);
+}
+
 @layer components {
   .nb-shell {
     background-image:
       radial-gradient(900px 480px at 12% -12%, hsl(var(--primary) / 0.055), transparent 70%),
       radial-gradient(760px 420px at 92% 4%, hsl(var(--link) / 0.05), transparent 72%);
     /* The tab rail is fixed, so the page shell reserves exactly its width. */
-    padding-left: var(--rail-w, 0px);
+    padding-inline-start: var(--rail-w, 0px);
   }
 
   @media (prefers-reduced-motion: no-preference) {
     .nb-shell {
-      transition: padding-left 200ms cubic-bezier(0.22, 1, 0.36, 1);
+      transition: padding-inline-start 200ms cubic-bezier(0.22, 1, 0.36, 1);
     }
   }
 
@@ -265,6 +304,7 @@ html[data-rail="collapsed"] {
     font-size: 1.0125rem;
     line-height: 1.78;
     letter-spacing: -0.003em;
+    counter-reset: figure;
   }
   .nb-prose > * + * {
     margin-top: 1.05em;
@@ -338,7 +378,7 @@ html[data-rail="collapsed"] {
   }
   .nb-prose ul,
   .nb-prose ol {
-    padding-left: 1.25rem;
+    padding-inline-start: 1.25rem;
   }
   .nb-prose ul {
     list-style: disc;
@@ -348,7 +388,7 @@ html[data-rail="collapsed"] {
   }
   .nb-prose li {
     margin-top: 0.35em;
-    padding-left: 0.2rem;
+    padding-inline-start: 0.2rem;
   }
   .nb-prose li::marker {
     color: hsl(var(--muted-foreground) / 0.7);
@@ -370,8 +410,8 @@ html[data-rail="collapsed"] {
     font-style: italic;
   }
   .nb-prose blockquote {
-    border-left: 2px solid hsl(var(--primary) / 0.5);
-    padding-left: 1rem;
+    border-inline-start: 2px solid hsl(var(--primary) / 0.5);
+    padding-inline-start: 1rem;
     color: hsl(var(--muted-foreground));
     font-style: italic;
   }
@@ -431,6 +471,19 @@ html[data-rail="collapsed"] {
   .nb-prose img {
     border-radius: 0.6rem;
     max-width: 100%;
+  }
+  .nb-prose figcaption {
+    counter-increment: figure;
+    font-size: 0.88rem;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+    padding-top: 0.4rem;
+    font-style: italic;
+  }
+  .nb-prose figcaption::before {
+    content: "Figure " counter(figure) ": ";
+    font-weight: 600;
+    font-style: normal;
   }
 }
 
@@ -586,4 +639,144 @@ html[data-theme="light"][data-surface="plain"] .nb-shell {
     radial-gradient(760px 420px at 92% 4%, hsl(var(--link) / 0.06), transparent 72%),
     radial-gradient(hsl(var(--foreground) / 0.05) 0.5px, transparent 0.6px);
   background-size: auto, auto, 22px 22px;
+}
+
+/* ---------- per-note page styles (background patterns) ---------- */
+
+.nb-prose {
+  /* Page background patterns */
+  --nt-page-style: default;
+  --nt-page-grid-size: 24px;
+  --nt-page-line-height: 28px;
+  --nt-page-color: transparent;
+  --nt-page-border: none;
+  --nt-page-border-color: hsl(var(--border));
+  --nt-watermark-text: none;
+  --nt-watermark-color: hsl(var(--muted-foreground));
+  --nt-watermark-opacity: 0.08;
+  --nt-watermark-angle: diagonal;
+  --nt-theme-accent: none;
+  --nt-theme-heading-font: var(--font-heading);
+  --nt-theme-body-font: var(--font-body);
+}
+
+/* Grid pattern */
+.nb-prose[style*="--nt-page-style: grid"]::before,
+.nb-prose[style*="--nt-page-style: grid"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.nb-prose[style*="--nt-page-style: grid"]::before {
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.15) 1px, transparent 1px);
+  background-size: var(--nt-page-grid-size) var(--nt-page-grid-size);
+}
+.nb-prose[style*="--nt-page-style: grid"]::after {
+  background-color: var(--nt-page-color);
+}
+
+/* Lines pattern */
+.nb-prose[style*="--nt-page-style: lines"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: repeating-linear-gradient(
+    transparent 0,
+    transparent calc(var(--nt-page-line-height) - 1px),
+    hsl(var(--border) / 0.15) calc(var(--nt-page-line-height) - 1px),
+    hsl(var(--border) / 0.15) var(--nt-page-line-height)
+  );
+  background-size: 100% var(--nt-page-line-height);
+}
+.nb-prose[style*="--nt-page-style: lines"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-color: var(--nt-page-color);
+}
+
+/* Blank (void) - no pattern, just color */
+.nb-prose[style*="--nt-page-style: blank"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-color: var(--nt-page-color);
+}
+
+/* Default with page color */
+.nb-prose[style*="--nt-page-color"]:not([style*="--nt-page-style: grid"]):not([style*="--nt-page-style: lines"]):not([style*="--nt-page-style: blank"])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-color: var(--nt-page-color);
+}
+
+/* Page borders */
+.nb-prose[style*="--nt-page-border: line"] {
+  border: 1px solid var(--nt-page-border-color);
+  border-radius: 0;
+}
+.nb-prose[style*="--nt-page-border: double"] {
+  border: 3px double var(--nt-page-border-color);
+  border-radius: 0;
+}
+.nb-prose[style*="--nt-page-border: rounded"] {
+  border: 1px solid var(--nt-page-border-color);
+  border-radius: 12px;
+}
+
+/* Watermark */
+.nb-prose[style*="--nt-watermark-text"]:not([style*="--nt-watermark-text: none"])::after {
+  content: var(--nt-watermark-text);
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(60px, 12vw, 200px);
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--nt-watermark-color);
+  opacity: var(--nt-watermark-opacity);
+  white-space: nowrap;
+  user-select: none;
+  transform-origin: center;
+}
+.nb-prose[style*="--nt-watermark-angle: diagonal"]:not([style*="--nt-watermark-text: none"])::after {
+  transform: rotate(-30deg);
+}
+.nb-prose[style*="--nt-watermark-angle: horizontal"]:not([style*="--nt-watermark-text: none"])::after {
+  transform: none;
+}
+
+/* Per-note theme overrides */
+.nb-prose[style*="--nt-theme-accent"]:not([style*="--nt-theme-accent: none"]) {
+  --primary: var(--nt-theme-accent);
+  --ring: var(--nt-theme-accent);
+}
+.nb-prose[style*="--nt-theme-heading-font"]:not([style*="--nt-theme-heading-font: none"]) {
+  --nt-heading: var(--nt-theme-heading-font);
+}
+.nb-prose[style*="--nt-theme-body-font"]:not([style*="--nt-theme-body-font: none"]) {
+  --font-body: var(--nt-theme-body-font);
+  font-family: var(--nt-theme-body-font);
+}
+
+/* Ensure the prose container is positioned for absolute pseudo-elements */
+.nb-prose {
+  position: relative;
 }

@@ -1,13 +1,16 @@
-import { extractWikiLinks, titleKey } from "@/lib/vault";
+import { extractWikiLinks, titleKey, isNoteLocked } from "@/lib/vault";
 
 export function buildGraph(notes = []) {
-  const index = new Map(notes.filter((note) => note?.title).map((note) => [titleKey(note.title), note]));
-  const nodes = notes.map((note, i) => ({
+  // Filter out locked notes
+  const unlockedNotes = notes.filter((note) => !isNoteLocked(note));
+  
+  const index = new Map(unlockedNotes.filter((note) => note?.title).map((note) => [titleKey(note.title), note]));
+  const nodes = unlockedNotes.map((note, i) => ({
     id: note.id,
     note,
     title: note.title || "Untitled",
-    x: Math.cos((i / Math.max(1, notes.length)) * Math.PI * 2) * 180,
-    y: Math.sin((i / Math.max(1, notes.length)) * Math.PI * 2) * 150,
+    x: Math.cos((i / Math.max(1, unlockedNotes.length)) * Math.PI * 2) * 180,
+    y: Math.sin((i / Math.max(1, unlockedNotes.length)) * Math.PI * 2) * 150,
     vx: 0,
     vy: 0,
     degree: 0,

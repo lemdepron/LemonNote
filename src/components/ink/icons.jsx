@@ -197,3 +197,26 @@ export function RemovePenIcon({ className }) {
     </SvgIcon>
   );
 }
+
+/** Insert space tool — drag to add/remove vertical space */
+export function InsertSpaceIcon({ className }) {
+  return (
+    <SvgIcon className={className}>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+      <path d="M12 7v10" />
+      <path d="M9 10h6" />
+      <path d="M9 14h6" />
+    </SvgIcon>
+  );
+}
+
+/** Mouse pointer / select tool */
+export function MousePointerIcon({ className }) {
+  return (
+    <SvgIcon className={className}>
+      <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+      <path d="M13 13l6 6" />
+    </SvgIcon>
+  );
+}

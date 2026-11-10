@@ -2,6 +2,25 @@ import { ArrowUpRight, Link2, Plus } from "lucide-react";
 import { noteTags, relativeTime, titleKey } from "@/lib/vault";
 
 export default function LinkRail({ outgoing = [], backlinks = [], linkIndex, onOpenNote, onCreateNote }) {
+  const handleOpenNote = (noteId, event) => {
+    // Ctrl+click (or Cmd+click on Mac) opens in new tab
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      window.open(`/note/${noteId}`, "_blank");
+      return;
+    }
+    onOpenNote(noteId);
+  };
+
+  const handleCreateNote = (title, event) => {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      // For new notes, we can't easily open in new tab without knowing the ID first
+      // Fall back to normal behavior
+    }
+    onCreateNote(title);
+  };
+
   return (
     <aside className="space-y-7 lg:sticky lg:top-24 lg:self-start">
       <section>
@@ -14,7 +33,7 @@ export default function LinkRail({ outgoing = [], backlinks = [], linkIndex, onO
               <li key={title}>
                 <button
                   type="button"
-                  onClick={() => (target ? onOpenNote(target.id) : onCreateNote(title))}
+                  onClick={(e) => (target ? handleOpenNote(target.id, e) : handleCreateNote(title, e))}
                   className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-foreground/85 transition hover:bg-accent/70"
                 >
                   {target ? (
@@ -41,7 +60,7 @@ export default function LinkRail({ outgoing = [], backlinks = [], linkIndex, onO
             <li key={note.id}>
               <button
                 type="button"
-                onClick={() => onOpenNote(note.id)}
+                onClick={(e) => handleOpenNote(note.id, e)}
                 className="block w-full rounded-md px-2 py-1.5 text-left transition hover:bg-accent/70"
               >
                 <span className="flex items-center gap-1.5 text-[13px] text-foreground/85">

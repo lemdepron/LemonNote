@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Trash2, ChevronLeft, ChevronRight, Volume2, MoveHorizontal, MoveVertical, Ruler, Grid, AlignLeft, ZoomIn, ZoomOut, Star, Star as StarFilled, Folder, MoreHorizontal, Lock } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -9,7 +9,7 @@ import MarkdownView from "@/components/vault/MarkdownView";
 import FormatEditor from "@/components/vault/FormatEditor";
 import FormatPreview from "@/components/vault/FormatPreview";
 import { isMarkdown } from "@/lib/note-formats";
-import { editorProps, normalizeStyle } from "@/lib/text-style";
+import { editorProps, normalizeStyle, readerProps, fontStack } from "@/lib/text-style";
 import { writePref } from "@/lib/preferences";
 import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
@@ -28,8 +28,10 @@ import { useFocusMode } from "@/lib/focusMode";
 import { trashNote, restoreNote } from "@/lib/notes";
 import { toast } from "@/lib/toast";
 import { emitEvent, runHook } from "@/lib/extensions";
-import { buildLinkIndex, extractInlineTags, extractWikiLinks } from "@/lib/vault";
+import { buildLinkIndex, extractInlineTags, extractWikiLinks, extractHeadings, escapeRegExp, plainText, collectFolders, isNoteLocked } from "@/lib/vault";
 import { cn } from "@/lib/utils";
+import { decrypt } from "@/lib/encryption";
+import FindTagsPanel from "@/components/tags/FindTagsPanel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +43,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -74,11 +84,37 @@ export default function NotePage() {
   const [loadingNote, setLoadingNote] = useState(!isNew);
   const [inkOverlayMode, setInkOverlayMode] = useState(false); // "Ink over text" mode
   const [readContentRect, setReadContentRect] = useState(null); // { width, height, scrollTop }
+  const [findTagsOpen, setFindTagsOpen] = useState(false);
+  const [folder, setFolder] = useState("");
+  const [favourite, setFavourite] = useState(false);
+  const [folderMenuOpen, setFolderMenuOpen] = useState(false);
+
+  // Encryption lock screen state
+  const [isLocked, setIsLocked] = useState(false);
+  const [unlockError, setUnlockError] = useState("");
+  const [decrypting, setDecrypting] = useState(false);
+
+  // View mode state (persisted in note.style)
+  const [viewMode, setViewMode] = useState(() => typography.viewMode || "read");
+  const [showNavPane, setShowNavPane] = useState(() => typography.showNavPane === true);
+  const [zoom, setZoom] = useState(() => {
+    const z = typography.zoom;
+    if (typeof z === "number") return z;
+    if (z === "page-width" || z === "one-page" || z === "two-pages") return z;
+    return 100;
+  });
+  const [showRuler, setShowRuler] = useState(() => typography.showRuler === true);
+  const [showGridlines, setShowGridlines] = useState(() => typography.showGridlines === true);
+  const [scrollMode, setScrollMode] = useState(() => typography.scrollMode || "vertical");
+  const [navPaneTab, setNavPaneTab] = useState("headings"); // "headings" | "find"
+  const [findQuery, setFindQuery] = useState("");
+  const [findMatches, setFindMatches] = useState([]);
+  const [findIndex, setFindIndex] = useState(-1);
   const createdIdRef = useRef(isNew ? null : id);
   const loadedIdRef = useRef(null);
   const savePending = useRef(false);
-  const latestRef = useRef({ title, body, tags, format, typography, inkId });
-  latestRef.current = { title, body, tags, format, typography, inkId };
+  const latestRef = useRef({ title, body, tags, format, typography, inkId, folder, favourite });
+  latestRef.current = { title, body, tags, format, typography, inkId, folder, favourite };
 
   useEffect(() => {
     if (isNew) {
@@ -108,6 +144,28 @@ export default function NotePage() {
     db.entities.Note.get(id)
       .then((note) => {
         if (!active) return;
+        
+        // Check if note is encrypted
+        if (isNoteLocked(note)) {
+          loadedIdRef.current = id;
+          createdIdRef.current = id;
+          setTitle(note.title || "");
+          setTags(Array.isArray(note.tags) ? note.tags : []);
+          setFormat(note.format || "markdown");
+          setTypography(normalizeStyle(note.style));
+          setInkId(note.ink_page_id || null);
+          setFolder(note.folder || "");
+          setFavourite(note.favourite || false);
+          setMeta({ created_date: note.created_date, updated_date: note.updated_date });
+          setIsLocked(true);
+          setBody(""); // Don't set encrypted body
+          setStatus("idle");
+          setRevision(0);
+          emitEvent("note:opened", { id: note.id });
+          setLoadingNote(false);
+          return;
+        }
+        
         loadedIdRef.current = id;
         createdIdRef.current = id;
         setTitle(note.title || "");
@@ -116,6 +174,8 @@ export default function NotePage() {
         setFormat(note.format || "markdown");
         setTypography(normalizeStyle(note.style));
         setInkId(note.ink_page_id || null);
+        setFolder(note.folder || "");
+        setFavourite(note.favourite || false);
         setMeta({ created_date: note.created_date, updated_date: note.updated_date });
         setStatus("idle");
         setRevision(0);
@@ -141,6 +201,8 @@ export default function NotePage() {
         ...runHook("note:before-save", { title: title.trim() || "Untitled note", body, tags, format }),
         style: normalizeStyle(typography),
         ink_page_id: inkId || null,
+        folder: folder || "",
+        favourite: favourite || false,
       };
       let noteId = createdIdRef.current;
       if (noteId) {
@@ -176,6 +238,8 @@ export default function NotePage() {
         }),
         style: normalizeStyle(latest.typography),
         ink_page_id: latest.inkId || null,
+        folder: latest.folder || "",
+        favourite: latest.favourite || false,
       };
       const noteId = createdIdRef.current;
       if (noteId) db.entities.Note.update(noteId, payload).catch(() => {});
@@ -186,6 +250,7 @@ export default function NotePage() {
 
   const linkIndex = useMemo(() => buildLinkIndex(notes), [notes]);
   const titles = useMemo(() => notes.map((note) => note.title).filter(Boolean), [notes]);
+  const folders = useMemo(() => collectFolders(notes), [notes]);
   const outgoing = useMemo(() => extractWikiLinks(body), [body]);
   const inlineTags = useMemo(() => extractInlineTags(body), [body]);
   const backlinks = useMemo(() => {
@@ -283,7 +348,686 @@ export default function NotePage() {
     overlayMode: inkOverlayMode,
     onToggleOverlayMode: toggleInkOverlayMode,
   };
+
+  // Unlock handler for encrypted notes
+  const handleUnlock = useCallback(async (password) => {
+    if (!password) return;
+    setDecrypting(true);
+    setUnlockError("");
+    try {
+      // Get the encrypted note data
+      const note = await db.entities.Note.get(createdIdRef.current);
+      if (!note || !note.encrypted_body) {
+        throw new Error("No encrypted data found");
+      }
+      const decryptedBody = await decrypt(note.encrypted_body, password);
+      setBody(decryptedBody);
+      setIsLocked(false);
+    } catch (err) {
+      setUnlockError("Incorrect password or corrupted data");
+    } finally {
+      setDecrypting(false);
+    }
+  }, []);
+
   const markdown = isMarkdown(format);
+
+  // Sync view mode state to typography (saved with note)
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, viewMode }));
+  }, [viewMode, setTypography]);
+
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, showNavPane }));
+  }, [showNavPane, setTypography]);
+
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, zoom }));
+  }, [zoom, setTypography]);
+
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, showRuler }));
+  }, [showRuler, setTypography]);
+
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, showGridlines }));
+  }, [showGridlines, setTypography]);
+
+  useEffect(() => {
+    setTypography((prev) => ({ ...prev, scrollMode }));
+  }, [scrollMode, setTypography]);
+
+  // Extract headings for navigation pane
+  const headings = useMemo(() => extractHeadings(body), [body]);
+
+  // Find functionality
+  const findMatchesRef = useRef([]);
+  const findIndexRef = useRef(-1);
+
+  const performFind = useCallback((query) => {
+    if (!query) {
+      setFindMatches([]);
+      setFindIndex(-1);
+      findMatchesRef.current = [];
+      findIndexRef.current = -1;
+      return;
+    }
+    const regex = new RegExp(escapeRegExp(query), "gi");
+    const matches = [];
+    const lines = body.split("\n");
+    lines.forEach((line, lineIndex) => {
+      let match;
+      while ((match = regex.exec(line)) !== null) {
+        matches.push({
+          line: lineIndex,
+          start: match.index,
+          end: match.index + match[0].length,
+          text: line,
+        });
+      }
+    });
+    findMatchesRef.current = matches;
+    setFindMatches(matches);
+    setFindIndex(matches.length > 0 ? 0 : -1);
+    findIndexRef.current = matches.length > 0 ? 0 : -1;
+  }, [body]);
+
+  useEffect(() => {
+    performFind(findQuery);
+  }, [findQuery, performFind]);
+
+  const goToMatch = (index) => {
+    if (index >= 0 && index < findMatchesRef.current.length) {
+      setFindIndex(index);
+      findIndexRef.current = index;
+      const match = findMatchesRef.current[index];
+      // Scroll to the match in the read view
+      const readContent = readContentRef.current;
+      if (readContent) {
+        // Find the element containing this line
+        const walker = document.createTreeWalker(readContent, NodeFilter.SHOW_TEXT);
+        let currentLine = 0;
+        let node;
+        while ((node = walker.nextNode())) {
+          if (currentLine === match.line) {
+            const range = document.createRange();
+            range.setStart(node, match.start);
+            range.collapse(true);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            node.parentElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+            break;
+          }
+          currentLine += (node.textContent?.match(/\n/g) || []).length + 1;
+        }
+      }
+    }
+  };
+
+  const findNext = () => {
+    const next = (findIndexRef.current + 1) % findMatchesRef.current.length;
+    goToMatch(next);
+  };
+
+  const findPrev = () => {
+    const prev = (findIndexRef.current - 1 + findMatchesRef.current.length) % findMatchesRef.current.length;
+    goToMatch(prev);
+  };
+
+  // Navigation Pane Component
+  function NavigationPane({ isOpen, onClose, activeTab, onTabChange }) {
+    if (!isOpen) return null;
+
+    const handleHeadingClick = (heading) => {
+      const readContent = readContentRef.current;
+      if (readContent) {
+        const element = readContent.querySelector(`[id="${heading.id}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+      // Don't close pane - keep it open for navigation
+    };
+
+    const renderHeadingTree = (headings, level = 1) => {
+      if (headings.length === 0) return null;
+      const result = [];
+      let i = 0;
+      while (i < headings.length) {
+        const h = headings[i];
+        if (h.level < level) break;
+        if (h.level === level) {
+          const children = [];
+          let j = i + 1;
+          while (j < headings.length && headings[j].level > level) {
+            if (headings[j].level === level + 1) {
+              children.push(headings[j]);
+            }
+            j++;
+          }
+          result.push(
+            <div key={h.id} className="pl-2" style={{ paddingLeft: `${(level - 1) * 12}px` }}>
+              <button
+                type="button"
+                onClick={() => handleHeadingClick(h)}
+                className="w-full flex items-center gap-1 px-2 py-1 text-left text-[12px] text-foreground/80 hover:bg-accent rounded transition"
+                title={`Go to ${h.text}`}
+              >
+                <span className="font-mono text-[10px] text-muted-foreground">{"#".repeat(h.level)}</span>
+                <span className="truncate">{h.text}</span>
+              </button>
+              {children.length > 0 && (
+                <div className="mt-0.5">{renderHeadingTree(children, level + 1)}</div>
+              )}
+            </div>
+          );
+          i = j;
+        } else {
+          i++;
+        }
+      }
+      return <>{result}</>;
+    };
+
+    return (
+      <div
+        className="fixed inset-y-0 right-0 z-40 w-72 bg-card border-l border-border shadow-xl flex flex-col"
+        style={{ height: "100vh", top: 0 }}
+        role="complementary"
+        aria-label="Navigation pane"
+      >
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <span className="font-mono text-[11px] font-medium">Navigation</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded hover:bg-accent transition"
+            aria-label="Close navigation pane"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex border-b border-border px-2 py-1">
+          <button
+            type="button"
+            onClick={() => onTabChange("headings")}
+            className={cn(
+              "flex-1 px-2 py-1 text-[11px] font-mono rounded transition",
+              activeTab === "headings" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Headings
+          </button>
+          <button
+            type="button"
+            onClick={() => onTabChange("find")}
+            className={cn(
+              "flex-1 px-2 py-1 text-[11px] font-mono rounded transition",
+              activeTab === "find" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Find
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {activeTab === "headings" ? (
+            <div>
+              {headings.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground/60 p-4">No headings in this note</p>
+              ) : (
+                renderHeadingTree(headings)
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={findQuery}
+                  onChange={(e) => setFindQuery(e.target.value)}
+                  placeholder="Find in note..."
+                  data-find-input
+                  className="flex-1 h-8 px-2 text-[12px] rounded border border-border/70 bg-card/60 outline-none focus:border-primary/40"
+                  aria-label="Find in note"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={findPrev}
+                  disabled={findMatches.length === 0}
+                  className="h-8 px-2 rounded border border-border/70 bg-card/60 text-[11px] disabled:opacity-40"
+                  aria-label="Previous match"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={findNext}
+                  disabled={findMatches.length === 0}
+                  className="h-8 px-2 rounded border border-border/70 bg-card/60 text-[11px] disabled:opacity-40"
+                  aria-label="Next match"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {findMatches.length > 0 && (
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  {findIndex + 1} of {findMatches.length}
+                </div>
+              )}
+              {findMatches.length > 0 && (
+                <div className="max-h-[60vh] overflow-y-auto space-y-1">
+                  {findMatches.map((match, index) => (
+                    <button
+                      key={`${match.line}-${match.start}`}
+                      type="button"
+                      onClick={() => goToMatch(index)}
+                      className={cn(
+                        "w-full px-2 py-1.5 text-left text-[11px] rounded transition",
+                        index === findIndex ? "bg-primary/15 text-primary" : "text-foreground/80 hover:bg-accent"
+                      )}
+                    >
+                      <div className="font-mono text-[10px] text-muted-foreground mb-0.5">
+                        Line {match.line + 1}
+                      </div>
+                      <div className="truncate">{match.text.trim()}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {findQuery && findMatches.length === 0 && (
+                <p className="text-[12px] text-muted-foreground/60 p-4">No matches found</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Print Layout View Component
+  function PrintLayoutView({ body, typography, noteInk, onOpenNote, onCreateNote, linkIndex, zoom, showRuler, showGridlines, scrollMode }) {
+    const { style, className } = readerProps(typography, noteInk.hasPage && noteInk.markCount > 0);
+    const pageWidth = typography.pageWidth || 736; // default 46rem = 736px
+    const pageHeight = Math.round(pageWidth * 1.414); // A4 ratio
+    const margin = 72; // 1 inch = 72px at 96dpi
+    const contentWidth = pageWidth - margin * 2;
+    const contentHeight = pageHeight - margin * 2;
+
+    // Calculate zoom factor
+    let zoomFactor = 1;
+    if (typeof zoom === "number") zoomFactor = zoom / 100;
+    else if (zoom === "page-width") zoomFactor = contentWidth / 736;
+    else if (zoom === "one-page") zoomFactor = 1;
+    else if (zoom === "two-pages") zoomFactor = 0.5;
+
+    const scaledPageWidth = pageWidth * zoomFactor;
+    const scaledPageHeight = pageHeight * zoomFactor;
+    const scaledMargin = margin * zoomFactor;
+    const scaledContentWidth = contentWidth * zoomFactor;
+
+    return (
+      <div
+        className="flex flex-col items-center gap-8 p-8"
+        style={{
+          overflow: scrollMode === "horizontal" ? "auto" : "visible",
+          flexDirection: scrollMode === "horizontal" ? "row" : "column",
+          alignItems: scrollMode === "horizontal" ? "flex-start" : "center",
+          padding: "2rem",
+        }}
+      >
+        {showRuler && (
+          <div
+            className="relative"
+            style={{
+              width: scaledPageWidth,
+              height: "24px",
+              pointerEvents: "none",
+            }}
+          >
+            <div className="absolute top-0 left-0 right-0 bottom-0 border-b border-border/50" />
+            <div
+              className="absolute top-0 h-full"
+              style={{
+                left: scaledMargin,
+                right: scaledMargin,
+                borderLeft: "1px dashed var(--primary)",
+                borderRight: "1px dashed var(--primary)",
+              }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 font-mono text-[9px] text-muted-foreground/50 flex justify-between px-1">
+              <span>0</span>
+              <span>{Math.round(pageWidth / 25.4 * 96)}px</span>
+              <span>{Math.round(pageWidth / 25.4 * 96)}px</span>
+            </div>
+          </div>
+        )}
+
+        <div
+          className="relative"
+          style={{
+            width: scaledPageWidth,
+            minHeight: scaledPageHeight,
+            background: "white",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+            border: "1px solid var(--border)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Page number */}
+          <div className="absolute top-2 right-2 font-mono text-[10px] text-muted-foreground/50">
+            Page 1
+          </div>
+
+          {/* Gridlines overlay */}
+          {showGridlines && (
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)`,
+                backgroundSize: `${24 * zoomFactor}px ${24 * zoomFactor}px`,
+                opacity: 0.3,
+              }}
+            />
+          )}
+
+          {/* Page content */}
+          <div
+            className="flex-1 overflow-hidden"
+            style={{
+              padding: `${scaledMargin}px`,
+              width: scaledContentWidth,
+            }}
+          >
+            <MarkdownView
+              body={body}
+              linkIndex={linkIndex}
+              typography={typography}
+              hasInk={noteInk.hasPage && noteInk.markCount > 0}
+              onOpenNote={onOpenNote}
+              onCreateNote={onCreateNote}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Outline View Component
+  function OutlineView({ body, typography, onHeadingClick }) {
+    const headings = useMemo(() => extractHeadings(body), [body]);
+
+    const renderOutline = (headings, level = 1) => {
+      if (headings.length === 0) return null;
+      const result = [];
+      let i = 0;
+      while (i < headings.length) {
+        const h = headings[i];
+        if (h.level < level) break;
+        if (h.level === level) {
+          const children = [];
+          let j = i + 1;
+          while (j < headings.length && headings[j].level > level) {
+            if (headings[j].level === level + 1) {
+              children.push(headings[j]);
+            }
+            j++;
+          }
+          result.push(
+            <div key={h.id} style={{ paddingLeft: `${(level - 1) * 24}px` }}>
+              <button
+                type="button"
+                onClick={() => onHeadingClick(h)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-[14px] hover:bg-accent rounded transition"
+              >
+                <span className="font-mono text-[11px] text-muted-foreground">{"#".repeat(h.level)}</span>
+                <span className="font-medium">{h.text}</span>
+              </button>
+              {children.length > 0 && (
+                <div className="mt-1">{renderOutline(children, level + 1)}</div>
+              )}
+            </div>
+          );
+          i = j;
+        } else {
+          i++;
+        }
+      }
+      return <>{result}</>;
+    };
+
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        {headings.length === 0 ? (
+          <p className="text-[14px] text-muted-foreground text-center py-12">No headings in this note</p>
+        ) : (
+          renderOutline(headings)
+        )}
+      </div>
+    );
+  }
+
+  // Immersive Reader View Component
+  function ImmersiveReaderView({ body, typography, onClose }) {
+    const [lineFocus, setLineFocus] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [utterance, setUtterance] = useState(null);
+    const linesRef = useRef([]);
+
+    useEffect(() => {
+      const text = plainText(body);
+      const lines = text.split("\n").filter((l) => l.trim());
+      linesRef.current = lines;
+    }, [body]);
+
+    const speak = useCallback(() => {
+      if (!("speechSynthesis" in window)) return;
+      const text = plainText(body);
+      if (!text.trim()) return;
+
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = navigator.language || "en-US";
+      u.rate = 1;
+      u.onend = () => setIsPlaying(false);
+      u.onerror = () => setIsPlaying(false);
+      setUtterance(u);
+      setIsPlaying(true);
+      window.speechSynthesis.speak(u);
+    }, [body]);
+
+    const pause = useCallback(() => {
+      window.speechSynthesis.pause();
+      setIsPlaying(false);
+    }, []);
+
+    const stop = useCallback(() => {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+    }, []);
+
+    const nextLine = () => {
+      setLineFocus((prev) => Math.min(prev + 1, linesRef.current.length - 1));
+    };
+
+    const prevLine = () => {
+      setLineFocus((prev) => Math.max(prev - 1, 0));
+    };
+
+    const { style } = readerProps(typography, false);
+    const immersiveStyle = {
+      ...style,
+      fontSize: "22px",
+      lineHeight: "1.8",
+      maxWidth: "800px",
+      margin: "0 auto",
+      padding: "4rem 2rem",
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 bg-background flex flex-col" style={{ height: "100vh" }}>
+        {/* Top bar */}
+        <div className="flex items-center justify-between p-4 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-accent transition"
+              aria-label="Exit Immersive Reader"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="font-heading text-lg">Immersive Reader</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={prevLine}
+              disabled={lineFocus === 0}
+              className="p-2 rounded-lg border border-border/50 hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Previous line"
+            >
+              <ChevronLeft className="h-5 w-5 rotate-90" />
+            </button>
+            <button
+              type="button"
+              onClick={isPlaying ? pause : speak}
+              className="p-2 rounded-lg border border-border/50 hover:bg-accent"
+              aria-label={isPlaying ? "Pause reading" : "Read aloud"}
+            >
+              {isPlaying ? <Volume2 className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={stop}
+              disabled={!isPlaying}
+              className="p-2 rounded-lg border border-border/50 hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Stop reading"
+            >
+              <span className="font-mono text-[12px]">■</span>
+            </button>
+            <button
+              type="button"
+              onClick={nextLine}
+              disabled={lineFocus >= linesRef.current.length - 1}
+              className="p-2 rounded-lg border border-border/50 hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Next line"
+            >
+              <ChevronRight className="h-5 w-5 rotate-90" />
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="font-mono text-[11px] text-muted-foreground">
+              Line {lineFocus + 1} of {linesRef.current.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto" style={{ background: "var(--background)" }}>
+          <div className="prose" style={immersiveStyle}>
+            {plainText(body).split("\n").map((line, index) => (
+              <p
+                key={index}
+                className="my-2"
+                style={{
+                  backgroundColor: index === lineFocus ? "var(--primary) / 0.1" : "transparent",
+                  borderLeft: index === lineFocus ? "3px solid var(--primary)" : "none",
+                  paddingLeft: index === lineFocus ? "12px" : "0",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {line || <br />}
+              </p>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lock Screen Component for encrypted notes
+  function LockScreen({ title, onUnlock, error, decrypting }) {
+    const [password, setPassword] = useState("");
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+      inputRef.current?.focus();
+    }, []);
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      onUnlock(password);
+    };
+
+    return (
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <div className="w-full max-w-md bg-card border border-border/70 rounded-xl p-8 shadow-lg">
+          <div className="text-center mb-6">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Lock className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-semibold">Note is Locked</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              “{title.trim() || "Untitled note"}” is encrypted.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="unlock-password" className="block text-sm font-medium mb-1">
+                Password
+              </label>
+              <input
+                ref={inputRef}
+                id="unlock-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !decrypting && handleSubmit(e)}
+                disabled={decrypting}
+                className="w-full h-10 px-3 rounded-md border border-border/70 bg-card/60 text-foreground outline-none focus:border-primary/40 disabled:opacity-50"
+                placeholder="Enter password to unlock"
+                autoComplete="off"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive text-center" role="alert">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={decrypting || !password.trim()}
+              className="w-full h-10 rounded-md bg-primary text-primary-foreground font-medium transition hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {decrypting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Unlocking…
+                </span>
+              ) : (
+                "Unlock"
+              )}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Forgot your password? <strong>It cannot be recovered.</strong> The note body will remain encrypted permanently.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const insertLink = async (rawTitle, goToNote) => {
     const clean = rawTitle.trim();
@@ -465,20 +1209,37 @@ export default function NotePage() {
             </span>
 
             {!focus && (
-              <button
-                type="button"
-                onClick={() => setAiOpen((open) => !open)}
-                aria-pressed={aiOpen}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[10.5px] transition",
-                  aiOpen
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/80 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Sparkles className="h-3 w-3" />
-                <span className="hidden sm:inline">AI</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAiOpen((open) => !open)}
+                  aria-pressed={aiOpen}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[10.5px] transition",
+                    aiOpen
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-border/80 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  <span className="hidden sm:inline">AI</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFavourite((prev) => !prev)}
+                  aria-pressed={favourite}
+                  aria-label={favourite ? "Remove from favourites" : "Add to favourites"}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[10.5px] transition",
+                    favourite
+                      ? "border-yellow-400/50 bg-yellow-400/10 text-yellow-400"
+                      : "border-border/80 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {favourite ? <StarFilled className="h-3 w-3 fill-current" /> : <Star className="h-3 w-3" />}
+                  <span className="hidden sm:inline">Star</span>
+                </button>
+              </>
             )}
 
             <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5">
@@ -499,6 +1260,101 @@ export default function NotePage() {
                 </button>
               ))}
             </div>
+
+            {/* View Mode Controls (only in read/split modes) */}
+            {(mode !== "write" || showNavPane) && (
+              <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5 ml-1">
+                <button
+                  type="button"
+                  onClick={() => setShowNavPane((prev) => !prev)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 font-mono text-[10.5px] transition",
+                    showNavPane ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  aria-pressed={showNavPane}
+                  title="Navigation pane (headings & find)"
+                >
+                  <AlignLeft className="h-3 w-3" />
+                  <span className="hidden sm:inline">Nav Pane</span>
+                </button>
+                <div className="w-px h-6 bg-border/50 mx-1" />
+                <div className="flex items-center gap-1">
+                  <ZoomOut
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    onClick={() => setZoom((z) => (typeof z === "number" ? Math.max(50, z - 10) : 100))}
+                    title="Zoom out"
+                  />
+                  <select
+                    value={typeof zoom === "number" ? String(zoom) : zoom}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "page-width" || val === "one-page" || val === "two-pages") {
+                        setZoom(val);
+                      } else {
+                        setZoom(Math.max(50, Math.min(300, Number(val))));
+                      }
+                    }}
+                    className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40"
+                    title="Zoom"
+                  >
+                    <option value="50">50%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                    <option value="125">125%</option>
+                    <option value="150">150%</option>
+                    <option value="200">200%</option>
+                    <option value="300">300%</option>
+                    <option value="page-width">Page Width</option>
+                    <option value="one-page">One Page</option>
+                    <option value="two-pages">Multiple Pages</option>
+                  </select>
+                  <ZoomIn
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    onClick={() => setZoom((z) => (typeof z === "number" ? Math.min(300, z + 10) : 100))}
+                    title="Zoom in"
+                  />
+                </div>
+                <div className="w-px h-6 bg-border/50 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => setShowRuler((prev) => !prev)}
+                  className={cn(
+                    "p-1.5 rounded-[4px] transition",
+                    showRuler ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Ruler"
+                  aria-pressed={showRuler}
+                >
+                  <Ruler className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowGridlines((prev) => !prev)}
+                  className={cn(
+                    "p-1.5 rounded-[4px] transition",
+                    showGridlines ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title="Gridlines"
+                  aria-pressed={showGridlines}
+                >
+                  <Grid className="h-3.5 w-3.5" />
+                </button>
+                <div className="w-px h-6 bg-border/50 mx-1" />
+                <button
+                  type="button"
+                  onClick={() => setScrollMode((prev) => (prev === "vertical" ? "horizontal" : "vertical"))}
+                  className={cn(
+                    "p-1.5 rounded-[4px] transition",
+                    scrollMode === "horizontal" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title={scrollMode === "vertical" ? "Switch to Side to Side" : "Switch to Vertical"}
+                  aria-pressed={scrollMode === "horizontal"}
+                  disabled={viewMode !== "print"}
+                >
+                  {scrollMode === "vertical" ? <MoveHorizontal className="h-3.5 w-3.5" /> : <MoveVertical className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            )}
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -540,25 +1396,47 @@ export default function NotePage() {
             focus ? "lg:grid-cols-1" : "lg:grid-cols-[minmax(0,1fr)_252px]"
           )}
         >
-          <article className="min-w-0">
+          <article className="min-w-0 relative">
+            {/* Navigation Pane */}
+            <NavigationPane
+              isOpen={showNavPane && viewMode !== "immersive"}
+              onClose={() => setShowNavPane(false)}
+              activeTab={navPaneTab}
+              onTabChange={setNavPaneTab}
+            />
+
             {loadingNote ? (
               <div className="space-y-4">
                 <div className="h-9 w-2/3 animate-pulse rounded-md bg-card/60" />
                 <div className="h-4 w-full animate-pulse rounded bg-card/40" />
                 <div className="h-4 w-5/6 animate-pulse rounded bg-card/40" />
               </div>
+            ) : isLocked ? (
+              <LockScreen
+                title={title}
+                onUnlock={handleUnlock}
+                error={unlockError}
+                decrypting={decrypting}
+              />
             ) : (
               <>
-                <input
-                  value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    touch();
-                  }}
-                  placeholder="Untitled note"
-                  aria-label="Note title"
-                  className="w-full bg-transparent font-heading text-[28px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 sm:text-[34px]"
-                />
+                {!typography.hideTitle && (
+                  <input
+                    value={title}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      touch();
+                    }}
+                    placeholder="Untitled note"
+                    aria-label="Note title"
+                    style={{
+                      fontFamily: typography.titleFont ? fontStack(typography.titleFont) : undefined,
+                      fontSize: typography.titleSize ? `${typography.titleSize}px` : undefined,
+                      textAlign: typography.titleAlign || 'left',
+                    }}
+                    className="w-full bg-transparent font-heading text-[28px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 sm:text-[34px]"
+                  />
+                )}
 
                 <div className="mt-4 flex flex-wrap items-center gap-1.5">
                   {tags.map((tag) => (
@@ -603,6 +1481,56 @@ export default function NotePage() {
                 </div>
 
                 <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
+
+                {/* Folder selector */}
+                <div className="mt-4 flex items-center gap-2">
+                  <Folder className="h-3.5 w-3.5 text-muted-foreground" />
+                  <select
+                    value={folder}
+                    onChange={(e) => setFolder(e.target.value)}
+                    className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 px-2 py-1 font-mono text-[11px] text-foreground outline-none focus:border-primary/40"
+                    aria-label="Folder"
+                  >
+                    <option value="">Unfiled</option>
+                    {folders.map((f) => (
+                      <option key={f.folder} value={f.folder}>
+                        {f.folder}
+                      </option>
+                    ))}
+                  </select>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="h-8 px-2 rounded-md border border-border/70 bg-card/60 text-muted-foreground hover:text-foreground transition"
+                        aria-label="Folder options"
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel className="font-mono text-[10px]">Folder actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setFolder("")}>
+                        <Folder className="h-3 w-3 mr-2" /> Move to Unfiled
+                      </DropdownMenuItem>
+                      {folders.map((f) => (
+                        <DropdownMenuItem key={f.folder} onClick={() => setFolder(f.folder)}>
+                          <Folder className="h-3 w-3 mr-2" /> {f.folder}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const newFolder = prompt("New folder name (use / for subfolders):");
+                          if (newFolder) setFolder(newFolder.trim());
+                        }}
+                      >
+                        <Folder className="h-3 w-3 mr-2" /> New folder…
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
                 <div className="mt-6">
                   {aiOpen && !focus && (
@@ -659,6 +1587,7 @@ export default function NotePage() {
                   tab={ribbonTab}
                   onTab={setRibbonTab}
                   noteInk={noteInk}
+                  onFindTags={() => setFindTagsOpen(true)}
                 />
 
                 {inkActive ? (
@@ -701,6 +1630,7 @@ export default function NotePage() {
                               onCreateNote={(newTitle) => insertLink(newTitle, false)}
                               onImageFiles={images.insert}
                               hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                              showLineNumbers={typography.showLineNumbers}
                               {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
                             />
                             <MacroBar
@@ -717,10 +1647,60 @@ export default function NotePage() {
                       </div>
                     )}
                     {mode !== "write" && (
-                      <div className={cn("min-w-0", mode === "split" && "lg:border-l lg:border-border/60 lg:pl-10")}>
-                        {body.trim() ? (
-                          markdown ? (
-                            <div ref={readContentRef} onScroll={handleReadScroll} className="relative">
+                      <div className={cn("min-w-0 relative", mode === "split" && "lg:border-l lg:border-border/60 lg:pl-10")}>
+                        {viewMode === "immersive" ? (
+                          <ImmersiveReaderView
+                            body={body}
+                            typography={typography}
+                            onClose={() => setViewMode("read")}
+                          />
+                        ) : viewMode === "print" ? (
+                          <PrintLayoutView
+                            body={body}
+                            typography={typography}
+                            noteInk={noteInk}
+                            onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                            onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                            linkIndex={linkIndex}
+                            zoom={zoom}
+                            showRuler={showRuler}
+                            showGridlines={showGridlines}
+                            scrollMode={scrollMode}
+                          />
+                        ) : viewMode === "outline" ? (
+                          <OutlineView
+                            body={body}
+                            typography={typography}
+                            onHeadingClick={(heading) => {
+                              const readContent = readContentRef.current;
+                              if (readContent) {
+                                const element = readContent.querySelector(`[id="${heading.id}"]`);
+                                if (element) {
+                                  element.scrollIntoView({ behavior: "smooth", block: "start" });
+                                }
+                              }
+                            }}
+                          />
+                        ) : viewMode === "draft" ? (
+                          <div className="p-4">
+                            <MarkdownEditor
+                              value={body}
+                              onChange={(next) => {
+                                setBody(next);
+                                touch();
+                              }}
+                              titles={titles}
+                              onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                              onImageFiles={images.insert}
+                              hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                              showLineNumbers={typography.showLineNumbers}
+                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
+                            />
+                          </div>
+                        ) : (
+                          // Read Mode (default)
+                          <div ref={readContentRef} onScroll={handleReadScroll} className="relative" data-read-content>
+                            {markdown ? (
                               <MarkdownView
                                 body={body}
                                 linkIndex={linkIndex}
@@ -729,21 +1709,22 @@ export default function NotePage() {
                                 onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
                                 onCreateNote={(newTitle) => insertLink(newTitle, true)}
                               />
-                              {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
-                                <NoteInkOverlay
-                                  noteInk={noteInk}
-                                  contentRef={readContentRef.current}
-                                  scrollTop={readContentRect.scrollTop}
-                                  contentWidth={readContentRect.width}
-                                  contentHeight={readContentRect.height}
-                                  scale={1}
-                                />
-                              )}
-                            </div>
-                          ) : (
-                            <FormatPreview value={body} format={format} />
-                          )
-                        ) : (
+                            ) : (
+                              <FormatPreview value={body} format={format} />
+                            )}
+                            {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
+                              <NoteInkOverlay
+                                noteInk={noteInk}
+                                contentRef={readContentRef.current}
+                                scrollTop={readContentRect.scrollTop}
+                                contentWidth={readContentRect.width}
+                                contentHeight={readContentRect.height}
+                                scale={1}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
                           <p className="text-[14px] text-muted-foreground">
                             Nothing written yet. Press <span className="font-mono text-[12px]">Write</span> and start.
                           </p>
@@ -770,6 +1751,17 @@ export default function NotePage() {
         <EdgeDock panels={dockPanels} />
       </main>
       <div id="file-panel-root" />
+      {findTagsOpen && (
+        <FindTagsPanel
+          notes={notes}
+          onOpenNote={(noteId, lineNumber) => {
+            navigate(`/note/${noteId}`);
+            // Scroll to line after navigation - the note will load and we need to handle scroll
+            // For now, just navigate. The line number could be used to scroll after load.
+          }}
+          onClose={() => setFindTagsOpen(false)}
+        />
+      )}
     </div>
   );
 }

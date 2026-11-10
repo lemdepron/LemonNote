@@ -1,13 +1,54 @@
 import { cn } from "@/lib/utils";
+import { Search, Tag } from "lucide-react";
+import { BUILTIN_TAGS, getTagDef } from "@/lib/tags";
 
-export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount = 0, linkCount = 0 }) {
+export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount = 0, linkCount = 0, onFindTags }) {
+  // Count tags that are built-in
+  const builtinTagCounts = {};
+  for (const tag of tags) {
+    if (BUILTIN_TAGS.some((bt) => bt.id === tag.tag)) {
+      builtinTagCounts[tag.tag] = tag.count;
+    }
+  }
+  const builtinTags = BUILTIN_TAGS.filter((bt) => builtinTagCounts[bt.id]);
+  const otherTags = tags.filter((tag) => !BUILTIN_TAGS.some((bt) => bt.id === tag.tag));
+
   return (
     <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
       <section>
         <p className="nb-label">Tags</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {tags.length === 0 && <p className="text-[13px] text-muted-foreground">No tags yet.</p>}
-          {tags.map(({ tag, count }) => {
+          {/* Built-in tags first */}
+          {builtinTags.map(({ tag, count }) => {
+            const tagDef = getTagDef(tag);
+            const active = tag === activeTag;
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onSelect(tag)}
+                title={`${tagDef.label} (${count} notes)${tagDef.shortcut ? ` — ${tagDef.shortcut}` : ""}`}
+                className={cn(
+                  "group flex items-center gap-1.5 rounded-lg border px-2 py-1 font-mono text-[11px] transition",
+                  active
+                    ? "border-primary/50 bg-primary/15 text-primary"
+                    : "border-border/70 bg-card/40 text-muted-foreground hover:border-border hover:text-foreground"
+                )}
+              >
+                {tagDef.icon && (
+                  <tagDef.icon
+                    className={cn("h-3 w-3 flex-shrink-0", active ? "text-current" : tagDef.color?.replace("bg-", "text-"))}
+                    aria-hidden="true"
+                  />
+                )}
+                #{tag}
+                <span className={cn("text-[10px]", active ? "text-primary/70" : "text-muted-foreground/60")}>{count}</span>
+              </button>
+            );
+          })}
+          {/* Other tags */}
+          {otherTags.map(({ tag, count }) => {
             const active = tag === activeTag;
             return (
               <button
@@ -50,6 +91,21 @@ export default function TagRail({ tags = [], activeTag = "", onSelect, noteCount
           </div>
         </dl>
       </section>
+
+      {onFindTags && (
+        <section>
+          <p className="nb-label">Actions</p>
+          <button
+            type="button"
+            onClick={onFindTags}
+            className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card/40 px-3 py-2 font-mono text-[11px] text-muted-foreground transition hover:border-primary/40 hover:text-primary hover:bg-primary/10"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <Tag className="h-3.5 w-3.5" />
+            <span>Find Tags</span>
+          </button>
+        </section>
+      )}
 
       <p className="text-[11.5px] leading-relaxed text-muted-foreground/70">
         Flat by design. Search, tags and links are the only structure — no folders to prune.

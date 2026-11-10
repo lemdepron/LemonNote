@@ -6,6 +6,10 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "notification:default",
+    "core:window:allow-set-always-on-top",
+    "fs:default",
+    "dialog:default"
   ]
 }

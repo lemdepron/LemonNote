@@ -43,7 +43,7 @@ export default function EdgeDock({ panels }) {
   const render = (panel) => (typeof panel.content === "function" ? panel.content(close) : panel.content);
 
   return (
-    <div className="pointer-events-none fixed inset-y-0 right-0 z-40 flex items-center">
+    <div className="pointer-events-none fixed inset-y-0 end-0 z-40 flex items-center">
       <div className="nb-fade pointer-events-auto relative flex flex-col items-center gap-1.5 pr-1 sm:pr-2">
         {panels.map((panel) => {
           const Icon = panel.icon;
@@ -64,7 +64,7 @@ export default function EdgeDock({ panels }) {
               )}
             >
               <Icon className="h-4 w-4" />
-              <span className="pointer-events-none absolute right-full top-1/2 z-20 mr-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-border/70 bg-popover px-2 py-1 font-mono text-[10px] text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              <span className="pointer-events-none absolute right-full rtl:left-full top-1/2 z-20 mr-2 rtl:ml-2 rtl:mr-0 -translate-y-1/2 whitespace-nowrap rounded-md border border-border/70 bg-popover px-2 py-1 font-mono text-[10px] text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
                 {panel.label}
               </span>
             </button>
@@ -79,10 +79,10 @@ export default function EdgeDock({ panels }) {
               data-dock="flyout"
               aria-hidden={!active}
               className={cn(
-                "absolute right-full top-1/2 z-30 mr-2 w-[min(320px,86vw)] origin-right -translate-y-1/2 overflow-hidden rounded-xl border border-border/70 bg-popover/95 shadow-2xl shadow-[hsl(var(--shadow)/0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 ease-out transform-gpu will-change-transform",
+                "absolute right-full rtl:left-full top-1/2 z-30 mr-2 rtl:ml-2 rtl:mr-0 w-[min(320px,86vw)] origin-right rtl:origin-left -translate-y-1/2 overflow-hidden rounded-xl border border-border/70 bg-popover/95 shadow-2xl shadow-[hsl(var(--shadow)/0.5)] backdrop-blur-xl transition-[opacity,transform] duration-200 ease-out transform-gpu will-change-transform",
                 active
                   ? "pointer-events-auto translate-x-0 scale-100 opacity-100"
-                  : "pointer-events-none translate-x-2 scale-95 opacity-0"
+                  : "pointer-events-none translate-x-2 rtl:-translate-x-2 scale-95 opacity-0"
               )}
             >
               <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
