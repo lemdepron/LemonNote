@@ -5,6 +5,7 @@
 
 import { db } from "@/api/localDb";
 import { getFile, createFileObjectUrl } from "@/api/localDb";
+import { readPref, writePref } from "@/lib/preferences";
 
 /** Characters not allowed in file names on Windows */
 const INVALID_CHARS = /[<>:"/\\|?*\x00-\x1F]/g;
@@ -358,47 +359,41 @@ export async function pickMirrorFolder() {
 /**
  * Save mirror folder path to preferences.
  */
-export async function saveMirrorFolder(path) {
-  const { writePref } = await import("@/lib/preferences");
+export function saveMirrorFolder(path) {
   writePref("settings:mirrorFolder", path);
 }
 
 /**
  * Get saved mirror folder path.
  */
-export async function getMirrorFolder() {
-  const { readPref } = await import("@/lib/preferences");
+export function getMirrorFolder() {
   return readPref("settings:mirrorFolder", "");
 }
 
 /**
  * Save mirror enabled state.
  */
-export async function saveMirrorEnabled(enabled) {
-  const { writePref } = await import("@/lib/preferences");
+export function saveMirrorEnabled(enabled) {
   writePref("settings:mirrorEnabled", enabled);
 }
 
 /**
  * Get mirror enabled state.
  */
-export async function getMirrorEnabled() {
-  const { readPref } = await import("@/lib/preferences");
+export function getMirrorEnabled() {
   return readPref("settings:mirrorEnabled", false);
 }
 
 /**
  * Save auto-mirror setting.
  */
-export async function saveAutoMirror(enabled) {
-  const { writePref } = await import("@/lib/preferences");
+export function saveAutoMirror(enabled) {
   writePref("settings:autoMirror", enabled);
 }
 
 /**
  * Get auto-mirror setting.
  */
-export async function getAutoMirror() {
-  const { readPref } = await import("@/lib/preferences");
+export function getAutoMirror() {
   return readPref("settings:autoMirror", true);
 }
