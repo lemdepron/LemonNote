@@ -11,8 +11,10 @@ import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { uid } from "@/lib/table";
+import { useI18n } from "@/lib/i18n";
 
 export default function CanvasPage() {
+  const { t, localDigits } = useI18n();
   const { id } = useParams();
   const [canvas, setCanvas] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +115,7 @@ export default function CanvasPage() {
   const dockPanels = [
     {
       id: "canvas-inspector",
-      label: "Card inspector",
+      label: t("vault.canvas.cardInspector"),
       icon: SlidersHorizontal,
       content: (
         <CanvasInspector
@@ -131,16 +133,16 @@ export default function CanvasPage() {
     },
     {
       id: "canvas-guide",
-      label: "Canvas guide",
+      label: t("vault.canvas.canvasGuide"),
       icon: Info,
       content: (
         <div className="rounded-xl border border-border/60 bg-card/30 p-3.5 text-[12.5px] leading-relaxed text-muted-foreground">
-          <p>Drag empty space to pan, scroll to zoom, double-click the plane to drop a card.</p>
+          <p>{t("vault.canvas.guideText1")}</p>
           <p className="mt-2">
-            The <span className="text-foreground">link handle</span> on a card wires it to another one.
+            {t("vault.canvas.guideText2")}
           </p>
-          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-            {nodes.length} cards · {edges.length} connections
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70" dir="auto">
+            {t("vault.canvas.stats", { cards: localDigits(nodes.length), connections: localDigits(edges.length) })}
           </p>
         </div>
       ),
@@ -163,9 +165,9 @@ export default function CanvasPage() {
       <div className="nb-shell min-h-screen">
         <VaultHeader />
         <div className="mx-auto max-w-xl px-5 py-24 text-center">
-          <p className="font-display text-[26px]">This canvas is gone.</p>
+          <p className="font-display text-[26px]">{t("vault.canvas.emptyState")}</p>
           <Link to="/canvas" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
-            back to canvases
+            {t("vault.canvas.backToCanvases")}
           </Link>
         </div>
       </div>
@@ -180,18 +182,18 @@ export default function CanvasPage() {
           <Link
             to="/canvas"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to canvases"
+            aria-label={t("vault.canvas.backToCanvases")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <input
             value={canvas.name}
             onChange={(event) => patch({ name: event.target.value })}
-            aria-label="Canvas name"
+            aria-label={t("vault.canvas.canvasName")}
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[22px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
           />
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {status === "saving" ? "saving…" : status === "saved" ? "saved" : "autosave on"}
+            {t(`vault.canvas.status.${status}`)}
           </span>
           <Button
             onClick={addCardToGrid}
@@ -199,7 +201,7 @@ export default function CanvasPage() {
             className="h-8 gap-1.5 rounded-lg bg-primary px-3 text-[12.5px] text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add card
+            {t("vault.canvas.addCard")}
           </Button>
           <FocusToggle />
         </div>

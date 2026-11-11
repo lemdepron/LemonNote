@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Columns } from "lucide-react";
+import { db } from "@/api/localDb";
 import { cn } from "@/lib/utils";
 
 /**
  * Tab strip component for note tabs.
  * Supports: click to activate, close button, middle-click to close, drag to reorder,
  * Ctrl+W to close, Ctrl+Tab to switch, Ctrl+Shift+Tab to switch backward.
+ * Shows real note titles fetched from localDb.
  */
 export default function NoteTabs({
   tabs,
@@ -20,6 +22,32 @@ export default function NoteTabs({
   const tabRefs = useRef([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [tabTitles, setTabTitles] = useState({});
+
+  // Fetch note titles for tabs
+  useEffect(() => {
+    const fetchTitles = async () => {
+      const titles = {};
+      for (const tab of tabs) {
+        if (tab.noteId === "new") {
+          titles[tab.noteId] = "New note";
+        } else {
+          try {
+            const note = await db.entities.Note.get(tab.noteId);
+            titles[tab.noteId] = note?.title?.trim() || "Untitled";
+          } catch {
+            titles[tab.noteId] = "Untitled";
+          }
+        }
+      }
+      setTabTitles(titles);
+    };
+    fetchTitles();
+  }, [tabs]);
+
+  const getTabTitle = (tab) => {
+    return tabTitles[tab.noteId] || (tab.noteId === "new" ? "New note" : "Untitled");
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -139,13 +167,6 @@ export default function NoteTabs({
       });
       setDragOverIndex(null);
     }
-  };
-
-  // Get note title for tab (truncated)
-  const getTabTitle = (tab) => {
-    // In a real app, we'd fetch the title from the note data
-    // For now, we'll use a placeholder or the noteId
-    return tab.noteId === "new" ? "New note" : `Note ${tab.noteId.slice(0, 8)}`;
   };
 
   return (

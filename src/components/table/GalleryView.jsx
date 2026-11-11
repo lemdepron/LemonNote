@@ -1,11 +1,11 @@
 import { labelColumn, rowLabel } from "@/lib/table";
 
-export default function GalleryView({ columns, rows }) {
+export default function GalleryView({ columns, rows, t }) {
   if (!rows.length) {
     return (
       <div className="rounded-xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
-        <p className="text-[14px]">No rows yet.</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">Add a row to see it as a card.</p>
+        <p className="text-[14px]">{t("vault.tables.galleryView.noRows")}</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">{t("vault.tables.galleryView.addRow")}</p>
       </div>
     );
   }
@@ -28,7 +28,7 @@ export default function GalleryView({ columns, rows }) {
                     {column.name}
                   </dt>
                   <dd className="min-w-0 flex-1 truncate text-[12px] text-foreground/85">
-                    {column.type === "checkbox" ? "yes" : String(value)}
+                    {column.type === "checkbox" ? t("vault.tables.galleryView.checkboxYes") : String(value)}
                   </dd>
                 </div>
               );

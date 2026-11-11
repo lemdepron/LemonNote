@@ -5,10 +5,11 @@ import {
   Underline, Undo2, WrapText, Pilcrow, MoveHorizontal,
   Circle, CircleCheck, Timer, ListRestart, CircleDashed, Search,
   Globe, Languages, Wand2,
+  Type, FileText,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { FORMAT_GROUPS, formatLabel } from "@/lib/note-formats";
-import { Btn, RibbonSelect, Stepper, useRibbon } from "@/components/ribbon/RibbonKit";
+import { Btn, GroupMenu, MenuLabel, RibbonSelect, Stepper, useRibbon } from "@/components/ribbon/RibbonKit";
 import { copyText, execEditor } from "@/lib/editor-bridge";
 import {
   applyAttr, clearFormatting, lineTool, setBlock, setHeading, shiftIndent, toggleItalic, toggleLinePrefix, toggleWrap, taskTool,
@@ -209,7 +210,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
   return (
     <>
-      <RibbonGroup label={tr("ribbon.home.clipboard")}>
+      <RibbonGroup label={tr("ribbon.home.clipboard")} icon={Copy} priority={10}>
         <Btn id="home.undo" icon={Undo2} label={tr("ribbon.home.undo")} hint={tr("ribbon.home.undoHint")} onClick={() => execEditor("undo")} />
         <Btn id="home.redo" icon={Redo2} label={tr("ribbon.home.redo")} hint={tr("ribbon.home.redoHint")} onClick={() => execEditor("redo")} />
         <Btn id="home.cut" icon={Scissors} label={tr("ribbon.home.cut")} hint={tr("ribbon.home.cutHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={cut} />
@@ -226,7 +227,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.font")}>
+      <RibbonGroup label={tr("ribbon.home.font")} icon={Bold} priority={20}>
         <Btn id="home.bold" icon={Bold} hint={tr("ribbon.home.bold")} shortcut="Ctrl+B" edit={(s) => toggleWrap(s, "**")} />
         <Btn id="home.italic" icon={Italic} hint={tr("ribbon.home.italic")} shortcut="Ctrl+I" edit={toggleItalic} />
         <Btn id="home.underline" icon={Underline} hint={tr("ribbon.home.underline")} shortcut="Ctrl+U" edit={(s) => toggleWrap(s, "<u>", "</u>")} />
@@ -236,7 +237,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.style")}>
+      <RibbonGroup label={tr("ribbon.home.style")} icon={Pilcrow} priority={30}>
         <RibbonSelect
           title={tr("ribbon.home.paragraphStyle")}
           disabled={!markdown}
@@ -249,7 +250,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lists")}>
+      <RibbonGroup label={tr("ribbon.home.lists")} icon={List} priority={40}>
         <Btn id="home.bulletList" icon={List} hint={tr("ribbon.home.bulletList")} edit={(s) => toggleLinePrefix(s, "bullet")} />
         <Btn id="home.numberList" icon={ListOrdered} hint={tr("ribbon.home.numberList")} edit={(s) => toggleLinePrefix(s, "number")} />
         <Btn id="home.checklist" icon={ListChecks} hint={tr("ribbon.home.checklist")} edit={(s) => toggleLinePrefix(s, "check")} />
@@ -258,7 +259,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.outdent" icon={IndentDecrease} hint={tr("ribbon.home.outdent")} edit={(s) => shiftIndent(s, -1)} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.align")}>
+      <RibbonGroup label={tr("ribbon.home.align")} icon={AlignLeft} priority={50}>
         {[
           ["left", AlignLeft, tr("ribbon.home.alignLeft")],
           ["center", AlignCenter, tr("ribbon.home.alignCenter")],
@@ -272,7 +273,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.dirAuto" icon={MoveHorizontal} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lines")}>
+      <RibbonGroup label={tr("ribbon.home.lines")} icon={ArrowDownAZ} priority={60}>
         <Btn id="home.sortAsc" icon={ArrowDownAZ} hint={tr("ribbon.home.sortAsc")} edit={(s) => lineTool(s, "sort-asc")} />
         <Btn id="home.sortDesc" icon={ArrowUpAZ} hint={tr("ribbon.home.sortDesc")} edit={(s) => lineTool(s, "sort-desc")} />
         <Btn id="home.reverse" icon={ArrowLeftRight} hint={tr("ribbon.home.reverseHint")} label={tr("ribbon.home.reverse")} edit={(s) => lineTool(s, "reverse")} />
@@ -283,7 +284,62 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.trim" icon={WrapText} hint={tr("ribbon.home.trimHint")} label={tr("ribbon.home.trim")} edit={(s) => lineTool(s, "trim")} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.typography")}>
+      <RibbonGroup
+        label={tr("ribbon.home.typography")}
+        icon={Type}
+        priority={1}
+        collapsedRender={() => (
+          <>
+            <Stepper title={tr("ribbon.home.noteSize")} value={typo.size || 16} min={10} max={40} onChange={(size) => patch({ size })} format={(n) => `${n}px`} />
+            <GroupMenu icon={Type} label={tr("ribbon.home.typography")} width={320}>
+              {() => (
+                <>
+                  <MenuLabel>{tr("ribbon.home.typography")}</MenuLabel>
+                  <RibbonSelect
+                    title={tr("ribbon.home.noteFont")}
+                    placeholder={tr("ribbon.home.noteFontPlaceholder")}
+                    groups={fontGroups}
+                    value={typo.font || ""}
+                    onChange={(value) => (value ? patch({ font: value }) : drop("font"))}
+                  />
+                  <RibbonSelect
+                    title={tr("ribbon.home.tracking")}
+                    placeholder={tr("ribbon.home.trackingPlaceholder")}
+                    options={LETTER_SPACING.map((item) => ({ value: item.id, label: item.label }))}
+                    value={typo.spacing || ""}
+                    onChange={(value) => (value ? patch({ spacing: value }) : drop("spacing"))}
+                  />
+                  <RibbonSelect
+                    title={tr("ribbon.home.headingFont")}
+                    placeholder={tr("ribbon.home.headingFontPlaceholder")}
+                    groups={fontGroups}
+                    value={typo.headingFont || ""}
+                    onChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
+                  />
+                  <RibbonSelect
+                    title={tr("ribbon.home.noteDirection")}
+                    placeholder={tr("ribbon.home.noteDirectionDefault")}
+                    options={[
+                      { value: "ltr", label: tr("dir.ltr") },
+                      { value: "rtl", label: tr("dir.rtl") },
+                      { value: "auto", label: tr("dir.auto") },
+                    ]}
+                    value={typo.dir || ""}
+                    onChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
+                  />
+                  <Btn
+                    id="home.resetTypography"
+                    icon={Trash2}
+                    hint={tr("ribbon.home.resetTypography")}
+                    disabled={false}
+                    onClick={() => setTypography({})}
+                  />
+                </>
+              )}
+            </GroupMenu>
+          </>
+        )}
+      >
         <RibbonSelect
           title={tr("ribbon.home.noteFont")}
           placeholder={tr("ribbon.home.noteFontPlaceholder")}
@@ -327,7 +383,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.tasks")}>
+      <RibbonGroup label={tr("ribbon.home.tasks")} icon={CircleCheck} priority={70}>
         {STATUS.map(([id, icon, hintKey, key, qa]) => (
           <Btn key={id} id={qa} icon={icon} label={id} hint={tr(hintKey)} shortcut={key} active={status === id} edit={(s) => toggleTask(s, id)} />
         ))}
@@ -337,7 +393,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       {/* AI Actions - only shown when AI is enabled and note is markdown */}
       {markdown && isAIEnabled() && (
-        <RibbonGroup label={tr("ribbon.home.ai")}>
+        <RibbonGroup label={tr("ribbon.home.ai")} icon={Wand2} priority={5}>
           <Btn
             id="home.ai.translate"
             icon={Globe}
@@ -383,7 +439,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       <TagGroup format={format} />
 
-      <RibbonGroup label={tr("ribbon.home.search")}>
+      <RibbonGroup label={tr("ribbon.home.search")} icon={Search} priority={80}>
         <Btn
           id="home.findTags"
           icon={Search}
@@ -393,7 +449,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.noteType")}>
+      <RibbonGroup label={tr("ribbon.home.noteType")} icon={FileText} priority={90}>
         <Select value={format} onValueChange={onFormat}>
           <SelectTrigger aria-label={tr("ribbon.home.noteFormatAria")} className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]">
             <SelectValue placeholder={tr("ribbon.home.noteFormatTitle")} />
@@ -415,7 +471,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       {/* AI Preview Panel */}
       {aiPreviewOpen && aiResult && (
-        <RibbonGroup label={tr("ribbon.home.ai.preview")} className="w-full">
+        <RibbonGroup label={tr("ribbon.home.ai.preview")} className="w-full" priority={0}>
           <div className="w-full space-y-2">
             <div className="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-foreground/85">
               {aiResult}

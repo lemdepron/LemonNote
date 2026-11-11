@@ -1,22 +1,33 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { X, Search, Calendar, Tag, Clock, Loader2 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogBody,
+  DialogFooter,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { BUILTIN_TAGS, getTagDef, findAllTaggedLines, filterTaggedLines } from "@/lib/tags";
 import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
 import TagButton from "@/components/ribbon/tabs/TagButton";
+import { useI18n } from "@/lib/i18n";
 
 /**
- * Find Tags panel - shows all tagged lines across the vault.
+ * Find Tags dialog - shows all tagged lines across the vault.
  * Opened from Home tab "Find Tags" button or from TagRail in vault home.
  */
-export default function FindTagsPanel({
+export default function FindTagsDialog({
   notes,
   onOpenNote,
+  open,
   onClose,
   initialTag = null,
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [activeTag, setActiveTag] = useState(initialTag);
   const [dateRange, setDateRange] = useState(""); // "", "today", "week", "month"
@@ -127,223 +138,218 @@ export default function FindTagsPanel({
       .sort((a, b) => b.count - a.count);
   }, [allTaggedLines]);
 
+  if (!open) return null;
+
   return (
-    <Popover open={true} onOpenChange={onClose}>
-      <PopoverTrigger asChild>
-        <button type="button" onClick={onClose} className="hidden" />
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        side="bottom"
-        style={{ width: "520px", maxHeight: "75vh" }}
-        className="p-0"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-      >
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent maxWidth="max-w-[36rem]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border p-3 bg-card">
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-primary" />
-            <span className="font-mono text-[12px] font-medium">Find Tags</span>
-            {totalCount > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-mono bg-primary/15 text-primary rounded">
-                {totalCount}
-              </span>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded hover:bg-accent transition"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="border-b border-border p-3 bg-card/50 space-y-3">
-          {/* Tag filter */}
-          <div>
-            <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground mb-1.5">
-              <Tag className="h-3 w-3" />
-              Filter by tag
-            </label>
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTag(null)}
-                className={cn(
-                  "px-2 py-1 rounded-md text-[11px] font-mono transition",
-                  !activeTag
-                    ? "bg-primary/15 text-primary border border-primary/30"
-                    : "bg-card border border-border/70 hover:bg-accent"
-                )}
-              >
-                All tags
-              </button>
-              {tagOptions.map((tagDef) => (
-                <TagButton
-                  key={tagDef.id}
-                  tagDef={tagDef}
-                  active={activeTag === tagDef.id}
-                  onClick={() => setActiveTag(tagDef.id)}
-                  showLabel={true}
-                  showShortcut={false}
-                />
-              ))}
+        <DialogHeader className="border-b border-border pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-primary" />
+              <DialogTitle className="font-mono text-[12px] font-medium">{t("findTags.title")}</DialogTitle>
+              {totalCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-mono bg-primary/15 text-primary rounded">
+                  {totalCount}
+                </span>
+              )}
             </div>
+            <DialogClose className="p-1 rounded hover:bg-accent transition" aria-label={t("common.close")}>
+              <X className="h-4 w-4" />
+            </DialogClose>
           </div>
+        </DialogHeader>
 
-          {/* Date range filter */}
-          <div>
-            <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground mb-1.5">
-              <Calendar className="h-3 w-3" />
-              Date range
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {["", "today", "week", "month"].map((range) => (
+        {/* Filters - scrollable body */}
+        <DialogBody className="pb-0">
+          <div className="space-y-4 pt-3">
+            {/* Tag filter */}
+            <div>
+              <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground mb-1.5">
+                <Tag className="h-3 w-3" />
+                {t("findTags.filterByTag")}
+              </label>
+              <div className="flex flex-wrap gap-1">
                 <button
-                  key={range || "all"}
                   type="button"
-                  onClick={() => setDateRange(range)}
+                  onClick={() => setActiveTag(null)}
                   className={cn(
                     "px-2 py-1 rounded-md text-[11px] font-mono transition",
-                    dateRange === range
+                    !activeTag
                       ? "bg-primary/15 text-primary border border-primary/30"
                       : "bg-card border border-border/70 hover:bg-accent"
                   )}
                 >
-                  {range === "" ? "All time" : range === "today" ? "Today" : range === "week" ? "7 days" : "30 days"}
+                  {t("findTags.allTags")}
                 </button>
-              ))}
+                {tagOptions.map((tagDef) => (
+                  <TagButton
+                    key={tagDef.id}
+                    tagDef={tagDef}
+                    active={activeTag === tagDef.id}
+                    onClick={() => setActiveTag(tagDef.id)}
+                    showLabel={true}
+                    showShortcut={false}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search in notes and lines..."
-              className="w-full pl-8 pr-3 py-1.5 h-8 rounded-md border border-border/70 bg-card/60 text-[12px] outline-none focus:border-primary/40"
-              aria-label="Search tagged lines"
-            />
-          </div>
-
-          {/* Hide completed toggle */}
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={hideCompleted}
-              onChange={(e) => setHideCompleted(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border/70 text-primary focus:ring-primary/40"
-            />
-            <span className="font-mono text-[11px] text-foreground/80">Hide completed To Do lines</span>
-          </label>
-        </div>
-
-        {/* Results */}
-        <div className="flex-1 p-3 overflow-y-auto max-h-[50vh] custom-scrollbar">
-          {groupedLines.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60">
-              <Tag className="h-10 w-10 mb-3 opacity-30" />
-              <p className="font-mono text-[12px] text-center">
-                {allTaggedLines.length === 0
-                  ? "No tagged lines in this vault yet.\nAdd {tag:todo}, {tag:idea}, etc. to lines in your notes."
-                  : "No tagged lines match your filters."}
-              </p>
-            </div>
-          ) : (
-            <>
-              {groupedLines.map((group) => (
-                <div key={group.tagId} className="mb-4">
-                  <div className="flex items-center gap-2 mb-2 px-1">
-                    {group.icon && (
-                      <group.icon
-                        className={cn("h-3.5 w-3.5 flex-shrink-0", group.color?.replace("text-", ""))}
-                        aria-hidden="true"
-                      />
+            {/* Date range filter */}
+            <div>
+              <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground mb-1.5">
+                <Calendar className="h-3 w-3" />
+                {t("findTags.dateRange")}
+              </label>
+              <div className="flex flex-wrap gap-1">
+                {["", "today", "week", "month"].map((range) => (
+                  <button
+                    key={range || "all"}
+                    type="button"
+                    onClick={() => setDateRange(range)}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-[11px] font-mono transition",
+                      dateRange === range
+                        ? "bg-primary/15 text-primary border border-primary/30"
+                        : "bg-card border border-border/70 hover:bg-accent"
                     )}
-                    <span className="font-medium text-[12px]">{group.label}</span>
-                    <span className="ml-auto font-mono text-[10px] text-muted-foreground/60">
-                      {group.lines.length}
-                    </span>
-                  </div>
-                  <div className="space-y-1 ml-5">
-                    {group.lines.map((line, index) => {
-                      const isTodo = line.tagId === "todo";
-                      const isCompleted = isTodo && line.lineText.trim().startsWith("[x]");
-                      const shouldHide = hideCompleted && isCompleted;
-                      if (shouldHide) return null;
+                  >
+                    {range === "" ? t("findTags.allTime") : range === "today" ? t("findTags.today") : range === "week" ? t("findTags.week") : t("findTags.month")}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                      return (
-                        <button
-                          key={`${line.noteId}-${line.lineNumber}`}
-                          type="button"
-                          onClick={(e) => handleLineClick(line, e)}
-                          className={cn(
-                            "w-full flex items-start gap-2 px-2 py-1.5 text-left rounded-md transition",
-                            "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                            isCompleted && "opacity-50 line-through"
-                          )}
-                          title={`Open "${line.noteTitle}" at line ${line.lineNumber}`}
-                        >
-                          <span className="flex-shrink-0 font-mono text-[10px] text-muted-foreground/60 mt-0.5">
-                            {line.noteTitle}
-                          </span>
-                          <span className="flex-1 truncate text-[11px] text-foreground/80">
-                            {line.lineText || "(empty line)"}
-                          </span>
-                          <Clock className="flex-shrink-0 h-3 w-3 text-muted-foreground/40 mt-0.5" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </div>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("findTags.searchPlaceholder")}
+                className="w-full pl-8 pr-3 py-1.5 h-8 rounded-md border border-border/70 bg-card/60 text-[12px] outline-none focus:border-primary/40"
+                aria-label={t("findTags.searchAria")}
+              />
+            </div>
 
-        {/* Footer actions */}
-        <div className="border-t border-border p-3 bg-card/50 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{totalCount} line{totalCount !== 1 ? "s" : ""}</span>
-            {activeTag && <span>· filtered by {getTagDef(activeTag).label}</span>}
-            {dateRange && <span>· {dateRange === "today" ? "today" : dateRange === "week" ? "7 days" : "30 days"}</span>}
-            {searchQuery && <span>· search: "{searchQuery}"</span>}
+            {/* Hide completed toggle */}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={hideCompleted}
+                onChange={(e) => setHideCompleted(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border/70 text-primary focus:ring-primary/40"
+              />
+              <span className="font-mono text-[11px] text-foreground/80">{t("findTags.hideCompleted")}</span>
+            </label>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-1.5 rounded-md border border-border/70 text-[11px] font-mono hover:bg-accent transition"
-            >
-              Close
-            </button>
-            {totalCount > 0 && (
-              <button
-                type="button"
-                onClick={handleCreateSummary}
-                disabled={loading}
-                className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-[11px] font-mono hover:bg-primary/90 transition disabled:opacity-50"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                    Creating…
-                  </>
-                ) : (
-                  "Create summary note"
-                )}
-              </button>
+        </DialogBody>
+
+        {/* Results - scrollable body */}
+        <DialogBody className="pt-0">
+          <div className="custom-scrollbar">
+            {groupedLines.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground/60">
+                <Tag className="h-10 w-10 mb-3 opacity-30" />
+                <p className="font-mono text-[12px] text-center">
+                  {allTaggedLines.length === 0
+                    ? t("findTags.emptyVault")
+                    : t("findTags.noMatches")}
+                </p>
+              </div>
+            ) : (
+              <>
+                {groupedLines.map((group) => (
+                  <div key={group.tagId} className="mb-4">
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      {group.icon && (
+                        <group.icon
+                          className={cn("h-3.5 w-3.5 flex-shrink-0", group.color?.replace("text-", ""))}
+                          aria-hidden="true"
+                        />
+                      )}
+                      <span className="font-medium text-[12px]">{group.label}</span>
+                      <span className="ml-auto font-mono text-[10px] text-muted-foreground/60">
+                        {group.lines.length}
+                      </span>
+                    </div>
+                    <div className="space-y-1 ml-5">
+                      {group.lines.map((line, index) => {
+                        const isTodo = line.tagId === "todo";
+                        const isCompleted = isTodo && line.lineText.trim().startsWith("[x]");
+                        const shouldHide = hideCompleted && isCompleted;
+                        if (shouldHide) return null;
+
+                        return (
+                          <button
+                            key={`${line.noteId}-${line.lineNumber}`}
+                            type="button"
+                            onClick={(e) => handleLineClick(line, e)}
+                            className={cn(
+                              "w-full flex items-start gap-2 px-2 py-1.5 text-left rounded-md transition",
+                              "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                              isCompleted && "opacity-50 line-through"
+                            )}
+                            title={`Open "${line.noteTitle}" at line ${line.lineNumber}`}
+                          >
+                            <span className="flex-shrink-0 font-mono text-[10px] text-muted-foreground/60 mt-0.5">
+                              {line.noteTitle}
+                            </span>
+                            <span className="flex-1 truncate text-[11px] text-foreground/80">
+                              {line.lineText || "(empty line)"}
+                            </span>
+                            <Clock className="flex-shrink-0 h-3 w-3 text-muted-foreground/40 mt-0.5" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogBody>
+
+        {/* Footer actions */}
+        <DialogFooter className="border-t border-border pt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground w-full sm:w-auto">
+              <span>{totalCount} {totalCount !== 1 ? t("findTags.lines") : t("findTags.line")}</span>
+              {activeTag && <span>· {t("findTags.filteredBy", { tag: getTagDef(activeTag).label })}</span>}
+              {dateRange && <span>· {dateRange === "today" ? t("findTags.today") : dateRange === "week" ? t("findTags.week") : t("findTags.month")}</span>}
+              {searchQuery && <span>· {t("findTags.searchLabel")}: "{searchQuery}"</span>}
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 sm:flex-none px-3 py-1.5 rounded-md border border-border/70 text-[11px] font-mono hover:bg-accent transition"
+              >
+                {t("common.close")}
+              </button>
+              {totalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleCreateSummary}
+                  disabled={loading}
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-[11px] font-mono hover:bg-primary/90 transition disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      {t("findTags.creating")}
+                    </>
+                  ) : (
+                    t("findTags.createSummary")
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

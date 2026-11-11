@@ -147,3 +147,9 @@ export async function toggleFavourite(noteId) {
 export async function setFavourite(noteId, favourite) {
   return db.entities.Note.update(noteId, { favourite });
 }
+
+export async function flushAutosave() {
+  // This is a no-op in the current implementation since autosave is handled by the editor
+  // but we keep it for the interface
+  return Promise.resolve();
+}

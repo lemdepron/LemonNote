@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -13,6 +13,7 @@ import {
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { pickNextToCollapse, pickNextToExpand } from "@/lib/ribbon-collapse";
 
 /**
  * Shared state for every ribbon tab: the live selection, a `run` that applies an
@@ -164,6 +165,138 @@ export function TextGrid({ items, onPick, columns = 8 }) {
 
 export const Caret = () => <ChevronDown className="h-3 w-3 opacity-60" />;
 
+/**
+ * The collapse context is split in two so the stable API (register / measure)
+ * never re-renders the groups, while `isCollapsed` still updates them when the
+ * collapsed set changes.
+ */
+export const RibbonCollapseApiContext = createContext(null);
+export const RibbonCollapseStateContext = createContext(null);
+
+export const useRibbonCollapseApi = () => useContext(RibbonCollapseApiContext);
+export const useRibbonCollapseState = () => useContext(RibbonCollapseStateContext);
+
+/**
+ * Wraps the ribbon panel. It measures the panel width, collects each group's
+ * natural width and priority, and collapses the lowest-priority groups one at
+ * a time (into a dropdown button) until the panel no longer overflows.
+ */
+export function RibbonCollapseProvider({ tab, children }) {
+  const panelRef = useRef(null);
+  const [entries, setEntries] = useState(() => new Map());
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [available, setAvailable] = useState(0);
+
+  // Measure the visible panel width. `available` is only a re-run trigger; the
+  // collapse decision itself uses the real `scrollWidth - clientWidth`.
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el) return undefined;
+    const update = () => setAvailable(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [tab]);
+
+  const register = useCallback((id, priority) => {
+    setEntries((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.set(id, { id, priority, width: 0 });
+      return next;
+    });
+  }, []);
+
+  const unregister = useCallback((id) => {
+    setEntries((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const setWidth = useCallback((id, width) => {
+    setEntries((prev) => {
+      const entry = prev.get(id);
+      if (!entry || entry.width === width) return prev;
+      const next = new Map(prev);
+      next.set(id, { ...entry, width });
+      return next;
+    });
+  }, []);
+
+  // Collapse one group per pass while the content overflows; expand the
+  // highest-priority collapsed group when there is room for it.
+  useLayoutEffect(() => {
+    const el = panelRef.current;
+    if (!el || !available) return;
+    const overflow = el.scrollWidth - el.clientWidth;
+    if (overflow > 1) {
+      const next = pickNextToCollapse([...entries.values()], collapsed);
+      if (next) setCollapsed((prev) => new Set(prev).add(next.id));
+    } else if (overflow < -8) {
+      const next = pickNextToExpand([...entries.values()], collapsed, -overflow);
+      if (next) {
+        setCollapsed((prev) => {
+          const copy = new Set(prev);
+          copy.delete(next.id);
+          return copy;
+        });
+      }
+    }
+  }, [entries, available, collapsed, tab]);
+
+  const api = useMemo(() => ({ register, unregister, setWidth }), [register, unregister, setWidth]);
+  const state = useMemo(() => ({ isCollapsed: (id) => collapsed.has(id) }), [collapsed]);
+
+  return (
+    <RibbonCollapseApiContext.Provider value={api}>
+      <RibbonCollapseStateContext.Provider value={state}>
+        <div ref={panelRef} className="overflow-hidden bg-background border-b border-border">
+          {children}
+        </div>
+      </RibbonCollapseStateContext.Provider>
+    </RibbonCollapseApiContext.Provider>
+  );
+}
+
+/**
+ * The collapsed form of a ribbon group: one button (group icon + group name +
+ * chevron) that opens the group's buttons in a popover.
+ */
+export function GroupMenu({ icon: Icon, label, width = 320, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          title={label}
+          aria-label={label}
+          aria-expanded={open}
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border/70 bg-card/60 px-2 font-mono text-[10.5px] text-foreground/85 transition hover:bg-accent hover:text-foreground"
+        >
+          {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+          <span className="whitespace-nowrap">{label}</span>
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        style={{ width }}
+        className="max-h-[70vh] overflow-auto p-2"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        {children(() => setOpen(false))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Stepper: − value +. */
 export function Stepper({ value, onChange, min, max, step = 1, title, format = String }) {
   const clamp = (n) => Math.min(max, Math.max(min, n));
@@ -195,13 +328,13 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
 /**
  * The tab strip plus the panel that holds the active tab's groups. Shared by the
  * note ribbon and the ink ribbon so both look and behave the same.
- * Sticky at the top with a solid background so content doesn't show through.
- * Uses --app-header-h CSS variable (set by VaultHeader) to sit below the header.
+ * Not sticky on its own: the note ribbon renders this inside the sticky header
+ * wrapper (VaultHeader), which gives one solid stack with a hairline bottom.
  */
 export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, className, isFirstTabActive }) {
   return (
-    <div className={cn("mt-6 sticky z-10", className)} style={{ top: "var(--app-header-h, 4rem)" }}>
-      <div role="tablist" aria-label={t("ribbon.tabsAria")} className="flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
+    <div className={cn("bg-background", className)}>
+      <div role="tablist" aria-label={t("ribbon.tabsAria")} className="scrollbar-none flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border">
         {leading}
         {tabs.map((item) => (
           <button
@@ -220,19 +353,19 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, cla
           </button>
         ))}
       </div>
-      <div className="overflow-x-auto bg-background border-b border-border">
+      <RibbonCollapseProvider key={tab}>
         <div
           role="tabpanel"
           className={cn(
             "flex w-max min-w-full items-stretch divide-x divide-border border border-border bg-card",
             "rounded-xl",
-            isFirstTabActive ? "rounded-tl-none" : ""
+            isFirstTabActive ? "rounded-ss-none" : ""
           )}
         >
           {children}
           {trailing}
         </div>
-      </div>
+      </RibbonCollapseProvider>
     </div>
   );
 }

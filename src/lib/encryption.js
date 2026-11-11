@@ -132,3 +132,12 @@ export function looksEncrypted(value) {
     return false;
   }
 }
+
+/**
+ * Check if a note is locked (encrypted).
+ * @param {object} note - Note object from database
+ * @returns {boolean} - True if the note has encrypted content
+ */
+export function isNoteLocked(note) {
+  return Boolean(note?.encrypted_body && looksEncrypted(note.encrypted_body));
+}

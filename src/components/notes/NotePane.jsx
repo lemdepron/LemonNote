@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Trash2, ChevronLeft, ChevronRight, Volume2, MoveHorizontal, MoveVertical, Ruler, Grid, AlignLeft, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Target } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -10,7 +10,7 @@ import FormatEditor from "@/components/vault/FormatEditor";
 import FormatPreview from "@/components/vault/FormatPreview";
 import { isMarkdown } from "@/lib/note-formats";
 import { editorProps, normalizeStyle, readerProps } from "@/lib/text-style";
-import { writePref } from "@/lib/preferences";
+import { readPref, writePref } from "@/lib/preferences";
 import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
 import MacroBar from "@/components/macros/MacroBar";
@@ -28,29 +28,15 @@ import { useFocusMode } from "@/lib/focusMode";
 import { trashNote, restoreNote } from "@/lib/notes";
 import { toast } from "@/lib/toast";
 import { emitEvent, runHook } from "@/lib/extensions";
+import { isNoteLocked } from "@/lib/encryption";
 import { buildLinkIndex, extractInlineTags, extractWikiLinks, extractHeadings, escapeRegExp, plainText } from "@/lib/vault";
+import { countWords } from "@/lib/note-stats";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import FindTagsPanel from "@/components/tags/FindTagsPanel";
 import { confirm } from "@/components/ui/use-dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
 import { usePaneFocus } from "@/context/PaneFocusContext";
+import SplitDivider from "@/components/notes/SplitDivider";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -89,6 +75,7 @@ export default function NotePane({
   const [meta, setMeta] = useState({});
   const [tagDraft, setTagDraft] = useState("");
   const [mode, setMode] = useState("split");
+  const [splitRatio, setSplitRatio] = useState(0.5);
   const [aiOpen, setAiOpen] = useState(false);
   const [status, setStatus] = useState("idle");
   const [revision, setRevision] = useState(0);
@@ -97,6 +84,17 @@ export default function NotePane({
   const [inkOverlayMode, setInkOverlayMode] = useState(false);
   const [readContentRect, setReadContentRect] = useState(null);
   const [findTagsOpen, setFindTagsOpen] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef(null);
+
+  // Word goal state (from extension storage)
+  const [wordGoal, setWordGoal] = useState(0);
+  const [editingWordGoal, setEditingWordGoal] = useState(false);
+  const [wordGoalDraft, setWordGoalDraft] = useState("");
 
   // View mode state (persisted in note.style)
   const [viewMode, setViewMode] = useState(() => typography.viewMode || "read");
@@ -114,6 +112,8 @@ export default function NotePane({
   const [findQuery, setFindQuery] = useState("");
   const [findMatches, setFindMatches] = useState([]);
   const [findIndex, setFindIndex] = useState(-1);
+
+  const { t } = useI18n();
 
   const createdIdRef = useRef(isNew ? null : noteId);
   const loadedIdRef = useRef(null);
@@ -170,6 +170,26 @@ export default function NotePane({
     db.entities.Note.get(noteId)
       .then((note) => {
         if (!active) return;
+
+        // Check if note is encrypted
+        if (isNoteLocked(note)) {
+          loadedIdRef.current = noteId;
+          createdIdRef.current = noteId;
+          setTitle(note.title || "");
+          setTags(Array.isArray(note.tags) ? note.tags : []);
+          setFormat(note.format || "markdown");
+          setTypography(normalizeStyle(note.style));
+          setInkId(note.ink_page_id || null);
+          setMeta({ created_date: note.created_date, updated_date: note.updated_date });
+          setIsLocked(true);
+          setBody(""); // Don't set encrypted body
+          setStatus("idle");
+          setRevision(0);
+          emitEvent("note:opened", { id: note.id });
+          setLoadingNote(false);
+          return;
+        }
+
         loadedIdRef.current = noteId;
         createdIdRef.current = noteId;
         setTitle(note.title || "");
@@ -193,6 +213,29 @@ export default function NotePane({
       active = false;
     };
   }, [noteId, isNew, initialTitle]);
+
+  // Load word goal from extension storage
+  useEffect(() => {
+    if (!isNew && createdIdRef.current) {
+      const key = `plugin:word-goal:${createdIdRef.current}`;
+      try {
+        const saved = readPref(key, 0);
+        setWordGoal(Number(saved) || 0);
+      } catch {
+        setWordGoal(0);
+      }
+    } else {
+      setWordGoal(0);
+    }
+  }, [createdIdRef.current, isNew]);
+
+  // Save word goal to extension storage
+  useEffect(() => {
+    if (!isNew && createdIdRef.current && wordGoal !== undefined) {
+      const key = `plugin:word-goal:${createdIdRef.current}`;
+      writePref(key, wordGoal);
+    }
+  }, [wordGoal, createdIdRef.current, isNew]);
 
   // Autosave debounce
   useEffect(() => {
@@ -252,6 +295,60 @@ export default function NotePane({
     touch();
   };
   const images = useNoteImages({ body, onChange: changeBody });
+
+  // Title editing handlers
+  const startEditTitle = () => {
+    setTitleDraft(title);
+    setIsEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  };
+
+  const saveTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed !== title) {
+      setTitle(trimmed || "");
+      touch();
+    }
+    setIsEditingTitle(false);
+  };
+
+  const cancelEditTitle = () => {
+    setTitleDraft(title);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveTitle();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEditTitle();
+    }
+  };
+
+  const handleTitleBlur = () => {
+    // Small delay to allow click on save/cancel if needed
+    setTimeout(saveTitle, 100);
+  };
+
+  // Word goal handlers
+  const openWordGoal = () => {
+    setWordGoalDraft(wordGoal ? String(wordGoal) : "");
+    setEditingWordGoal(true);
+  };
+
+  const saveWordGoal = (event) => {
+    event.preventDefault();
+    const value = Math.max(0, Math.min(100000, Math.round(Number(wordGoalDraft)) || 0));
+    setWordGoal(value);
+    setEditingWordGoal(false);
+  };
+
+  const cancelWordGoal = () => {
+    setWordGoalDraft(wordGoal ? String(wordGoal) : "");
+    setEditingWordGoal(false);
+  };
 
   // Handwriting
   const inkActive = ribbonTab === "ink";
@@ -354,6 +451,9 @@ export default function NotePane({
         extractWikiLinks(other.body || "").some((link) => link.toLowerCase() === key)
     );
   }, [notes, title]);
+
+  // Word count for status bar
+  const wordCount = useMemo(() => countWords(body), [body]);
 
   // Find functionality
   const findMatchesRef = useRef([]);
@@ -1078,55 +1178,149 @@ export default function NotePane({
 
   return (
     <div className="nb-shell min-h-screen">
-      <VaultHeader />
+      {!loadingNote && !isLocked ? (
+        <VaultHeader>
+          <NoteRibbon
+            body={body}
+            onChange={changeBody}
+            images={images}
+            noteId={createdIdRef.current}
+            noteTitle={title}
+            tags={tags}
+            format={format}
+            onFormat={(next) => {
+              setFormat(next);
+              touch();
+            }}
+            typography={typography}
+            onTypography={async (next) => {
+              const normalized = normalizeStyle(next);
+              if (noteInk.hasPage && noteInk.markCount > 0) {
+                const current = typography || {};
+                const layoutChanged =
+                  (normalized.font && normalized.font !== current.font) ||
+                  (normalized.size && normalized.size !== current.size) ||
+                  (normalized.lineHeight && normalized.lineHeight !== current.lineHeight) ||
+                  (normalized.width && normalized.width !== current.width) ||
+                  (normalized.pageWidth && normalized.pageWidth !== current.pageWidth) ||
+                  (normalized.pageLineHeight && normalized.pageLineHeight !== current.pageLineHeight);
+                if (layoutChanged) {
+                  const ok = await confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?", { danger: true });
+                  if (!ok) return;
+                }
+              }
+              setTypography(normalized);
+              touch();
+            }}
+            tab={ribbonTab}
+            onTab={setRibbonTab}
+            noteInk={noteInk}
+            onFindTags={() => setFindTagsOpen(true)}
+          />
+        </VaultHeader>
+      ) : (
+        <VaultHeader />
+      )}
       <main
         className={cn(
-          "pb-24 pt-6",
-          !isInSplit && "mx-auto max-w-[1180px] px-5 sm:px-6 lg:px-8",
-          isInSplit && "px-2",  /* minimal padding in split mode */
+          "pb-24 pt-4",
+          !isInSplit && "mx-auto px-5 sm:px-6 lg:px-8",
+          isInSplit && "px-2",
           focus && "pr-12 sm:pr-14"
         )}
       >
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Slim top row */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <Link
             to="/"
             className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+            title="Back to vault"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> vault
           </Link>
           <span className="text-[11px] text-muted-foreground/40">/</span>
-          <span className="max-w-[22ch] truncate font-mono text-[11px] text-muted-foreground sm:max-w-[42ch]">
-            {title.trim() || "untitled"}
+
+          {/* Editable title */}
+          <div className="flex-1 min-w-0 max-w-[40ch]">
+            {isEditingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                onBlur={handleTitleBlur}
+                placeholder={t("common.untitledNote")}
+                aria-label="Note title"
+                className="w-full bg-transparent font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 px-1 py-0.5 rounded"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={startEditTitle}
+                className="block truncate font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground cursor-pointer hover:underline px-1 py-0.5 rounded transition"
+                title={t("common.clickToRename")}
+              >
+                {title.trim() || t("common.untitledNote")}
+              </span>
+            )}
+          </div>
+
+          {/* Saved indicator */}
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                status === "saving" ? "bg-primary animate-pulse" : "bg-[hsl(var(--link))]"
+              )}
+            />
+            {statusLabel}
           </span>
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden items-center gap-1.5 font-mono text-[10px] text-muted-foreground sm:flex">
+          {/* Tag chips with + tag */}
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            {tags.map((tag) => (
               <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  status === "saving" ? "bg-primary animate-pulse" : "bg-[hsl(var(--link))]"
-                )}
-              />
-              {statusLabel}
-            </span>
-
-            {!focus && (
-              <button
-                type="button"
-                onClick={() => setAiOpen((open) => !open)}
-                aria-pressed={aiOpen}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono text-[10.5px] transition",
-                  aiOpen
-                    ? "border-primary/40 bg-primary/10 text-primary"
-                    : "border-border/80 text-muted-foreground hover:text-foreground"
-                )}
+                key={tag}
+                className="group flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[11px] text-primary"
               >
-                <Sparkles className="h-3 w-3" />
-                <span className="hidden sm:inline">AI</span>
-              </button>
-            )}
+                #{tag}
+                <button
+                  type="button"
+                  aria-label={`Remove ${tag}`}
+                  onClick={() => {
+                    setTags(tags.filter((item) => item !== tag));
+                    touch();
+                  }}
+                  className="text-primary/50 transition hover:text-primary"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {inlineTags
+              .filter((tag) => !tags.includes(tag))
+              .map((tag) => (
+                <span
+                  key={tag}
+                  title="Detected inline hashtag"
+                  className="rounded-md border border-dashed border-border px-2 py-1 font-mono text-[11px] text-muted-foreground"
+                >
+                  #{tag}
+                </span>
+              ))}
+            <form onSubmit={addTag} className="flex items-center">
+              <input
+                value={tagDraft}
+                onChange={(event) => setTagDraft(event.target.value)}
+                placeholder={t("common.addTag")}
+                aria-label="Add tag"
+                className="w-16 bg-transparent px-1 py-1 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:w-24 rounded border border-transparent focus:border-primary/30"
+              />
+            </form>
+          </div>
 
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Write / Split / Read switch */}
             <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5">
               {MODES.map(({ id: modeId, label, icon: Icon }) => (
                 <button
@@ -1139,6 +1333,7 @@ export default function NotePane({
                       ? "bg-accent text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
+                  title={label}
                 >
                   <Icon className="h-3 w-3" />
                   <span className="hidden sm:inline">{label}</span>
@@ -1146,140 +1341,18 @@ export default function NotePane({
               ))}
             </div>
 
-            {(mode !== "write" || showNavPane) && (
-              <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5 ml-1">
-                <button
-                  type="button"
-                  onClick={() => setShowNavPane((prev) => !prev)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 font-mono text-[10.5px] transition",
-                    showNavPane ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  aria-pressed={showNavPane}
-                  title="Navigation pane (headings & find)"
-                >
-                  <AlignLeft className="h-3 w-3" />
-                  <span className="hidden sm:inline">Nav Pane</span>
-                </button>
-                <div className="w-px h-6 bg-border/50 mx-1" />
-                <div className="flex items-center gap-1">
-                  <ZoomOut
-                    className="h-3.5 w-3.5 text-muted-foreground"
-                    onClick={() => setZoom((z) => (typeof z === "number" ? Math.max(50, z - 10) : 100))}
-                    title="Zoom out"
-                  />
-                  <Select value={typeof zoom === "number" ? String(zoom) : zoom} onValueChange={(val) => {
-                      if (val === "page-width" || val === "one-page" || val === "two-pages") {
-                        setZoom(val);
-                      } else {
-                        setZoom(Math.max(50, Math.min(300, Number(val))));
-                      }
-                    }}>
-                    <SelectTrigger className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40" title="Zoom">
-                      <SelectValue placeholder="Zoom" />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="50">50%</SelectItem>
-                      <SelectItem value="75">75%</SelectItem>
-                      <SelectItem value="100">100%</SelectItem>
-                      <SelectItem value="125">125%</SelectItem>
-                      <SelectItem value="150">150%</SelectItem>
-                      <SelectItem value="200">200%</SelectItem>
-                      <SelectItem value="300">300%</SelectItem>
-                      <SelectItem value="page-width">Page Width</SelectItem>
-                      <SelectItem value="one-page">One Page</SelectItem>
-                      <SelectItem value="two-pages">Multiple Pages</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <ZoomIn
-                    className="h-3.5 w-3.5 text-muted-foreground"
-                    onClick={() => setZoom((z) => (typeof z === "number" ? Math.min(300, z + 10) : 100))}
-                    title="Zoom in"
-                  />
-                </div>
-                <div className="w-px h-6 bg-border/50 mx-1" />
-                <button
-                  type="button"
-                  onClick={() => setShowRuler((prev) => !prev)}
-                  className={cn(
-                    "p-1.5 rounded-[4px] transition",
-                    showRuler ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  title="Ruler"
-                  aria-pressed={showRuler}
-                >
-                  <Ruler className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowGridlines((prev) => !prev)}
-                  className={cn(
-                    "p-1.5 rounded-[4px] transition",
-                    showGridlines ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  title="Gridlines"
-                  aria-pressed={showGridlines}
-                >
-                  <Grid className="h-3.5 w-3.5" />
-                </button>
-                <div className="w-px h-6 bg-border/50 mx-1" />
-                <button
-                  type="button"
-                  onClick={() => setScrollMode((prev) => (prev === "vertical" ? "horizontal" : "vertical"))}
-                  className={cn(
-                    "p-1.5 rounded-[4px] transition",
-                    scrollMode === "horizontal" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  title={scrollMode === "vertical" ? "Switch to Side to Side" : "Switch to Vertical"}
-                  aria-pressed={scrollMode === "horizontal"}
-                  disabled={viewMode !== "print"}
-                >
-                  {scrollMode === "vertical" ? <MoveHorizontal className="h-3.5 w-3.5" /> : <MoveVertical className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-            )}
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Delete note"
-                  className="grid h-8 w-8 place-items-center rounded-lg border border-border/80 text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Move this note to the trash?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    “{title.trim() || "Untitled note"}” leaves the vault and waits in the trash for 60 days, where you can
-                    restore it. Links pointing at it will show as unresolved until then.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep note</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={removeNote}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
+            {/* Focus button */}
             <FocusToggle />
           </div>
         </div>
 
-        <div
-          className={cn(
-            "mt-8 grid gap-12 transition-[gap] duration-300 ease-out",
-            focus ? "lg:grid-cols-1" : "lg:grid-cols-[minmax(0,1fr)_252px]"
-          )}
-        >
-          <article className="min-w-0 relative">
+        {/* Main content area - centered with reading width, side panel only when open */}
+        <div className={cn(
+          "mt-6 transition-[max-width] duration-300 ease-out",
+          showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[820px]",
+          "mx-auto"
+        )}>
+          <article className="min-w-0 relative w-full">
             <NavigationPane
               isOpen={showNavPane && viewMode !== "immersive"}
               onClose={() => setShowNavPane(false)}
@@ -1295,59 +1368,6 @@ export default function NotePane({
               </div>
             ) : (
               <>
-                <input
-                  value={title}
-                  onChange={(event) => {
-                    setTitle(event.target.value);
-                    touch();
-                  }}
-                  placeholder="Untitled note"
-                  aria-label="Note title"
-                  className="w-full bg-transparent font-heading text-[28px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 sm:text-[34px]"
-                />
-
-                <div className="mt-4 flex flex-wrap items-center gap-1.5">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="group flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[11px] text-primary"
-                    >
-                      #{tag}
-                      <button
-                        type="button"
-                        aria-label={`Remove ${tag}`}
-                        onClick={() => {
-                          setTags(tags.filter((item) => item !== tag));
-                          touch();
-                        }}
-                        className="text-primary/50 transition hover:text-primary"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {inlineTags
-                    .filter((tag) => !tags.includes(tag))
-                    .map((tag) => (
-                      <span
-                        key={tag}
-                        title="Detected inline hashtag"
-                        className="rounded-md border border-dashed border-border px-2 py-1 font-mono text-[11px] text-muted-foreground"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  <form onSubmit={addTag}>
-                    <input
-                      value={tagDraft}
-                      onChange={(event) => setTagDraft(event.target.value)}
-                      placeholder="+ tag"
-                      aria-label="Add tag"
-                      className="w-20 bg-transparent px-1 py-1 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:w-28"
-                    />
-                  </form>
-                </div>
-
                 <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
 
                 <div className="mt-6">
@@ -1368,44 +1388,6 @@ export default function NotePane({
                   )}
                 </div>
 
-                <NoteRibbon
-                  body={body}
-                  onChange={changeBody}
-                  images={images}
-                  noteId={createdIdRef.current}
-                  noteTitle={title}
-                  tags={tags}
-                  format={format}
-                  onFormat={(next) => {
-                    setFormat(next);
-                    touch();
-                  }}
-                  typography={typography}
-                  onTypography={async (next) => {
-                    const normalized = normalizeStyle(next);
-                    if (noteInk.hasPage && noteInk.markCount > 0) {
-                      const current = typography || {};
-                      const layoutChanged =
-                        (normalized.font && normalized.font !== current.font) ||
-                        (normalized.size && normalized.size !== current.size) ||
-                        (normalized.lineHeight && normalized.lineHeight !== current.lineHeight) ||
-                        (normalized.width && normalized.width !== current.width) ||
-                        (normalized.pageWidth && normalized.pageWidth !== current.pageWidth) ||
-                        (normalized.pageLineHeight && normalized.pageLineHeight !== current.pageLineHeight);
-                      if (layoutChanged) {
-                        const ok = await confirm("Changing layout will misalign handwriting. Use 'Insert space' instead. Continue anyway?", { danger: true });
-                        if (!ok) return;
-                      }
-                    }
-                    setTypography(normalized);
-                    touch();
-                  }}
-                  tab={ribbonTab}
-                  onTab={setRibbonTab}
-                  noteInk={noteInk}
-                  onFindTags={() => setFindTagsOpen(true)}
-                />
-
                 {inkActive ? (
                   <div className="mt-8 border-t border-border/60 pt-8">
                     <NoteInkSurface noteInk={noteInk} />
@@ -1425,9 +1407,11 @@ export default function NotePane({
                       Handwriting · {noteInk.markCount} marks · open the Ink tab
                     </button>
                   )}
-                  <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
-                    {mode !== "read" && (
-                      <div className="min-w-0">
+                  {mode === "split" ? (
+                    // Split mode: editor and preview side by side, scrolling with the page
+                    <div className="flex gap-10">
+                      {/* Editor pane */}
+                      <div className="min-w-0 flex-1" style={{ minWidth: 0 }}>
                         {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
                           <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
                             <PenLine className="h-3 w-3 text-muted-foreground/50" />
@@ -1461,9 +1445,10 @@ export default function NotePane({
                           <FormatEditor value={body} onChange={changeBody} format={format} />
                         )}
                       </div>
-                    )}
-                    {mode !== "write" && (
-                      <div className={cn("min-w-0 relative", mode === "split" && "lg:border-l lg:border-border/60 lg:pl-10")}>
+                      {/* Divider */}
+                      <SplitDivider ratio={splitRatio} onRatioChange={setSplitRatio} />
+                      {/* Preview pane */}
+                      <div className="min-w-0 flex-1 relative" style={{ minWidth: 0 }}>
                         {viewMode === "immersive" ? (
                           <ImmersiveReaderView
                             body={body}
@@ -1514,7 +1499,7 @@ export default function NotePane({
                             />
                           </div>
                         ) : (
-                          <div ref={readContentRef} onScroll={handleReadScroll} className="relative">
+                          <div ref={readContentRef} className="relative">
                             {markdown ? (
                               <MarkdownView
                                 body={body}
@@ -1545,13 +1530,186 @@ export default function NotePane({
                           </p>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    // Write / Read mode (non-split)
+                    <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
+                      {mode !== "read" && (
+                        <div className="min-w-0">
+                          {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
+                            <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
+                              <PenLine className="h-3 w-3 text-muted-foreground/50" />
+                              Ink is shown in Read view · {noteInk.markCount} marks
+                            </div>
+                          )}
+                          {markdown ? (
+                            <>
+                              <MarkdownEditor
+                                value={body}
+                                onChange={(next) => {
+                                  setBody(next);
+                                  touch();
+                                }}
+                                titles={titles}
+                                onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                onImageFiles={images.insert}
+                                hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                showLineNumbers={typography.showLineNumbers}
+                                {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
+                              />
+                              <MacroBar
+                                body={body}
+                                onChange={(next) => {
+                                  setBody(next);
+                                  touch();
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <FormatEditor value={body} onChange={changeBody} format={format} />
+                          )}
+                        </div>
+                      )}
+                      {mode !== "write" && (
+                        <div className={cn("min-w-0 relative", mode === "split" && "lg:border-l lg:border-border/60 lg:pl-10")}>
+                          {viewMode === "immersive" ? (
+                            <ImmersiveReaderView
+                              body={body}
+                              typography={typography}
+                              onClose={() => setViewMode("read")}
+                            />
+                          ) : viewMode === "print" ? (
+                            <PrintLayoutView
+                              body={body}
+                              typography={typography}
+                              noteInk={noteInk}
+                              onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                              onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                              linkIndex={linkIndex}
+                              zoom={zoom}
+                              showRuler={showRuler}
+                              showGridlines={showGridlines}
+                              scrollMode={scrollMode}
+                            />
+                          ) : viewMode === "outline" ? (
+                            <OutlineView
+                              body={body}
+                              typography={typography}
+                              onHeadingClick={(heading) => {
+                                const readContent = readContentRef.current;
+                                if (readContent) {
+                                  const element = readContent.querySelector(`[id="${heading.id}"]`);
+                                  if (element) {
+                                    element.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  }
+                                }
+                              }}
+                            />
+                          ) : viewMode === "draft" ? (
+                            <div className="p-4">
+                              <MarkdownEditor
+                                value={body}
+                                onChange={(next) => {
+                                  setBody(next);
+                                  touch();
+                                }}
+                                titles={titles}
+                                onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                onImageFiles={images.insert}
+                                hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                showLineNumbers={typography.showLineNumbers}
+                                {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
+                              />
+                            </div>
+                          ) : (
+                            <div ref={readContentRef} onScroll={handleReadScroll} className="relative">
+                              {markdown ? (
+                                <MarkdownView
+                                  body={body}
+                                  linkIndex={linkIndex}
+                                  typography={typography}
+                                  hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                  onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                                  onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                                />
+                              ) : (
+                                <FormatPreview value={body} format={format} />
+                              )}
+                              {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
+                                <NoteInkOverlay
+                                  noteInk={noteInk}
+                                  contentRef={readContentRef.current}
+                                  scrollTop={readContentRect.scrollTop}
+                                  contentWidth={readContentRect.width}
+                                  contentHeight={readContentRect.height}
+                                  scale={1}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
+                            <p className="text-[14px] text-muted-foreground">
+                              Nothing written yet. Press <span className="font-mono text-[12px]">Write</span> and start.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 )}
               </>
             )}
           </article>
+
+          {/* Bottom status bar */}
+          <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5">
+            <div className="mx-auto max-w-[820px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+              <div className="flex items-center gap-4">
+                {/* Word count */}
+                <span className="text-muted-foreground">
+                  {wordCount} word{wordCount !== 1 ? "s" : ""}
+                </span>
+                {/* Word goal */}
+                {editingWordGoal ? (
+                  <form onSubmit={saveWordGoal} className="flex items-center gap-1.5">
+                    <Target className="h-3 w-3 text-muted-foreground" />
+                    <input
+                      type="number"
+                      min="0"
+                      max="100000"
+                      step="50"
+                      value={wordGoalDraft}
+                      onChange={(e) => setWordGoalDraft(e.target.value)}
+                      onBlur={cancelWordGoal}
+                      onKeyDown={(e) => e.key === "Enter" && saveWordGoal(e)}
+                      placeholder="500"
+                      className="w-16 rounded border border-border/70 bg-card/60 px-1.5 py-0.5 font-mono text-[11px] text-foreground outline-none focus:border-primary/40"
+                      autoFocus
+                    />
+                    <span className="text-muted-foreground">{t("common.wordGoal")}s</span>
+                    <button type="submit" className="px-2 py-0.5 text-[10px] rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 transition">{t("common.setGoal")}</button>
+                    <button type="button" onClick={cancelWordGoal} className="px-2 py-0.5 text-[10px] rounded border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground transition">{t("common.editGoal")}</button>
+                  </form>
+                ) : wordGoal > 0 ? (
+                  <span className="flex items-center gap-1.5">
+                    <Target className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-foreground">{wordCount} / {wordGoal}</span>
+                    <span className="text-muted-foreground">({Math.min(100, Math.round((wordCount / wordGoal) * 100))}%)</span>
+                    <button type="button" onClick={openWordGoal} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">{t("common.editGoal")}</button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={openWordGoal} className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/70 text-muted-foreground hover:text-foreground hover:bg-accent transition">
+                    <Target className="h-3 w-3" />
+                    <span className="text-[9.5px] uppercase tracking-[0.12em]">{t("common.setGoal")}</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">{statusLabel === "saving…" ? t("common.savingStatus") : statusLabel === "saved" ? t("common.savedStatus") : t("common.draftStatus")}</span>
+              </div>
+            </div>
+          </div>
 
           {!focus && (
             <aside className="space-y-4">

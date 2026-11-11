@@ -1,17 +1,27 @@
 use std::fs;
 use std::path::PathBuf;
-use tauri::{command, AppHandle, Manager, Runtime};
+use tauri::{command, AppHandle, Manager, Runtime, Emitter, tray::TrayIconBuilder, tray::TrayIconEvent, tray::MouseButton, tray::MouseButtonState, menu::{Menu, MenuItem}};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_autostart::init(
+      tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+      Some(vec!["--flag1".into(), "--flag2".into()]),
+    ))
     .invoke_handler(tauri::generate_handler![
       write_text_file,
       mkdir,
       read_text_file,
       read_dir,
+      get_tray_state,
+      set_tray_state,
+      get_minimize_to_tray_state,
+      set_minimize_to_tray_state,
+      get_start_minimized_state,
+      set_start_minimized_state,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -25,10 +35,99 @@ pub fn run() {
       #[cfg(desktop)]
       app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
 
+      // Create tray icon
+      create_tray_icon(app.handle().clone())?;
+
       Ok(())
     })
     .run(tauri::generate_context!())
     .expect("error while building tauri application");
+}
+
+/// Creates the system tray icon with menu
+fn create_tray_icon(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+  let show_item = MenuItem::with_id(&app, "show", "Show LemonNote", true, None::<&str>)?;
+  let new_note_item = MenuItem::with_id(&app, "new_note", "New note", true, None::<&str>)?;
+  let quit_item = MenuItem::with_id(&app, "quit", "Quit", true, None::<&str>)?;
+  let menu = Menu::with_items(&app, &[&show_item, &new_note_item, &quit_item])?;
+
+  // Load the icon from the app's resources
+  let icon = app.default_window_icon().cloned();
+
+  let _tray = TrayIconBuilder::with_id("main")
+    .icon(icon.expect("Failed to load default window icon"))
+    .tooltip("LemonNote")
+    .menu(&menu)
+    .show_menu_on_left_click(false)
+    .on_tray_icon_event(move |tray, event| {
+      if let TrayIconEvent::Click { button, button_state, .. } = event {
+        // Left click to show/hide window
+        if button == MouseButton::Left && button_state == MouseButtonState::Up {
+          let app = tray.app_handle();
+          if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.set_focus();
+          }
+        }
+      }
+    })
+    .on_menu_event(move |app, event| match event.id.as_ref() {
+      "show" => {
+        if let Some(window) = app.get_webview_window("main") {
+          let _ = window.show();
+          let _ = window.set_focus();
+        }
+      }
+      "new_note" => {
+        if let Some(window) = app.get_webview_window("main") {
+          let _ = window.show();
+          let _ = window.set_focus();
+          // Emit event to create new note
+          let _ = window.emit("new-note-from-tray", ());
+        }
+      }
+      "quit" => {
+        // Really exit the app
+        std::process::exit(0);
+      }
+      _ => {}
+    })
+    .build(&app)?;
+
+  Ok(())
+}
+
+// Tray state commands (persisted in preferences)
+#[command]
+async fn get_tray_state() -> Result<bool, String> {
+  // Will be handled by frontend preferences
+  Ok(false)
+}
+
+#[command]
+async fn set_tray_state(_enabled: bool) -> Result<(), String> {
+  // Will be handled by frontend preferences
+  Ok(())
+}
+
+#[command]
+async fn get_minimize_to_tray_state() -> Result<bool, String> {
+  Ok(false)
+}
+
+#[command]
+async fn set_minimize_to_tray_state(_enabled: bool) -> Result<(), String> {
+  Ok(())
+}
+
+#[command]
+async fn get_start_minimized_state() -> Result<bool, String> {
+  Ok(false)
+}
+
+#[command]
+async fn set_start_minimized_state(_enabled: bool) -> Result<(), String> {
+  Ok(())
 }
 
 /// Validate that a path stays within the allowed base directory.

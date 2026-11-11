@@ -44,6 +44,10 @@ import { useMirror } from "@/hooks/useMirror";
 const PRESET_KEY = "theme:preset";
 const SETTINGS_KEY = "settings:backup-reminder";
 const UPDATE_CHECK_KEY = "settings:autoUpdateCheck";
+const ANIMATION_LEVEL_KEY = "settings:animationLevel";
+const FOLLOW_SYSTEM_KEY = "settings:followSystemTheme";
+const FOLLOW_SYSTEM_SCHEDULE_KEY = "settings:followSystemSchedule";
+const GLASS_EFFECTS_KEY = "settings:glassEffects";
 
 function SectionTitle({ children }) {
   return <h2 className="font-display text-[16px] leading-tight tracking-tight">{children}</h2>;
@@ -162,6 +166,21 @@ export default function SettingsPage() {
 
   // Window behavior (Tauri only)
   const [alwaysOnTop, setAlwaysOnTop] = useState(() => readPref("settings:alwaysOnTop", false));
+  const [showTrayIcon, setShowTrayIcon] = useState(() => readPref("settings:showTrayIcon", false));
+  const [minimizeToTray, setMinimizeToTray] = useState(() => readPref("settings:minimizeToTray", false));
+  const [autostart, setAutostart] = useState(() => readPref("settings:autostart", false));
+  const [startMinimized, setStartMinimized] = useState(() => readPref("settings:startMinimized", false));
+  const [trayToastShown, setTrayToastShown] = useState(() => readPref("settings:trayToastShown", false));
+
+  // Animation level
+  const [animationLevel, setAnimationLevel] = useState(() => readPref(ANIMATION_LEVEL_KEY, "subtle"));
+
+  // Follow system theme with optional schedule
+  const [followSystemTheme, setFollowSystemTheme] = useState(() => readPref(FOLLOW_SYSTEM_KEY, false));
+  const [followSystemSchedule, setFollowSystemSchedule] = useState(() => readPref(FOLLOW_SYSTEM_SCHEDULE_KEY, { enabled: false, day: "07:00", night: "19:00" }));
+
+  // Glass effects toggle
+  const [glassEffects, setGlassEffects] = useState(() => readPref(GLASS_EFFECTS_KEY, true));
 
   // Fonts (local bundled)
   const [fontsBundled, setFontsBundled] = useState(false);
@@ -413,6 +432,11 @@ export default function SettingsPage() {
       setDefaultDir(readPref("settings:defaultDir", "ltr"));
       setBackupReminder(readPref(SETTINGS_KEY, "14"));
       setLastBackup(readPref("settings:lastBackup", null));
+      setShowTrayIcon(readPref("settings:showTrayIcon", false));
+      setMinimizeToTray(readPref("settings:minimizeToTray", false));
+      setAutostart(readPref("settings:autostart", false));
+      setStartMinimized(readPref("settings:startMinimized", false));
+      setTrayToastShown(readPref("settings:trayToastShown", false));
     });
     return unsub;
   }, []);
@@ -435,6 +459,59 @@ export default function SettingsPage() {
     writePref("theme:surface", surface);
     document.documentElement.dataset.surface = surface;
   }, [surface]);
+
+  // Apply animation level
+  useEffect(() => {
+    writePref(ANIMATION_LEVEL_KEY, animationLevel);
+    document.documentElement.classList.remove("animations-off", "animations-subtle", "animations-expressive");
+    document.documentElement.classList.add(`animations-${animationLevel}`);
+    // Respect system prefers-reduced-motion
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (media.matches && animationLevel === "expressive") {
+      // System prefers reduced motion, but user wants expressive - keep expressive but warn
+      console.log("System prefers reduced motion, but expressive animations enabled");
+    }
+  }, [animationLevel]);
+
+  // Apply follow system theme with schedule
+  useEffect(() => {
+    writePref(FOLLOW_SYSTEM_KEY, followSystemTheme);
+    if (followSystemTheme) {
+      const checkSchedule = () => {
+        if (!followSystemSchedule.enabled) {
+          // Just follow system
+          applyTheme("system");
+          return;
+        }
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const [dayH, dayM] = followSystemSchedule.day.split(":").map(Number);
+        const [nightH, nightM] = followSystemSchedule.night.split(":").map(Number);
+        const dayMinutes = dayH * 60 + dayM;
+        const nightMinutes = nightH * 60 + nightM;
+        
+        let isDay;
+        if (dayMinutes < nightMinutes) {
+          isDay = currentTime >= dayMinutes && currentTime < nightMinutes;
+        } else {
+          // Overnight schedule (e.g., day 22:00, night 06:00)
+          isDay = currentTime >= dayMinutes || currentTime < nightMinutes;
+        }
+        
+        applyTheme(isDay ? "light" : "dark");
+      };
+      checkSchedule();
+      const interval = setInterval(checkSchedule, 60000); // Check every minute
+      return () => clearInterval(interval);
+    }
+  }, [followSystemTheme, followSystemSchedule]);
+
+  // Apply glass effects toggle
+  useEffect(() => {
+    writePref(GLASS_EFFECTS_KEY, glassEffects);
+    document.documentElement.classList.toggle("glass-effects-on", glassEffects);
+    document.documentElement.classList.toggle("glass-effects-off", !glassEffects);
+  }, [glassEffects]);
 
   const handleDensityChange = (value) => {
     writePref("settings:density", value);
@@ -477,6 +554,63 @@ export default function SettingsPage() {
         getCurrentWindow().setAlwaysOnTop(value).catch(console.error);
       });
     }
+  };
+
+  const handleShowTrayIconChange = async (value) => {
+    writePref("settings:showTrayIcon", value);
+    setShowTrayIcon(value);
+    if (isTauri()) {
+      try {
+        const { set_tray_state } = await import("@/lib/tauri-api");
+        await set_tray_state(value);
+      } catch (e) {
+        console.error("Failed to set tray state:", e);
+      }
+    }
+  };
+
+  const handleMinimizeToTrayChange = (value) => {
+    writePref("settings:minimizeToTray", value);
+    setMinimizeToTray(value);
+  };
+
+  const handleAutostartChange = async (value) => {
+    writePref("settings:autostart", value);
+    setAutostart(value);
+    if (isTauri()) {
+      try {
+        const { set_autostart_state } = await import("@/lib/tauri-api");
+        await set_autostart_state(value);
+      } catch (e) {
+        console.error("Failed to set autostart state:", e);
+      }
+    }
+  };
+
+  const handleStartMinimizedChange = (value) => {
+    writePref("settings:startMinimized", value);
+    setStartMinimized(value);
+  };
+
+  const handleAnimationLevelChange = (value) => {
+    writePref(ANIMATION_LEVEL_KEY, value);
+    setAnimationLevel(value);
+  };
+
+  const handleFollowSystemThemeChange = (value) => {
+    writePref(FOLLOW_SYSTEM_KEY, value);
+    setFollowSystemTheme(value);
+  };
+
+  const handleFollowSystemScheduleChange = (field, value) => {
+    const next = { ...followSystemSchedule, [field]: value };
+    writePref(FOLLOW_SYSTEM_SCHEDULE_KEY, next);
+    setFollowSystemSchedule(next);
+  };
+
+  const handleGlassEffectsChange = (value) => {
+    writePref(GLASS_EFFECTS_KEY, value);
+    setGlassEffects(value);
   };
 
   const handleBackupReminderChange = (value) => {
@@ -642,7 +776,7 @@ export default function SettingsPage() {
                       id="theme-preset"
                       value={themePreset}
                       onChange={setThemePreset}
-                      options={themePresets.map((p) => ({ value: p.id, label: `${p.name} (${p.mode})` }))}
+                      options={themePresets.map((p) => ({ value: p.id, label: p.mode ? `${p.name} (${p.mode})` : p.name }))}
                     />
                   </div>
 
@@ -667,6 +801,79 @@ export default function SettingsPage() {
                         { value: "comfortable", label: tr("settings.appearance.comfortable") },
                         { value: "spacious", label: tr("settings.appearance.spacious") },
                       ]}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel htmlFor="animation-level">{tr("settings.appearance.animationLevel")}</FieldLabel>
+                    <Select
+                      id="animation-level"
+                      value={animationLevel}
+                      onChange={handleAnimationLevelChange}
+                      options={[
+                        { value: "off", label: tr("settings.appearance.animationsOff") },
+                        { value: "subtle", label: tr("settings.appearance.animationsSubtle") },
+                        { value: "expressive", label: tr("settings.appearance.animationsExpressive") },
+                      ]}
+                    />
+                  </div>
+
+                  <div>
+                    <FieldLabel htmlFor="follow-system">{tr("settings.appearance.followSystem")}</FieldLabel>
+                    <div className="space-y-2">
+                      <Toggle
+                        id="follow-system"
+                        label={tr("settings.appearance.followSystemLabel")}
+                        checked={followSystemTheme}
+                        onChange={handleFollowSystemThemeChange}
+                        description={tr("settings.appearance.followSystemDesc")}
+                      />
+                      {followSystemTheme && (
+                        <div className="ml-6 space-y-2 border-l-2 border-border/50 pl-3">
+                          <Toggle
+                            id="follow-system-schedule"
+                            label={tr("settings.appearance.scheduleLabel")}
+                            checked={followSystemSchedule.enabled}
+                            onChange={(e) => handleFollowSystemScheduleChange("enabled", e.target.checked)}
+                            description={tr("settings.appearance.scheduleDesc")}
+                          />
+                          {followSystemSchedule.enabled && (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <div>
+                                <FieldLabel htmlFor="schedule-day">{tr("settings.appearance.dayTime")}</FieldLabel>
+                                <input
+                                  id="schedule-day"
+                                  type="time"
+                                  value={followSystemSchedule.day}
+                                  onChange={(e) => handleFollowSystemScheduleChange("day", e.target.value)}
+                                  className="w-full h-9 rounded-md border border-border/80 bg-card/60 px-3 text-[13px] text-foreground outline-none transition focus:border-primary/40"
+                                />
+                              </div>
+                              <div>
+                                <FieldLabel htmlFor="schedule-night">{tr("settings.appearance.nightTime")}</FieldLabel>
+                                <input
+                                  id="schedule-night"
+                                  type="time"
+                                  value={followSystemSchedule.night}
+                                  onChange={(e) => handleFollowSystemScheduleChange("night", e.target.value)}
+                                  className="w-full h-9 rounded-md border border-border/80 bg-card/60 px-3 text-[13px] text-foreground outline-none transition focus:border-primary/40"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <FieldLabel htmlFor="glass-effects">{tr("settings.appearance.glassEffects")}</FieldLabel>
+                    <Toggle
+                      id="glass-effects"
+                      label={tr("settings.appearance.glassEffectsLabel")}
+                      checked={glassEffects}
+                      onChange={handleGlassEffectsChange}
+                      description={tr("settings.appearance.glassEffectsDesc")}
                     />
                   </div>
                 </div>
@@ -1553,6 +1760,62 @@ export default function SettingsPage() {
                       description={tr("settings.window.alwaysOnTopDesc")}
                     />
                   </div>
+
+                  <Separator className="my-2" />
+
+                  <div className="space-y-3">
+                    <FieldLabel htmlFor="show-tray-icon">{tr("settings.window.trayIcon")}</FieldLabel>
+                    <Toggle
+                      id="show-tray-icon"
+                      label={tr("settings.window.trayIconLabel")}
+                      checked={showTrayIcon}
+                      onChange={handleShowTrayIconChange}
+                      disabled={!isTauri()}
+                      description={tr("settings.window.trayIconDesc")}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <FieldLabel htmlFor="minimize-to-tray">{tr("settings.window.minimizeToTray")}</FieldLabel>
+                    <Toggle
+                      id="minimize-to-tray"
+                      label={tr("settings.window.minimizeToTrayLabel")}
+                      checked={minimizeToTray}
+                      onChange={handleMinimizeToTrayChange}
+                      disabled={!isTauri()}
+                      description={tr("settings.window.minimizeToTrayDesc")}
+                    />
+                  </div>
+
+                  <Separator className="my-2" />
+
+                  <div className="space-y-3">
+                    <FieldLabel htmlFor="autostart">{tr("settings.window.autostart")}</FieldLabel>
+                    <Toggle
+                      id="autostart"
+                      label={tr("settings.window.autostartLabel")}
+                      checked={autostart}
+                      onChange={handleAutostartChange}
+                      disabled={!isTauri()}
+                      description={tr("settings.window.autostartDesc")}
+                    />
+                  </div>
+
+                  {autostart && (
+                    <div className="ml-6 space-y-3 border-l-2 border-border/50 pl-3">
+                      <div className="space-y-3">
+                        <FieldLabel htmlFor="start-minimized">{tr("settings.window.startMinimized")}</FieldLabel>
+                        <Toggle
+                          id="start-minimized"
+                          label={tr("settings.window.startMinimizedLabel")}
+                          checked={startMinimized}
+                          onChange={handleStartMinimizedChange}
+                          disabled={!isTauri()}
+                          description={tr("settings.window.startMinimizedDesc")}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />

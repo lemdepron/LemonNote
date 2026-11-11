@@ -8,27 +8,26 @@ import NoteCard from "@/components/vault/NoteCard";
 import SearchResults from "@/components/vault/SearchResults";
 import TagRail from "@/components/vault/TagRail";
 import VaultSidebar from "@/components/vault/VaultSidebar";
-import Backup from "@/components/vault/Backup";
+import BackupDialog from "@/components/vault/Backup";
 import { collectTags, escapeRegExp, noteLinks, noteTags, relativeTime } from "@/lib/vault";
-import FindTagsPanel from "@/components/tags/FindTagsPanel";
+import FindTagsDialog from "@/components/tags/FindTagsPanel";
 import { useNavigate } from "react-router-dom";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const SURFACES = [
-  { to: "/journal", label: "Daily journal", hint: "one page per day", icon: CalendarDays },
-  { to: "/calendar", label: "Calendar", hint: "tasks & journal by date", icon: CalendarDays },
-  { to: "/tasks", label: "Task inbox", hint: "todo, doing, done", icon: ListChecks },
-  { to: "/cards", label: "Flashcards", hint: "spaced repetition", icon: Layers },
-  { to: "/graph", label: "Graph view", hint: "the vault as a network", icon: Share2 },
-  { to: "/canvas", label: "Infinite canvas", hint: "pan, zoom, wire cards", icon: LayoutGrid },
-  { to: "/tables", label: "Relational tables", hint: "typed fields and relations", icon: Table2 },
-  { to: "/code", label: "Code workspace", hint: "find & replace, autosave", icon: Code2 },
+  { to: "/journal", labelKey: "vault.shortcuts.journal.label", hintKey: "vault.shortcuts.journal.hint", icon: CalendarDays },
+  { to: "/calendar", labelKey: "vault.shortcuts.calendar.label", hintKey: "vault.shortcuts.calendar.hint", icon: CalendarDays },
+  { to: "/tasks", labelKey: "vault.shortcuts.tasks.label", hintKey: "vault.shortcuts.tasks.hint", icon: ListChecks },
+  { to: "/cards", labelKey: "vault.shortcuts.cards.label", hintKey: "vault.shortcuts.cards.hint", icon: Layers },
+  { to: "/graph", labelKey: "vault.shortcuts.graph.label", hintKey: "vault.shortcuts.graph.hint", icon: Share2 },
+  { to: "/canvas", labelKey: "vault.shortcuts.canvas.label", hintKey: "vault.shortcuts.canvas.hint", icon: LayoutGrid },
+  { to: "/tables", labelKey: "vault.shortcuts.tables.label", hintKey: "vault.shortcuts.tables.hint", icon: Table2 },
+  { to: "/code", labelKey: "vault.shortcuts.code.label", hintKey: "vault.shortcuts.code.hint", icon: Code2 },
 ];
 
 export default function VaultHome() {
-  const { t } = useI18n();
+  const { t, localDigits } = useI18n();
   const {
     notes,
     trashedNotes,
@@ -53,6 +52,7 @@ export default function VaultHome() {
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
   const [findTagsOpen, setFindTagsOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
   const searchRef = useRef(null);
 
   // Filter chips state (synced with URL and VaultSidebar)
@@ -60,7 +60,6 @@ export default function VaultHome() {
   const [chipTags, setChipTags] = useState([]); // array of tag strings
   const [chipRecentFilter, setChipRecentFilter] = useState(recentFilter);
   const [chipIncludeDeleted, setChipIncludeDeleted] = useState(includeDeleted);
-  const [backupPopoverOpen, setBackupPopoverOpen] = useState(false);
 
   // Sync chip state with VaultSidebar state
   useEffect(() => {
@@ -195,10 +194,10 @@ export default function VaultHome() {
       <VaultHeader />
       <main className="mx-auto max-w-[1180px] px-5 pb-24 sm:px-6 lg:px-8">
         <section className="nb-rise pt-8 md:pt-12">
-          <p className="nb-label">Vault · plain markdown</p>
+          <p className="nb-label">{t("vault.heroBadge")}</p>
           <h1 className="mt-3 font-display text-[34px] leading-[1.06] tracking-tight sm:text-[44px] md:text-[54px]">
-            Everything you know,
-            <span className="block italic text-primary/90">in plain text.</span>
+            {t("vault.heroTitle")}
+            <span className="block italic text-primary/90">{t("vault.heroSubtitle")}</span>
           </h1>
 
           <div className="relative mt-8 max-w-2xl">
@@ -226,26 +225,20 @@ export default function VaultHome() {
                   /
                 </kbd>
               )}
-              {/* Backup button - opens as popover */}
-              <Popover open={backupPopoverOpen} onOpenChange={setBackupPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t("vault.backupTooltip")}
-                    className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                  >
-                    <Archive className="h-3.5 w-3.5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-[520px] max-h-[75vh] p-0">
-                  <Backup />
-                </PopoverContent>
-              </Popover>
+              {/* Backup button - opens as dialog */}
+              <button
+                type="button"
+                onClick={() => setBackupOpen(true)}
+                aria-label={t("vault.backupTooltip")}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
 
-          <p className="mt-4 font-mono text-[11px] text-muted-foreground">
-            {notes.length} notes · {tags.length} tags · {linkCount} links
+          <p className="mt-4 font-mono text-[11px] text-muted-foreground" dir="auto">
+            {t("vault.stats.notes", { count: localDigits(notes.length), plural: notes.length !== 1 ? "s" : "" })} · {t("vault.stats.tags", { count: localDigits(tags.length), plural: tags.length !== 1 ? "s" : "" })} · {t("vault.stats.links", { count: localDigits(linkCount), plural: linkCount !== 1 ? "s" : "" })}
           </p>
 
           {/* Filter chips row */}
@@ -266,7 +259,7 @@ export default function VaultHome() {
               {t("vault.favourites")}
             </button>
 
-            {/* Tags chip - opens FindTagsPanel */}
+            {/* Tags chip - opens FindTagsDialog */}
             <button
               type="button"
               onClick={() => setFindTagsOpen(true)}
@@ -351,7 +344,6 @@ export default function VaultHome() {
           {/* Shortcut cards - single slim row */}
           <div className="mt-7 flex flex-wrap gap-2">
             {SURFACES.map((surface) => {
-              const Icon = surface.icon;
               return (
                 <Link
                   key={surface.to}
@@ -359,11 +351,11 @@ export default function VaultHome() {
                   className="group flex items-center gap-3 rounded-xl border border-border/60 bg-card/30 px-3.5 py-3 transition hover:border-primary/30 hover:bg-card/60"
                 >
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition group-hover:border-primary/40 group-hover:text-primary">
-                    <Icon className="h-4 w-4" />
+                    <surface.icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-medium text-foreground">{surface.label}</span>
-                    <span className="block truncate font-mono text-[10px] text-muted-foreground">{surface.hint}</span>
+                    <span className="block truncate text-[12.5px] font-medium text-foreground">{t(surface.labelKey)}</span>
+                    <span className="block truncate font-mono text-[10px] text-muted-foreground">{t(surface.hintKey)}</span>
                   </span>
                   <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition group-hover:text-primary" />
                 </Link>
@@ -377,9 +369,9 @@ export default function VaultHome() {
             {isSearching ? (
               <section>
                 <div className="flex items-baseline justify-between">
-                  <h2 className="text-[13px] font-medium tracking-tight">Search results</h2>
+                  <h2 className="text-[13px] font-medium tracking-tight">{t("vault.searchResults")}</h2>
                   {results && (
-                    <span className="font-mono text-[10px] text-muted-foreground">{results.length} matches</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">{results.length} {t("vault.matches")}</span>
                   )}
                 </div>
                 <div className="mt-3">
@@ -398,7 +390,7 @@ export default function VaultHome() {
                       onClick={() => toggleTag(activeTag)}
                       className="font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
                     >
-                      clear
+                      {t("common.clear")}
                     </button>
                   </div>
                 )}
@@ -408,10 +400,10 @@ export default function VaultHome() {
                   <section className="mb-6">
                     <div className="flex items-baseline justify-between mb-3">
                       <h2 className="text-[13px] font-medium tracking-tight flex items-center gap-2">
-                        <span className="text-yellow-400">★</span> Favourites
+                        <span className="text-yellow-400">★</span> {t("vault.favourites")}
                       </h2>
                       <span className="font-mono text-[10px] text-muted-foreground">
-                        {visibleNotes.filter((n) => n.favourite).length} notes
+                        {visibleNotes.filter((n) => n.favourite).length} {t("vault.notes")}
                       </span>
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -424,17 +416,17 @@ export default function VaultHome() {
 
                 <section>
                   <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
-                    <h2 className="text-[13px] font-medium tracking-tight">
+                    <h2 className="text-[13px] font-medium tracking-tight" dir="auto">
                       {activeTag
-                        ? `Tagged #${activeTag}`
+                        ? t("vault.tagged", { tag: activeTag })
                         : activeFolder !== undefined
                         ? activeFolder
-                          ? `Folder: ${activeFolder}`
-                          : "Unfiled"
-                        : "Recent notes"}
+                          ? `${t("vault.folder")}: ${activeFolder}`
+                          : t("vault.unfiled")
+                        : t("vault.recentNotes")}
                     </h2>
                     <span className="font-mono text-[10px] text-muted-foreground">
-                      {visibleNotes.length} notes
+                      {visibleNotes.length} {t("vault.notes")}
                     </span>
                   </div>
 
@@ -446,15 +438,15 @@ export default function VaultHome() {
                     </div>
                   ) : visibleNotes.length === 0 ? (
                     <div className="mt-4 rounded-xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
-                      <p className="text-[14px] text-foreground">Nothing here yet.</p>
+                      <p className="text-[14px] text-foreground">{t("vault.nothingHere")}</p>
                       <p className="mt-1 text-[13px] text-muted-foreground">
-                        Every vault starts with a single note.
+                        {t("vault.startsWithOneNote")}
                       </p>
                       <Link
                         to="/note/new"
                         className="mt-5 inline-flex items-center rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-[13px] text-primary transition hover:bg-primary/15"
                       >
-                        Write the first one
+                        {t("vault.writeFirstNote")}
                       </Link>
                     </div>
                   ) : (
@@ -468,7 +460,7 @@ export default function VaultHome() {
 
                 {visibleNotes.length > 6 && (
                   <section className="mt-12">
-                    <h2 className="text-[13px] font-medium tracking-tight">All notes</h2>
+                    <h2 className="text-[13px] font-medium tracking-tight">{t("vault.allNotes")}</h2>
                     <ul className="mt-2 divide-y divide-border/50">
                       {visibleNotes.map((note) => (
                         <li key={note.id}>
@@ -525,14 +517,16 @@ export default function VaultHome() {
         </div>
       </main>
       {findTagsOpen && (
-        <FindTagsPanel
+        <FindTagsDialog
           notes={notes}
           onOpenNote={(noteId, lineNumber) => {
             navigate(`/note/${noteId}`);
           }}
+          open={findTagsOpen}
           onClose={() => setFindTagsOpen(false)}
         />
       )}
+      <BackupDialog open={backupOpen} onClose={() => setBackupOpen(false)} />
     </div>
   );
 }

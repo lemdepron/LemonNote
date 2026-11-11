@@ -5,7 +5,7 @@ Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub us
 
 ## Current phase: STABILISATION (read this first)
 
-All 34 roadmap prompts (P1 to P34) were applied. **Do not add new features.** The work now is fixing bugs, polish, translation and design consistency, in the order given by the owner's fix prompts (F1, F2, ...). If a task needs a new feature, stop and say so.
+All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do not add new features** unless the task is explicitly a feature prompt (G6 styles, G7 tray). The work now is fixing bugs, polish, translation and design consistency, in the order given by the owner's prompts (G1, G2, ...). If a task needs a new feature, stop and say so.
 
 ## The owner
 
@@ -32,13 +32,15 @@ All 34 roadmap prompts (P1 to P34) were applied. **Do not add new features.** Th
 8. Do not add a dependency unless the task needs it. If you add one, say which and why.
 9. Windows 11 laptop first, iPhone second. Do not optimise for other hardware.
 10. **When you add a table to localDb.js you MUST bump DB_VERSION and add a migration test.**
-11. **Strings and translation.** Every visible text (labels, tooltips, toasts, dialogs) goes through `t("key")` from `src/lib/i18n.js`. Add the key to `en.json` first, then to all other language files. After any text change run `node scripts/i18n-check.mjs`; it must report no failures. Do not leave empty values.
+11. **Strings and translation.** Every visible text (labels, tooltips, toasts, dialogs) goes through `t("key")` from `src/lib/i18n.js`. Add the key to `en.json` first, then to all other language files. After any text change run `node scripts/i18n-check.mjs`; it must report no failures. Do not leave empty values. Every key used in code must exist in `en.json` (the check scans for this). Never print a raw value that can be `null` or `undefined` in a label.
 12. **Lock file and CI.** The GitHub release workflow runs `npm ci`, which fails if `package.json` and `package-lock.json` disagree. After any dependency change run `npm install` and then `npm ci --dry-run`; both must succeed. Tell the owner to commit `package-lock.json`.
 13. **No native dialogs.** Do not use `window.alert`, `window.confirm` or `window.prompt`. Use `alert-dialog.jsx`, a small in-app dialog, or a toast. Do not use `window.__something` globals to pass data between components; use props, context or `src/lib/` modules.
 14. **No native `<select>`.** Dropdowns use the themed Select component (`src/components/ui/select.jsx`, built on `@radix-ui/react-select`) so they follow the theme.
 15. **Layout is direction-safe.** Use logical CSS (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`) instead of `left`/`right`/`ml-`/`mr-` in anything you touch. Arabic, Persian and Urdu are right-to-left.
 16. **Colours come from theme tokens** (`bg-background`, `text-foreground`, `bg-primary`, ...). No hard-coded colours in components except inside theme data. Any new or changed theme must pass the contrast check: text on page and on card at least 4.5:1, button text on button at least 4.5:1, link on page at least 4.5:1.
-17. **Do not create planning or summary files** in the repo root (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`). Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
+17. **Overlays.** Panels that open over the page (Find Tags, Backup, import options, anything similar) use `src/components/ui/dialog.jsx` (modal) or a Popover with a fixed max width and max height, a scrolling body and a solid background. Content must never overflow its box. Check at a narrow window width and in right-to-left.
+18. **One sticky stack.** The app header and the note ribbon stick together as one element. Do not position them separately with measured pixel offsets.
+19. **Do not create planning or summary files** in the repo root (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`). Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
 
 ## Where things are
 

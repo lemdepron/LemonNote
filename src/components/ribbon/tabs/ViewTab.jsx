@@ -19,12 +19,17 @@ import {
   AlertTriangle,
   CheckCircle,
   LayoutGrid,
+  Paperclip,
+  Table,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, useRibbon } from "@/components/ribbon/RibbonKit";
+import { useI18n } from "@/lib/i18n";
 import { countWords } from "@/lib/note-stats";
 import { EDITOR_FONTS, WIDTHS } from "@/lib/text-style";
 import { runAccessibilityChecks } from "@/lib/accessibility";
+import { addAttachment } from "@/lib/attachments";
+import { tableAt, tableInsert } from "@/lib/ribbon-actions";
 import { useState } from "react";
 
 const VIEW_MODES = [
@@ -43,10 +48,11 @@ const ZOOM_PRESETS = [
 ];
 
 export function ViewTab() {
-  const { value, selection, typography: t, setTypography, body } = useRibbon();
-  const patch = (next) => setTypography({ ...t, ...next });
+  const { t } = useI18n();
+  const { value, selection, typography: typo, setTypography, body, markdown, run } = useRibbon();
+  const patch = (next) => setTypography({ ...typo, ...next });
   const drop = (key) => {
-    const next = { ...t };
+    const next = { ...typo };
     delete next[key];
     setTypography(next);
   };
@@ -68,7 +74,6 @@ export function ViewTab() {
 
   const runA11yCheck = () => {
     setA11yRunning(true);
-    // Run in a timeout to not block UI
     setTimeout(() => {
       const issues = runAccessibilityChecks(body);
       setA11yIssues(issues);
@@ -78,10 +83,8 @@ export function ViewTab() {
   };
 
   const scrollToIssue = (issue) => {
-    // Find the element in the reader view
     const readContent = document.querySelector('[data-read-content]') || document.querySelector('.nb-prose');
     if (readContent && issue.line) {
-      // For markdown view, we need to find the line
       const walker = document.createTreeWalker(readContent, NodeFilter.SHOW_TEXT);
       let currentLine = 0;
       let node;
@@ -108,6 +111,60 @@ export function ViewTab() {
     return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
   };
 
+  const handleAttachFile = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.onchange = async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const attachment = await addAttachment(file);
+        const snippet = `\n[${file.name}](${attachment.ref})\n\n`;
+        run({
+          start: selection.start ?? value.length,
+          end: selection.end ?? value.length,
+          text: snippet,
+          caret: selection.start + snippet.length,
+        });
+      } catch (err) {
+        console.error("Failed to attach file:", err);
+      }
+    };
+    input.click();
+  };
+
+  const handleAttachImage = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const attachment = await addAttachment(file);
+        const snippet = `\n![${file.name.replace(/\.[^.]+$/, "")}](${attachment.ref})\n\n`;
+        run({
+          start: selection.start ?? value.length,
+          end: selection.end ?? value.length,
+          text: snippet,
+          caret: selection.start + snippet.length,
+        });
+      } catch (err) {
+        console.error("Failed to attach image:", err);
+      }
+    };
+    input.click();
+  };
+
+  const handleInsertTable = () => {
+    const table = tableAt(value, selection.start);
+    if (table) {
+      // Cursor is in a table - could show table tools
+      return;
+    }
+    run(tableInsert(selection, 3, 3)); // Insert 3x3 table by default
+  };
+
   return (
     <>
       {/* 1. Views */}
@@ -120,7 +177,7 @@ export function ViewTab() {
               icon={Icon}
               label={label}
               hint={hint}
-              active={t.viewMode === id}
+              active={typo.viewMode === id}
               onClick={() => patch({ viewMode: id })}
             />
           ))}
@@ -134,8 +191,8 @@ export function ViewTab() {
           icon={AlignLeft}
           label="Navigation pane"
           hint="Show side panel with headings and find"
-          active={t.showNavPane === true}
-          onClick={() => patch({ showNavPane: !t.showNavPane })}
+          active={typo.showNavPane === true}
+          onClick={() => patch({ showNavPane: !typo.showNavPane })}
         />
         <Btn
           id="view.find"
@@ -161,14 +218,14 @@ export function ViewTab() {
             icon={ZoomOut}
             label="Zoom out"
             hint="Decrease zoom (Ctrl+-)"
-            onClick={() => patch({ zoom: Math.max(50, (t.zoom || 100) - 10) })}
+            onClick={() => patch({ zoom: Math.max(50, (typo.zoom || 100) - 10) })}
           />
           <div className="w-24">
             <RibbonSelect
               title="Zoom level"
               placeholder="Zoom"
               options={ZOOM_PRESETS.map((item) => ({ value: String(item.value), label: item.label }))}
-              value={t.zoom === "page-width" ? "page-width" : t.zoom === "one-page" ? "one-page" : t.zoom === "two-pages" ? "two-pages" : String(t.zoom || 100)}
+              value={typo.zoom === "page-width" ? "page-width" : typo.zoom === "one-page" ? "one-page" : typo.zoom === "two-pages" ? "two-pages" : String(typo.zoom || 100)}
               onChange={(value) => {
                 if (value === "page-width" || value === "one-page" || value === "two-pages") {
                   patch({ zoom: value });
@@ -184,7 +241,7 @@ export function ViewTab() {
             icon={ZoomIn}
             label="Zoom in"
             hint="Increase zoom (Ctrl++)"
-            onClick={() => patch({ zoom: Math.min(300, (t.zoom || 100) + 10) })}
+            onClick={() => patch({ zoom: Math.min(300, (typo.zoom || 100) + 10) })}
           />
         </div>
         <div className="flex items-center gap-1.5 mt-1">
@@ -194,7 +251,7 @@ export function ViewTab() {
             min="50"
             max="300"
             step="10"
-            value={typeof t.zoom === "number" ? t.zoom : 100}
+            value={typeof typo.zoom === "number" ? typo.zoom : 100}
             onChange={(e) => patch({ zoom: Number(e.target.value) })}
             className="flex-1 h-4 accent-primary"
             title="Zoom 50%–300%"
@@ -209,16 +266,16 @@ export function ViewTab() {
           icon={Ruler}
           label="Ruler"
           hint="Show horizontal ruler with page width and margins"
-          active={t.showRuler === true}
-          onClick={() => patch({ showRuler: !t.showRuler })}
+          active={typo.showRuler === true}
+          onClick={() => patch({ showRuler: !typo.showRuler })}
         />
         <Btn
           id="view.gridlines"
           icon={Grid}
           label="Gridlines"
           hint="Show overlay grid on the page"
-          active={t.showGridlines === true}
-          onClick={() => patch({ showGridlines: !t.showGridlines })}
+          active={typo.showGridlines === true}
+          onClick={() => patch({ showGridlines: !typo.showGridlines })}
         />
       </RibbonGroup>
 
@@ -230,7 +287,7 @@ export function ViewTab() {
             icon={MoveVertical}
             label="Vertical"
             hint="Vertical scrolling (default)"
-            active={t.scrollMode !== "horizontal"}
+            active={typo.scrollMode !== "horizontal"}
             onClick={() => patch({ scrollMode: "vertical" })}
           />
           <Btn
@@ -238,9 +295,9 @@ export function ViewTab() {
             icon={MoveHorizontal}
             label="Side to Side"
             hint="Horizontal page flow (Print Layout only)"
-            active={t.scrollMode === "horizontal"}
+            active={typo.scrollMode === "horizontal"}
             onClick={() => patch({ scrollMode: "horizontal" })}
-            disabled={t.viewMode !== "print"}
+            disabled={typo.viewMode !== "print"}
           />
         </div>
       </RibbonGroup>
@@ -251,8 +308,37 @@ export function ViewTab() {
           title="Width of the reading column"
           placeholder="Width"
           options={WIDTHS.map((item) => ({ value: item.id, label: item.label }))}
-          value={t.width || ""}
+          value={typo.width || ""}
           onChange={(value) => (value ? patch({ width: value }) : drop("width"))}
+        />
+      </RibbonGroup>
+
+      {/* Attach files */}
+      <RibbonGroup label={t("ribbon.view.attach")} icon={Paperclip}>
+        <Btn
+          id="view.attachFile"
+          icon={Paperclip}
+          label={t("ribbon.view.attachFile")}
+          hint={t("ribbon.view.attachFileHint")}
+          onClick={handleAttachFile}
+        />
+        <Btn
+          id="view.attachImage"
+          icon={FileText}
+          label={t("ribbon.view.attachImage")}
+          hint={t("ribbon.view.attachImageHint")}
+          onClick={handleAttachImage}
+        />
+      </RibbonGroup>
+
+      {/* Insert Table */}
+      <RibbonGroup label={t("ribbon.view.table")} icon={Table}>
+        <Btn
+          id="view.insertTable"
+          icon={Table}
+          label={t("ribbon.view.insertTable")}
+          hint={t("ribbon.view.insertTableHint")}
+          onClick={handleInsertTable}
         />
       </RibbonGroup>
 
@@ -262,18 +348,18 @@ export function ViewTab() {
           title="Font of the writing box"
           placeholder="Editor font"
           options={EDITOR_FONTS.map((item) => ({ value: item.id, label: item.label }))}
-          value={t.editorFont || ""}
+          value={typo.editorFont || ""}
           onChange={(value) => (value ? patch({ editorFont: value }) : drop("editorFont"))}
         />
-        <Stepper title="Editor text size (px)" value={t.editorSize || 14} min={10} max={32} onChange={(editorSize) => patch({ editorSize })} format={(n) => `${n}px`} />
+        <Stepper title="Editor text size (px)" value={typo.editorSize || 14} min={10} max={32} onChange={(editorSize) => patch({ editorSize })} format={(n) => `${n}px`} />
         <Btn
           id="view.spellCheck"
           icon={Type}
           label="Spell check"
           hint="Underline misspelled words in the writing box"
-          active={t.spell !== false}
+          active={typo.spell !== false}
           disabled={false}
-          onClick={() => (t.spell === false ? drop("spell") : patch({ spell: false }))}
+          onClick={() => (typo.spell === false ? drop("spell") : patch({ spell: false }))}
         />
       </RibbonGroup>
 

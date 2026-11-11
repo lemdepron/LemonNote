@@ -6,6 +6,7 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import TaskLine from "@/components/tasks/TaskLine";
 import { collectTasks, nextState, setTaskState, TASK_STATES, TASK_FILTERS, filterTasks, sortTasks } from "@/lib/tasks";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import {
   Select,
   SelectTrigger,
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 
 export default function TasksPage() {
+  const { t } = useI18n();
   const { notes, loading, reload } = useVault();
   const navigate = useNavigate();
   const [filter, setFilter] = useState("ALL");
@@ -61,15 +63,12 @@ export default function TasksPage() {
     <div className="nb-shell min-h-screen">
       <VaultHeader />
       <main className="mx-auto max-w-[900px] px-5 pb-24 pt-10 sm:px-6 lg:px-8">
-        <p className="nb-label">Tasks · written as blocks</p>
+        <p className="nb-label">{t("vault.tasks.label")}</p>
         <h1 className="mt-3 font-display text-[32px] leading-tight tracking-tight sm:text-[40px]">
-          Every task, straight from your notes.
+          {t("vault.tasks.heroTitle")}
         </h1>
         <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-muted-foreground">
-          Write <span className="font-mono text-[12px] text-foreground/80">TODO</span>,{" "}
-          <span className="font-mono text-[12px] text-foreground/80">DOING</span> or{" "}
-          <span className="font-mono text-[12px] text-foreground/80">DONE</span> at the start of any list line —
-          click a task here to move it along. Add <span className="font-mono text-[12px] text-foreground/80">due:YYYY-MM-DD HH:MM</span> for due dates.
+          {t("vault.tasks.description")}
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-1.5">
@@ -85,21 +84,21 @@ export default function TasksPage() {
                   : "border-border/70 text-muted-foreground hover:text-foreground"
               )}
             >
-              {f.label} · {counts[f.id] ?? 0}
+              {t(`vault.tasks.filters.${f.id}`)} · {counts[f.id] ?? 0}
             </button>
           ))}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] text-muted-foreground">Sort:</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{t("vault.tasks.sort")}</span>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-[10px] text-foreground outline-none focus:border-primary/40">
-              <SelectValue placeholder="Sort" />
+              <SelectValue placeholder={t("vault.tasks.sortPlaceholder")} />
             </SelectTrigger>
             <SelectContent position="popper">
-              <SelectItem value="dueDate">Due date</SelectItem>
-              <SelectItem value="state">State</SelectItem>
-              <SelectItem value="noteTitle">Note title</SelectItem>
+              <SelectItem value="dueDate">{t("vault.tasks.sortOptions.dueDate")}</SelectItem>
+              <SelectItem value="state">{t("vault.tasks.sortOptions.state")}</SelectItem>
+              <SelectItem value="noteTitle">{t("vault.tasks.sortOptions.noteTitle")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -112,9 +111,9 @@ export default function TasksPage() {
           </div>
         ) : sortedTasks.length === 0 ? (
           <div className="mt-8 rounded-xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
-            <p className="text-[14px]">No tasks match this filter.</p>
+            <p className="text-[14px]">{t("vault.tasks.noTasks")}</p>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              {filter === "ALL" ? 'Add a line like "- TODO Review the outline" to any note.' : 'Try "All" filter or add due dates with due:YYYY-MM-DD HH:MM'}
+              {filter === "ALL" ? t("vault.tasks.allHint") : t("vault.tasks.filteredHint")}
             </p>
           </div>
         ) : (
@@ -125,7 +124,7 @@ export default function TasksPage() {
               return (
                 <section key={state.id}>
                   <h2 className="nb-label">
-                    {state.label} · {rows.length}
+                    {t(`vault.tasks.states.${state.id}`)} · {rows.length}
                   </h2>
                   <ul className="mt-2 divide-y divide-border/50 rounded-xl border border-border/60 bg-card/25">
                     {rows.map((task) => (

@@ -31,6 +31,7 @@ import { useAutoUpdateCheck } from '@/hooks/useUpdater';
 import { useEffect } from 'react';
 import { applyI18n } from '@/lib/i18n';
 import { subscribePrefs } from '@/lib/preferences';
+import { useWindowCloseHandler } from '@/hooks/useWindowCloseHandler';
 
 // No login: LemonNote keeps everything on this computer, so every page is open.
 const VaultHomeWithErrorBoundary = withPageErrorBoundary(VaultHome);
@@ -60,6 +61,7 @@ function ReminderProvider() {
 
 function App() {
   useAutoUpdateCheck();
+  useWindowCloseHandler();
 
   // Keep the html lang/dir attributes in sync with the saved interface language
   // (Arabic shows the whole interface right-to-left).

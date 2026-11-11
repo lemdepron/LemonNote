@@ -6,8 +6,10 @@ import VaultHeader from "@/components/vault/VaultHeader";
 import CardReview from "@/components/cards/CardReview";
 import CardForm from "@/components/cards/CardForm";
 import { dueLabel, isDue, newCard, schedule, STARTER_CARDS } from "@/lib/cards";
+import { useI18n } from "@/lib/i18n";
 
 export default function CardsPage() {
+  const { t, localDigits } = useI18n();
   const { notes } = useVault();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,9 +81,9 @@ export default function CardsPage() {
       <main className="mx-auto max-w-[880px] px-5 pb-24 pt-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="nb-label">Flashcards · spaced repetition</p>
+            <p className="nb-label">{t("vault.cards.label")}</p>
             <h1 className="mt-3 font-display text-[32px] leading-tight tracking-tight sm:text-[40px]">
-              Review what wants to be remembered.
+              {t("vault.cards.heroTitle")}
             </h1>
           </div>
           <button
@@ -89,12 +91,12 @@ export default function CardsPage() {
             onClick={() => setAdding((open) => !open)}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-[12.5px] font-medium text-primary-foreground transition hover:bg-primary/90"
           >
-            <Plus className="h-3.5 w-3.5" /> New card
+            <Plus className="h-3.5 w-3.5" /> {t("vault.cards.newCard")}
           </button>
         </div>
 
-        <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          {due.length} due · {cards.length} cards
+        <p className="mt-3 font-mono text-[11px] text-muted-foreground" dir="auto">
+          {t("vault.cards.stats", { due: localDigits(due.length), total: localDigits(cards.length) })}
         </p>
 
         {adding && <CardForm notes={notes} onCreate={create} onCancel={() => setAdding(false)} />}
@@ -114,12 +116,12 @@ export default function CardsPage() {
             <div className="rounded-2xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
               <Layers className="mx-auto h-5 w-5 text-primary/70" />
               <p className="mt-3 text-[14px]">
-                {cards.length ? "Nothing due right now." : "No cards yet."}
+                {cards.length ? t("vault.cards.nothingDue") : t("vault.cards.noCards")}
               </p>
               <p className="mt-1 text-[13px] text-muted-foreground">
                 {upcoming
-                  ? `Next card comes back on ${upcoming.due_date}.`
-                  : "Write a question and an answer, then review it when it resurfaces."}
+                  ? t("vault.cards.nextCard", { date: upcoming.due_date })
+                  : t("vault.cards.emptyHint")}
               </p>
             </div>
           )}
@@ -127,13 +129,13 @@ export default function CardsPage() {
 
         {cards.length > 0 && (
           <section className="mt-10">
-            <h2 className="nb-label">all cards</h2>
+            <h2 className="nb-label">{t("vault.cards.allCards")}</h2>
             <ul className="mt-2 divide-y divide-border/50 rounded-xl border border-border/60 bg-card/25">
               {cards.map((card) => (
                 <li key={card.id} className="flex items-center gap-3 px-3 py-2.5">
                   <span className="min-w-0 flex-1 truncate text-[13px] text-foreground/90">{card.front}</span>
                   <span className="hidden shrink-0 font-mono text-[10px] text-muted-foreground sm:block">
-                    {card.reps ? `${card.reps} reps` : "new"}
+                    {card.reps ? t("vault.cards.reps", { count: card.reps }) : t("vault.cards.newCard")}
                   </span>
                   <span className="w-[68px] shrink-0 text-right font-mono text-[10px] text-muted-foreground">
                     {dueLabel(card)}
@@ -141,7 +143,7 @@ export default function CardsPage() {
                   <button
                     type="button"
                     onClick={() => remove(card.id)}
-                    aria-label="Delete card"
+                    aria-label={t("vault.cards.deleteCard")}
                     className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

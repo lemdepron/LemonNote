@@ -18,7 +18,7 @@ const TYPE_BADGE = {
   relation: "rel",
 };
 
-function CellInput({ column, value, tables, onChange }) {
+function CellInput({ column, value, tables, onChange, t }) {
   const base =
     "w-full rounded px-1.5 py-1 text-[12.5px] text-foreground outline-none transition focus:bg-accent/50 focus:ring-1 focus:ring-primary/30 bg-transparent";
 
@@ -39,10 +39,10 @@ function CellInput({ column, value, tables, onChange }) {
     return (
       <Select value={value ?? ""} onValueChange={onChange}>
         <SelectTrigger className={cn(base, "cursor-pointer")}>
-          <SelectValue placeholder="—" />
+          <SelectValue placeholder={t("vault.tables.tableGrid.placeholder")} />
         </SelectTrigger>
         <SelectContent position="popper">
-          <SelectItem value="">—</SelectItem>
+          <SelectItem value="">{t("vault.tables.tableGrid.placeholder")}</SelectItem>
           {(column.options || []).map((option) => (
             <SelectItem key={option} value={option}>
               {option}
@@ -59,10 +59,10 @@ function CellInput({ column, value, tables, onChange }) {
     return (
       <Select value={value ?? ""} onValueChange={onChange}>
         <SelectTrigger className={cn(base, "cursor-pointer")}>
-          <SelectValue placeholder="—" />
+          <SelectValue placeholder={t("vault.tables.tableGrid.placeholder")} />
         </SelectTrigger>
         <SelectContent position="popper">
-          <SelectItem value="">—</SelectItem>
+          <SelectItem value="">{t("vault.tables.tableGrid.placeholder")}</SelectItem>
           {rows.map((row) => (
             <SelectItem key={row.id} value={row.id}>
               {rowLabel(target, row)}
@@ -80,7 +80,7 @@ function CellInput({ column, value, tables, onChange }) {
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
         className={base}
-        placeholder="0"
+        placeholder={t("vault.tables.tableGrid.numberPlaceholder")}
       />
     );
   }
@@ -94,12 +94,12 @@ function CellInput({ column, value, tables, onChange }) {
       value={value ?? ""}
       onChange={(event) => onChange(event.target.value)}
       className={base}
-      placeholder="—"
+      placeholder={t("vault.tables.tableGrid.placeholder")}
     />
   );
 }
 
-export default function TableGrid({ columns, rows, tables, onCell, onRenameColumn, onDeleteColumn, onDeleteRow }) {
+export default function TableGrid({ columns, rows, tables, onCell, onRenameColumn, onDeleteColumn, onDeleteRow, t }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border/70 bg-card/30">
       <table className="w-full min-w-[620px] border-collapse">
@@ -114,7 +114,7 @@ export default function TableGrid({ columns, rows, tables, onCell, onRenameColum
                   <input
                     value={column.name}
                     onChange={(event) => onRenameColumn(column.id, event.target.value)}
-                    aria-label={`Rename ${column.name}`}
+                    aria-label={t("vault.tables.tableGrid.renameColumn", { name: column.name })}
                     className="min-w-0 flex-1 rounded bg-transparent px-1 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground outline-none transition hover:bg-accent/40 focus:bg-accent/60 focus:text-foreground"
                   />
                   <span className="shrink-0 rounded border border-border/70 px-1 font-mono text-[9px] text-muted-foreground/70">
@@ -123,7 +123,7 @@ export default function TableGrid({ columns, rows, tables, onCell, onRenameColum
                   <button
                     type="button"
                     onClick={() => onDeleteColumn(column.id)}
-                    aria-label={`Delete ${column.name} column`}
+                    aria-label={t("vault.tables.tableGrid.deleteColumn", { name: column.name })}
                     className="grid h-5 w-5 shrink-0 place-items-center rounded text-muted-foreground/40 transition hover:bg-destructive/10 hover:text-destructive"
                   >
                     <X className="h-3 w-3" />
@@ -145,6 +145,7 @@ export default function TableGrid({ columns, rows, tables, onCell, onRenameColum
                     value={row.cells?.[column.id]}
                     tables={tables}
                     onChange={(value) => onCell(row.id, column.id, value)}
+                    t={t}
                   />
                 </td>
               ))}
@@ -152,7 +153,7 @@ export default function TableGrid({ columns, rows, tables, onCell, onRenameColum
                 <button
                   type="button"
                   onClick={() => onDeleteRow(row.id)}
-                  aria-label="Delete row"
+                  aria-label={t("vault.tables.tableGrid.deleteRow")}
                   className="grid h-6 w-6 place-items-center rounded text-muted-foreground/40 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -163,7 +164,7 @@ export default function TableGrid({ columns, rows, tables, onCell, onRenameColum
           {rows.length === 0 && (
             <tr>
               <td colSpan={(columns.length || 1) + 2} className="px-3 py-10 text-center text-[13px] text-muted-foreground">
-                No rows yet — add the first one below.
+                {t("vault.tables.tableGrid.noRows")}
               </td>
             </tr>
           )}

@@ -21,6 +21,10 @@ function countLines(text) {
   return text.split("\n").length;
 }
 
+// Maximum height before falling back to inner scrollbar (for performance with very long notes)
+// ~20,000 lines at ~26px per line = ~520,000px, cap at 600,000px to handle 20k lines
+const MAX_AUTO_HEIGHT = 600000;
+
 export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles, style, spellCheck = true, hasInk = false, showLineNumbers = false }) {
   const [suggest, setSuggest] = useState(null);
   const [active, setActive] = useState(0);
@@ -28,12 +32,61 @@ export default function MarkdownEditor({ value, onChange, titles = [], onCreateN
   const [findQuery, setFindQuery] = useState("");
   const [findMatches, setFindMatches] = useState([]);
   const [findIndex, setFindIndex] = useState(-1);
+  const [useInnerScroll, setUseInnerScroll] = useState(false);
   const areaRef = useRef(null);
   const gutterRef = useRef(null);
   const rows = optionsFor(suggest, titles);
 
   // The ribbon reads the caret through the bridge, so it can edit around it.
   useEffect(() => registerEditor(areaRef.current), []);
+
+  // Auto-height textarea logic
+  const updateTextareaHeight = useCallback(() => {
+    const node = areaRef.current;
+    if (!node) return;
+
+    // Reset height to auto to get the correct scrollHeight
+    node.style.height = "auto";
+    const scrollHeight = node.scrollHeight;
+    
+    // Check if we should use inner scrollbar for performance
+    const shouldUseInnerScroll = scrollHeight > MAX_AUTO_HEIGHT;
+    if (shouldUseInnerScroll !== useInnerScroll) {
+      setUseInnerScroll(shouldUseInnerScroll);
+    }
+
+    if (!shouldUseInnerScroll) {
+      // Set the height to scrollHeight to show all content without inner scrollbar
+      node.style.height = `${scrollHeight}px`;
+    } else {
+      // When using inner scrollbar, cap at MAX_AUTO_HEIGHT and allow scrolling
+      node.style.height = `${MAX_AUTO_HEIGHT}px`;
+      node.style.overflowY = "auto";
+    }
+  }, [useInnerScroll]);
+
+  // Update height on value change, window resize, and font/width changes
+  useEffect(() => {
+    updateTextareaHeight();
+  }, [value, updateTextareaHeight]);
+
+  // Update height on window resize
+  useEffect(() => {
+    const handleResize = () => updateTextareaHeight();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateTextareaHeight]);
+
+  // Initial height update when textarea mounts
+  useEffect(() => {
+    const node = areaRef.current;
+    if (node) {
+      // Small delay to ensure styles are applied
+      requestAnimationFrame(() => {
+        updateTextareaHeight();
+      });
+    }
+  }, [updateTextareaHeight]);
 
   const detect = (text, caret) => {
     const before = text.slice(0, caret);
@@ -216,6 +269,9 @@ export default function MarkdownEditor({ value, onChange, titles = [], onCreateN
   const lineCount = countLines(value);
   const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
 
+  // Min height for empty note click target (about 6 lines)
+  const MIN_HEIGHT = "156px"; // 6 * 26px
+
   return (
     <div className="relative">
       {/* Find bar */}
@@ -233,8 +289,12 @@ export default function MarkdownEditor({ value, onChange, titles = [], onCreateN
       {showLineNumbers && (
         <div
           ref={gutterRef}
-          className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border/50 font-mono text-[11px] text-muted-foreground/60 select-none pointer-events-none overflow-hidden"
-          style={{ lineHeight: "1.95", paddingTop: "0.3rem" }}
+          className="absolute left-0 top-0 w-12 bg-muted/30 border-r border-border/50 font-mono text-[11px] text-muted-foreground/60 select-none pointer-events-none overflow-hidden"
+          style={{ 
+            lineHeight: "1.95", 
+            paddingTop: "0.3rem",
+            minHeight: MIN_HEIGHT,
+          }}
           aria-hidden="true"
         >
           {lineNumbers.map((num) => (
@@ -298,9 +358,16 @@ export default function MarkdownEditor({ value, onChange, titles = [], onCreateN
           setTimeout(() => setSuggest(null), 150);
         }}
         spellCheck={spellCheck}
-        style={{ ...editorStyle, paddingLeft: showLineNumbers ? "3rem" : undefined }}
+        style={{ 
+          ...editorStyle, 
+          paddingLeft: showLineNumbers ? "3rem" : undefined,
+          minHeight: MIN_HEIGHT,
+          // Auto-height: height is set by updateTextareaHeight, but we set a default
+          height: useInnerScroll ? `${MAX_AUTO_HEIGHT}px` : "auto",
+          overflowY: useInnerScroll ? "auto" : "hidden",
+        }}
         placeholder={"Start writing in markdown…\n\nType [[ to link another note, or #tag to label it."}
-        className="min-h-[46vh] w-full resize-none bg-transparent font-mono text-[13.5px] leading-[1.95] text-foreground/90 outline-none placeholder:text-muted-foreground/35"
+        className="w-full resize-none bg-transparent font-mono text-[13.5px] leading-[1.95] text-foreground/90 outline-none placeholder:text-muted-foreground/35"
       />
 
       {suggest && rows.length > 0 && (

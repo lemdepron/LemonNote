@@ -2,14 +2,14 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { rowLabel } from "@/lib/table";
 import { cn } from "@/lib/utils";
 
-export default function BoardView({ columns, rows, onCell }) {
+export default function BoardView({ columns, rows, onCell, t }) {
   const select = columns.find((column) => column.type === "select");
   if (!select) {
     return (
       <div className="rounded-xl border border-dashed border-border/80 bg-card/20 px-6 py-14 text-center">
-        <p className="text-[14px]">Board view needs a select field.</p>
+        <p className="text-[14px]">{t("vault.tables.boardView.needsSelect")}</p>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          Add a field of type “Select” to group rows into columns.
+          {t("vault.tables.boardView.addSelect")}
         </p>
       </div>
     );
@@ -90,7 +90,7 @@ export default function BoardView({ columns, rows, onCell }) {
     <DragDropContext onDragEnd={drop}>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {lanes.map((option) => renderLane(option, option))}
-        {renderLane("", "ungrouped")}
+        {renderLane("", t("vault.tables.boardView.ungrouped"))}
       </div>
     </DragDropContext>
   );

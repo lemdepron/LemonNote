@@ -7,11 +7,13 @@ import useVault from "@/hooks/useVault";
 import { QUERY_EXAMPLES, parseQuery, runQuery } from "@/lib/query";
 import { readPref, writePref } from "@/lib/preferences";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const SAVED_KEY = "queries";
 const DEFAULT_QUERY = "tag:basics -tag:roadmap sort:-updated limit:40";
 
 export default function QueriesPage() {
+  const { t, localDigits } = useI18n();
   const { notes, loading } = useVault();
   const [saved, setSaved] = useState(() => readPref(SAVED_KEY, []));
   const [draft, setDraft] = useState(DEFAULT_QUERY);
@@ -41,15 +43,19 @@ export default function QueriesPage() {
           <Link
             to="/"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to vault"
+            aria-label={t("vault.graph.backToVault")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
-            <p className="nb-label">dynamic queries</p>
-            <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight">Ask the vault a question.</h1>
+            <p className="nb-label">{t("vault.queries.label")}</p>
+            <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight">{t("vault.queries.heroTitle")}</h1>
           </div>
         </div>
+
+        <p className="mt-3 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
+          {t("vault.queries.description")}
+        </p>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="min-w-0">
@@ -59,8 +65,8 @@ export default function QueriesPage() {
                 <input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder='tag:basics words>80 sort:-created limit:40'
-                  aria-label="Query"
+                  placeholder={t("vault.queries.placeholder")}
+                  aria-label={t("vault.queries.label")}
                   spellCheck={false}
                   className="h-8 min-w-0 flex-1 bg-transparent font-mono text-[12.5px] text-foreground outline-none placeholder:text-muted-foreground/50"
                 />
@@ -69,7 +75,7 @@ export default function QueriesPage() {
                   onClick={saveQuery}
                   className="flex h-7 shrink-0 items-center gap-1 rounded-md border border-border/70 px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-primary/40 hover:text-primary"
                 >
-                  <BookmarkPlus className="h-3 w-3" /> save
+                  <BookmarkPlus className="h-3 w-3" /> {t("vault.queries.saveButton")}
                 </button>
               </div>
 
@@ -94,9 +100,9 @@ export default function QueriesPage() {
             </div>
 
             <div className="mt-6 flex items-baseline justify-between">
-              <h2 className="text-[13px] font-medium tracking-tight">Results</h2>
-              <span className="font-mono text-[10px] text-muted-foreground">
-                {loading ? "indexing…" : `${result.total} of ${notes.length} notes`}
+              <h2 className="text-[13px] font-medium tracking-tight">{t("vault.queries.resultsLabel")}</h2>
+              <span className="font-mono text-[10px] text-muted-foreground" dir="auto">
+                {loading ? t("vault.queries.indexing") : t("vault.queries.notesCount", { total: localDigits(result.total), all: localDigits(notes.length) })}
               </span>
             </div>
 
@@ -107,10 +113,10 @@ export default function QueriesPage() {
 
           <aside className="order-first lg:order-none">
             <div className="rounded-xl border border-border/60 bg-card/25 p-3">
-              <p className="nb-label">saved queries</p>
+              <p className="nb-label">{t("vault.queries.savedQueriesLabel")}</p>
               {saved.length === 0 ? (
                 <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
-                  Save a query to pin it here — it re-runs live every time you open it.
+                  {t("vault.queries.noSavedQueries")}
                 </p>
               ) : (
                 <ul className="mt-2 space-y-1">
@@ -130,7 +136,7 @@ export default function QueriesPage() {
                       <button
                         type="button"
                         onClick={() => persist(saved.filter((item) => item.id !== entry.id))}
-                        aria-label="Delete saved query"
+                        aria-label={t("vault.queries.savedQueriesLabel")}
                         className="shrink-0 text-muted-foreground/50 opacity-0 transition hover:text-destructive group-hover:opacity-100"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -142,7 +148,7 @@ export default function QueriesPage() {
             </div>
 
             <div className="mt-3 rounded-xl border border-border/60 bg-card/25 p-3">
-              <p className="nb-label">syntax</p>
+              <p className="nb-label">{t("vault.queries.syntaxLabel")}</p>
               <ul className="mt-2 space-y-1 font-mono text-[10.5px] leading-relaxed text-muted-foreground">
                 <li>tag:name · -tag:name</li>
                 <li>title:rust · body~/regex/i</li>

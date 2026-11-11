@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, RibbonMenu, MenuItem, MenuLabel, Swatches, TextGrid, useRibbon } from "@/components/ribbon/RibbonKit";
+import { useI18n } from "@/lib/i18n";
 import {
   PAGE_STYLES,
   DEFAULT_GRID_SIZE,
@@ -76,10 +77,11 @@ function setDefaultStyle(style) {
 }
 
 export function DesignTab() {
-  const { typography: t, setTypography } = useRibbon();
-  const patch = (next) => setTypography({ ...t, ...next });
+  const { t } = useI18n();
+  const { typography: typo, setTypography } = useRibbon();
+  const patch = (next) => setTypography({ ...typo, ...next });
   const drop = (key) => {
-    const next = { ...t };
+    const next = { ...typo };
     delete next[key];
     setTypography(next);
   };
@@ -107,35 +109,35 @@ export function DesignTab() {
   // Save current note's style as default for new notes
   const saveAsDefault = () => {
     const normalized = {
-      font: t.font,
-      headingFont: t.headingFont,
-      size: t.size,
-      lineHeight: t.lineHeight,
-      gap: t.gap,
-      spacing: t.spacing,
-      width: t.width,
-      align: t.align,
-      dir: t.dir,
-      indent: t.indent,
-      dropCap: t.dropCap,
-      editorFont: t.editorFont,
-      editorSize: t.editorSize,
-      pageStyle: t.pageStyle,
-      pageGridSize: t.pageGridSize,
-      pageLineHeight: t.pageLineHeight,
-      styleSet: t.styleSet,
-      themePreset: t.themePreset,
-      themeAccent: t.themeAccent,
-      themeHeadingFont: t.themeHeadingFont,
-      themeBodyFont: t.themeBodyFont,
-      paragraphPreset: t.paragraphPreset,
-      pageColor: t.pageColor,
-      pageBorder: t.pageBorder,
-      pageBorderColor: t.pageBorderColor,
-      watermarkText: t.watermarkText,
-      watermarkColor: t.watermarkColor,
-      watermarkOpacity: t.watermarkOpacity,
-      watermarkAngle: t.watermarkAngle,
+      font: typo.font,
+      headingFont: typo.headingFont,
+      size: typo.size,
+      lineHeight: typo.lineHeight,
+      gap: typo.gap,
+      spacing: typo.spacing,
+      width: typo.width,
+      align: typo.align,
+      dir: typo.dir,
+      indent: typo.indent,
+      dropCap: typo.dropCap,
+      editorFont: typo.editorFont,
+      editorSize: typo.editorSize,
+      pageStyle: typo.pageStyle,
+      pageGridSize: typo.pageGridSize,
+      pageLineHeight: typo.pageLineHeight,
+      styleSet: typo.styleSet,
+      themePreset: typo.themePreset,
+      themeAccent: typo.themeAccent,
+      themeHeadingFont: typo.themeHeadingFont,
+      themeBodyFont: typo.themeBodyFont,
+      paragraphPreset: typo.paragraphPreset,
+      pageColor: typo.pageColor,
+      pageBorder: typo.pageBorder,
+      pageBorderColor: typo.pageBorderColor,
+      watermarkText: typo.watermarkText,
+      watermarkColor: typo.watermarkColor,
+      watermarkOpacity: typo.watermarkOpacity,
+      watermarkAngle: typo.watermarkAngle,
     };
     if (setDefaultStyle(normalized)) {
       toast.success("Saved as default for new notes");
@@ -164,10 +166,10 @@ export function DesignTab() {
   return (
     <>
       {/* 1. Page Style */}
-      <RibbonGroup label="Page style" icon={Grid}>
+      <RibbonGroup label={t("ribbon.design.pageStyle")} icon={Grid} priority={10}>
         <RibbonSelect
-          title="Background pattern for the reading and writing page"
-          placeholder="Page style"
+          title={t("ribbon.design.pageStyleTitle")}
+          placeholder={t("ribbon.design.pageStylePlaceholder")}
           options={PAGE_STYLES.map((item) => ({ value: item.id, label: item.label }))}
           value={t.pageStyle || "default"}
           onChange={(value) => (value && value !== "default" ? patch({ pageStyle: value }) : drop("pageStyle"))}
@@ -176,7 +178,7 @@ export function DesignTab() {
           <>
             {t.pageStyle === "grid" && (
               <Stepper
-                title="Grid spacing (px)"
+                title={t("ribbon.design.gridSpacing")}
                 value={t.pageGridSize || DEFAULT_GRID_SIZE}
                 min={8}
                 max={100}
@@ -187,7 +189,7 @@ export function DesignTab() {
             )}
             {t.pageStyle === "lines" && (
               <Stepper
-                title="Line spacing (px)"
+                title={t("ribbon.design.lineSpacing")}
                 value={t.pageLineHeight || DEFAULT_LINE_HEIGHT}
                 min={16}
                 max={60}
@@ -201,8 +203,8 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 2. Style Sets */}
-      <RibbonGroup label="Style sets" icon={LayoutTemplate}>
-        <MenuLabel>Document Formatting</MenuLabel>
+      <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={20}>
+        <MenuLabel>{t("ribbon.design.documentFormatting")}</MenuLabel>
         <TextGrid
           items={STYLE_SETS.map((s) => s.id)}
           onPick={applyStyleSet}
@@ -231,24 +233,24 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 3. Themes */}
-      <RibbonGroup label="Themes" icon={Palette}>
-        <MenuLabel>Theme Preset (per note)</MenuLabel>
+      <RibbonGroup label={t("ribbon.design.themes")} icon={Palette} priority={30}>
+        <MenuLabel>{t("ribbon.design.themePresetPerNote")}</MenuLabel>
         <RibbonMenu
           id="design.themePreset"
           icon={Palette}
-          label="Theme preset"
-          hint="Apply a theme preset to this note only"
+          label={t("ribbon.design.themePreset")}
+          hint={t("ribbon.design.themePresetHint")}
           width={280}
           children={(close) => (
             <div className="max-h-[50vh] overflow-y-auto">
-              <MenuItem onClick={() => { drop("themePreset"); close(); }}>Clear — use app theme</MenuItem>
-              <MenuLabel>Light themes</MenuLabel>
+              <MenuItem onClick={() => { drop("themePreset"); close(); }}>{t("ribbon.design.clearUseAppTheme")}</MenuItem>
+              <MenuLabel>{t("ribbon.design.lightThemes")}</MenuLabel>
               {STYLE_SETS.slice(0, 3).map((s) => (
                 <MenuItem key={s.id} onClick={() => { patch({ themePreset: s.id }); close(); }}>
                   {s.label}
                 </MenuItem>
               ))}
-              <MenuLabel>Dark themes</MenuLabel>
+              <MenuLabel>{t("ribbon.design.darkThemes")}</MenuLabel>
               {STYLE_SETS.slice(3).map((s) => (
                 <MenuItem key={s.id} onClick={() => { patch({ themePreset: s.id }); close(); }}>
                   {s.label}

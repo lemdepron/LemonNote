@@ -14,8 +14,10 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { useI18n } from "@/lib/i18n";
 
 export default function CodePage() {
+  const { t, localDigits } = useI18n();
   const { id } = useParams();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,9 +91,9 @@ export default function CodePage() {
       <div className="nb-shell min-h-screen">
         <VaultHeader />
         <div className="mx-auto max-w-xl px-5 py-24 text-center">
-          <p className="font-display text-[26px]">This file is gone.</p>
+          <p className="font-display text-[26px]">{t("vault.code.emptyState")}</p>
           <Link to="/code" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
-            back to code
+            {t("vault.code.backToCode")}
           </Link>
         </div>
       </div>
@@ -108,19 +110,19 @@ export default function CodePage() {
           <Link
             to="/code"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to code files"
+            aria-label={t("vault.code.backToCode")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <input
             value={file.name}
             onChange={(event) => patch({ name: event.target.value })}
-            aria-label="File name"
+            aria-label={t("vault.code.fileName")}
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-mono text-[16px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
           />
           <Select value={file.language} onValueChange={(lang) => patch({ language: lang })}>
-            <SelectTrigger aria-label="Language" className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[11px] text-muted-foreground outline-none transition focus:border-primary/40">
-              <SelectValue placeholder="Language" />
+            <SelectTrigger aria-label={t("vault.code.languagePlaceholder")} className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[11px] text-muted-foreground outline-none transition focus:border-primary/40">
+              <SelectValue placeholder={t("vault.code.languagePlaceholder")} />
             </SelectTrigger>
             <SelectContent position="popper">
               {LANGUAGES.map((language) => (
@@ -136,10 +138,10 @@ export default function CodePage() {
             aria-pressed={findOpen}
             className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground transition hover:text-foreground"
           >
-            find
+            {t("vault.code.findButton")}
           </button>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {lineCount} lines · {status === "saving" ? "saving…" : status === "saved" ? "saved" : "autosave on"}
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground" dir="auto">
+            {t("vault.code.subtitle", { lines: localDigits(lineCount) })} · {t(`vault.code.status.${status}`)}
           </span>
           <FocusToggle />
         </div>

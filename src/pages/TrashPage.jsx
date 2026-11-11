@@ -23,8 +23,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 export default function TrashPage() {
+  const { t, localDigits } = useI18n();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +47,7 @@ export default function TrashPage() {
   const restore = async (id, title) => {
     await restoreNote(id);
     setNotes((current) => current.filter((note) => note.id !== id));
-    toast.success(`Restored "${title || "Untitled note"}".`);
+    toast.success(t("vault.trash.toastRestored", { title: title || t("common.untitledNote") }));
   };
 
   const destroy = async (id) => {
@@ -61,22 +63,21 @@ export default function TrashPage() {
           <Link
             to="/"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to vault"
+            aria-label={t("vault.graph.backToVault")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="min-w-0">
-            <p className="nb-label">trash</p>
-            <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight">Deleted notes live here for 60 days.</h1>
+            <p className="nb-label">{t("vault.trash.label")}</p>
+            <h1 className="mt-1 font-display text-[26px] leading-tight tracking-tight">{t("vault.trash.heroTitle")}</h1>
           </div>
-          <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
-            {loading ? "loading…" : `${notes.length} item${notes.length === 1 ? "" : "s"}`}
+          <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground" dir="auto">
+            {loading ? t("vault.trash.loading") : t("vault.trash.itemCount", { count: localDigits(notes.length) })}
           </span>
         </div>
 
         <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-          Deleting a note moves it here instead of erasing it. Restore puts it back in the vault with its links intact;
-          anything older than {TRASH_RETENTION_DAYS} days is cleared on the next visit.
+          {t("vault.trash.description", { days: TRASH_RETENTION_DAYS })}
         </p>
 
         <div className="mt-7">
@@ -88,8 +89,8 @@ export default function TrashPage() {
             </div>
           ) : notes.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 px-6 py-14 text-center">
-              <p className="text-[14px] text-foreground">The trash is empty.</p>
-              <p className="mt-1 text-[13px] text-muted-foreground">Nothing has been deleted in the last 60 days.</p>
+              <p className="text-[14px] text-foreground">{t("vault.trash.emptyState")}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">{t("vault.trash.emptyDescription")}</p>
             </div>
           ) : (
             <ul className="space-y-2">
@@ -102,15 +103,12 @@ export default function TrashPage() {
                     className="flex flex-wrap items-start gap-3 rounded-xl border border-border/60 bg-card/25 px-3.5 py-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13.5px] text-foreground">{note.title || "Untitled note"}</p>
+                      <p className="truncate text-[13.5px] text-foreground">{note.title || t("common.untitledNote")}</p>
                       <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
-                        {snippet(note.body, "", 120) || "empty note"}
+                        {snippet(note.body, "", 120) || t("vault.trash.noteSnippet")}
                       </p>
                       <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                        deleted {relativeTime(note.trashed_date)} ·{" "}
-                        <span className={expiringSoon ? "text-destructive" : ""}>
-                          {left === 0 ? "expires today" : `${left} days left`}
-                        </span>
+                        {t("vault.trash.deletedAgo", { time: relativeTime(note.trashed_date), daysLeft: left === 0 ? t("vault.trash.expiresToday") : t("vault.trash.daysLeft", { count: left }) })}
                       </p>
                     </div>
 
@@ -120,14 +118,14 @@ export default function TrashPage() {
                         onClick={() => restore(note.id, note.title)}
                         className="flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 font-mono text-[10.5px] text-primary transition hover:bg-primary/15"
                       >
-                        <RotateCcw className="h-3 w-3" /> restore
+                        <RotateCcw className="h-3 w-3" /> {t("vault.trash.restoreButton")}
                       </button>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <button
                             type="button"
-                            aria-label={`Delete ${note.title} forever`}
+                            aria-label={t("vault.trash.ariaDeleteForever", { title: note.title || t("common.untitledNote") })}
                             className="grid h-8 w-8 place-items-center rounded-md border border-border/70 text-muted-foreground transition hover:border-destructive/50 hover:text-destructive"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -135,18 +133,18 @@ export default function TrashPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete forever?</AlertDialogTitle>
+                            <AlertDialogTitle>{t("vault.trash.deleteForeverDialog.title")}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              “{note.title || "Untitled note"}” will be erased immediately. This cannot be undone.
+                              {t("vault.trash.deleteForeverDialog.description", { title: note.title || t("common.untitledNote") })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Keep it</AlertDialogCancel>
+                            <AlertDialogCancel>{t("vault.trash.deleteForeverDialog.keepButton")}</AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => destroy(note.id)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              Delete forever
+                              {t("vault.trash.deleteForeverDialog.deleteButton")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

@@ -17,14 +17,16 @@ import {
 } from "@/components/ui/select";
 import { COLUMN_TYPES, makeColumn, uid } from "@/lib/table";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 const VIEWS = [
-  { id: "table", label: "Table", icon: Table2 },
-  { id: "board", label: "Board", icon: Columns3 },
-  { id: "gallery", label: "Gallery", icon: LayoutGrid },
+  { id: "table", labelKey: "vault.tables.viewTable", icon: Table2 },
+  { id: "board", labelKey: "vault.tables.viewBoard", icon: Columns3 },
+  { id: "gallery", labelKey: "vault.tables.viewGallery", icon: LayoutGrid },
 ];
 
 export default function TablePage() {
+  const { t, localDigits } = useI18n();
   const { id } = useParams();
   const [table, setTable] = useState(null);
   const [tables, setTables] = useState([]);
@@ -135,9 +137,9 @@ export default function TablePage() {
       <div className="nb-shell min-h-screen">
         <VaultHeader />
         <div className="mx-auto max-w-xl px-5 py-24 text-center">
-          <p className="font-display text-[26px]">This table is gone.</p>
+          <p className="font-display text-[26px]">{t("vault.tables.emptyState")}</p>
           <Link to="/tables" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
-            back to tables
+            {t("vault.tables.backToTables")}
           </Link>
         </div>
       </div>
@@ -152,21 +154,21 @@ export default function TablePage() {
           <Link
             to="/tables"
             className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Back to tables"
+            aria-label={t("vault.tables.backToTables")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <input
             value={table.name}
             onChange={(event) => patch({ name: event.target.value })}
-            aria-label="Table name"
+            aria-label={t("vault.tables.tableName")}
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[22px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
           />
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {status === "saving" ? "saving…" : status === "saved" ? "saved" : "autosave on"}
+            {t(`vault.tables.status.${status}`)}
           </span>
           <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5">
-            {VIEWS.map(({ id: viewId, label, icon: Icon }) => (
+            {VIEWS.map(({ id: viewId, labelKey, icon: Icon }) => (
               <button
                 key={viewId}
                 type="button"
@@ -178,7 +180,7 @@ export default function TablePage() {
                 )}
               >
                 <Icon className="h-3 w-3" />
-                <span className="hidden sm:inline">{label}</span>
+                <span className="hidden sm:inline">{t(labelKey)}</span>
               </button>
             ))}
           </div>
@@ -189,7 +191,7 @@ export default function TablePage() {
             className="h-8 gap-1.5 rounded-lg border-border/80 px-3 text-[12.5px]"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add column
+            {t("vault.tables.addColumn")}
           </Button>
           <FocusToggle />
         </div>
@@ -201,7 +203,7 @@ export default function TablePage() {
               <input
                 value={draft.name}
                 onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                placeholder="Priority"
+                placeholder={t("vault.tables.priorityPlaceholder")}
                 className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2.5 text-[13px] text-foreground outline-none focus:border-primary/40"
               />
             </label>
@@ -209,12 +211,12 @@ export default function TablePage() {
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">type</span>
               <Select value={draft.type} onValueChange={(type) => setDraft({ ...draft, type })}>
                 <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t("vault.tables.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {COLUMN_TYPES.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
-                      {type.label}
+                      {t(`vault.tables.columnTypes.${type.id}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -226,7 +228,7 @@ export default function TablePage() {
                 <input
                   value={draft.options}
                   onChange={(event) => setDraft({ ...draft, options: event.target.value })}
-                  placeholder="low, medium, high"
+                  placeholder={t("vault.tables.optionsPlaceholder")}
                   className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2.5 text-[13px] text-foreground outline-none focus:border-primary/40"
                 />
               </label>
@@ -236,10 +238,10 @@ export default function TablePage() {
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">links to</span>
                 <Select value={draft.targetTableId} onValueChange={(targetTableId) => setDraft({ ...draft, targetTableId })}>
                   <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
-                    <SelectValue placeholder="Choose a table…" />
+                    <SelectValue placeholder={t("vault.tables.tablePickerPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    <SelectItem value="">Choose a table…</SelectItem>
+                    <SelectItem value="">{t("vault.tables.tablePickerPlaceholder")}</SelectItem>
                     {tables.map((item) => (
                       <SelectItem key={item.id} value={item.id}>
                         {item.name}
@@ -250,7 +252,7 @@ export default function TablePage() {
               </label>
             )}
             <Button onClick={addColumn} size="sm" className="h-9 rounded-lg bg-primary px-3 text-[12.5px] text-primary-foreground hover:bg-primary/90">
-              Add
+              {t("vault.tables.addButton")}
             </Button>
           </div>
         )}
@@ -265,11 +267,12 @@ export default function TablePage() {
               onRenameColumn={renameColumn}
               onDeleteColumn={deleteColumn}
               onDeleteRow={deleteRow}
+              t={t}
             />
           ) : view === "board" ? (
-            <BoardView columns={columns} rows={rows} onCell={setCell} />
+            <BoardView columns={columns} rows={rows} onCell={setCell} t={t} />
           ) : (
-            <GalleryView columns={columns} rows={rows} />
+            <GalleryView columns={columns} rows={rows} t={t} />
           )}
         </div>
 
@@ -281,11 +284,11 @@ export default function TablePage() {
             className="h-8 gap-1.5 rounded-lg border-border/80 px-3 text-[12.5px]"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add row
+            {t("vault.tables.addRow")}
           </Button>
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
             <Rows3 className="h-3 w-3" />
-            {rows.length} rows · {columns.length} fields
+            {t("vault.tables.stats", { rows: localDigits(rows.length), fields: localDigits(columns.length) })}
           </span>
         </div>
       </main>
