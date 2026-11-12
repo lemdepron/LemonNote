@@ -1142,6 +1142,34 @@ export default function NotePage() {
   // Ref for the read view content container to track scroll and dimensions
   const readContentRef = useRef(null);
 
+  // Consolidated empty state component
+  function EmptyState({ noteInk, inkActive, mode }) {
+    if (!noteInk.hasPage || noteInk.markCount === 0) {
+      return (
+        <p className="text-[14px] text-muted-foreground text-center py-8">
+          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
+        </p>
+      );
+    }
+    return (
+      <div className="text-center py-8 space-y-2">
+        <p className="text-[14px] text-muted-foreground">
+          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
+        </p>
+        <div className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
+          <PenLine className="h-3.5 w-3.5" />
+          <span>Handwriting · {noteInk.markCount} mark{noteInk.markCount !== 1 ? "s" : ""}</span>
+          {!inkActive && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <span>Ink is shown in Read view</span>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Track scroll position and dimensions for ink overlay
   const handleReadScroll = useCallback((event) => {
     const target = event.target;
@@ -1191,7 +1219,7 @@ export default function NotePage() {
       <VaultHeader />
       <main
         className={cn(
-          "mx-auto max-w-[1180px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
+          "mx-auto max-w-[820px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
           focus && "pr-12 sm:pr-14"
         )}
       >
@@ -1620,36 +1648,63 @@ export default function NotePage() {
                   <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
                     {mode !== "read" && (
                       <div className="min-w-0">
-                        {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
-                          <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
-                            <PenLine className="h-3 w-3 text-muted-foreground/50" />
-                            Ink is shown in Read view · {noteInk.markCount} marks
-                          </div>
+                        {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && !body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
+                          <EmptyState noteInk={noteInk} inkActive={inkActive} mode="write" />
                         )}
                         {markdown ? (
-                          <>
-                            <MarkdownEditor
-                              value={body}
-                              onChange={(next) => {
-                                setBody(next);
-                                touch();
-                              }}
-                              titles={titles}
-                              onCreateNote={(newTitle) => insertLink(newTitle, false)}
-                              onImageFiles={images.insert}
-                              hasInk={noteInk.hasPage && noteInk.markCount > 0}
-                              showLineNumbers={typography.showLineNumbers}
-                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
-                            />
-                            <MacroBar
-                              body={body}
-                              onChange={(next) => {
-                                setBody(next);
-                                touch();
-                              }}
-                            />
-                          </>
-                        ) : (
+                            <>
+                              {mode === "write" && noteInk.hasPage && noteInk.markCount > 0 ? (
+                                // Page mode: centered 736px editor with paper look
+                                <div className="flex justify-center">
+                                  <div className="w-[736px] min-w-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 md:p-8">
+                                    <MarkdownEditor
+                                      value={body}
+                                      onChange={(next) => {
+                                        setBody(next);
+                                        touch();
+                                      }}
+                                      titles={titles}
+                                      onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                      onImageFiles={images.insert}
+                                      hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                      showLineNumbers={typography.showLineNumbers}
+                                      {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, true)}
+                                    />
+                                    <MacroBar
+                                      body={body}
+                                      onChange={(next) => {
+                                        setBody(next);
+                                        touch();
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <MarkdownEditor
+                                    value={body}
+                                    onChange={(next) => {
+                                      setBody(next);
+                                      touch();
+                                    }}
+                                    titles={titles}
+                                    onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                    onImageFiles={images.insert}
+                                    hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                    showLineNumbers={typography.showLineNumbers}
+                                    {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
+                                  />
+                                  <MacroBar
+                                    body={body}
+                                    onChange={(next) => {
+                                      setBody(next);
+                                      touch();
+                                    }}
+                                  />
+                                </>
+                              )}
+                            </>
+                          ) : (
                           <FormatEditor value={body} onChange={changeBody} format={format} />
                         )}
                       </div>
@@ -1702,7 +1757,7 @@ export default function NotePage() {
                               onImageFiles={images.insert}
                               hasInk={noteInk.hasPage && noteInk.markCount > 0}
                               showLineNumbers={typography.showLineNumbers}
-                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
+                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
                             />
                           </div>
                         ) : (
@@ -1733,9 +1788,7 @@ export default function NotePage() {
                           </div>
                         )}
                         {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
-                          <p className="text-[14px] text-muted-foreground">
-                            Nothing written yet. Press <span className="font-mono text-[12px]">Write</span> and start.
-                          </p>
+                          <EmptyState noteInk={noteInk} inkActive={inkActive} mode={viewMode} />
                         )}
                       </div>
                     )}

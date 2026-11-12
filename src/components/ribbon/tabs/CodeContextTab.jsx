@@ -46,7 +46,7 @@ export function CodeContextTab() {
 
   return (
     <>
-      <RibbonGroup label="Block tools">
+      <RibbonGroup label="Block tools" priority={70}>
         <RibbonMenu id="code.language" icon={Replace} label="Language" hint="Change the language of the block under the cursor" disabled={!inBlock} disabledReason={needBlock} width={300}>
           {(close) =>
             FENCE_GROUPS.map((group) => (
@@ -100,7 +100,7 @@ export function CodeContextTab() {
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Edit lines">
+      <RibbonGroup label="Edit lines" priority={60}>
         <Btn
           id="code.comment"
           icon={MessageSquareOff}
@@ -117,7 +117,7 @@ export function CodeContextTab() {
         <Btn id="code.deleteLine" icon={Trash2} hint="Delete the current line" edit={(s) => lineMove(s, "delete")} />
       </RibbonGroup>
 
-      <RibbonGroup label="JSON">
+      <RibbonGroup label="JSON" priority={50}>
         <Btn
           id="code.prettyJson"
           icon={FileJson}

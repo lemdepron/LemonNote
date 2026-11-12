@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.fileHint": "Attach any file (PDF, Word, zip, etc.) — opens in viewer or downloads",
+  "ribbon.insert.fileSizeError": "File must be under {size}.",
+  "ribbon.insert.footnote": "Footnote",
+  "ribbon.insert.footnoteHint": "Add a footnote marker here and its text at the end of the note",
+  "ribbon.insert.gif": "GIF",
+  "ribbon.insert.gifError": "Please select a GIF, WebP, or APNG file.",
+  "ribbon.insert.gifHint": "Insert an animated GIF, WebP or APNG from your computer",
+  "ribbon.insert.gifInsertError": "Failed to insert GIF.",
+  "ribbon.insert.image": "Image file",
+  "ribbon.insert.imageHint": "Insert an image from your computer"
+}

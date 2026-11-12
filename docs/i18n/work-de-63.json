@@ -1,0 +1,12 @@
+{
+  "ribbon.view.statistics": "Statistics",
+  "ribbon.view.table": "Table",
+  "ribbon.view.vertical": "Vertical",
+  "ribbon.view.verticalHint": "Vertical scrolling (default)",
+  "ribbon.view.views": "Views",
+  "ribbon.view.words": "words",
+  "ribbon.view.zoom": "Zoom",
+  "ribbon.view.zoomIn": "Zoom in",
+  "ribbon.view.zoomInHint": "Increase zoom (Ctrl++)",
+  "ribbon.view.zoomLevel": "Zoom level"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.audio.replayInk": "Replay ink",
+  "ribbon.ink.audio.replayInkHint": "Replay the strokes without sound",
+  "ribbon.ink.audio.stop": "Stop",
+  "ribbon.ink.audio.stopLabel": "Stop recording",
+  "ribbon.ink.color.colorStudio": "Colour studio",
+  "ribbon.ink.color.colorStudioHint": "Mixer, palettes, opacity and custom colours",
+  "ribbon.ink.color.current": "Current",
+  "ribbon.ink.color.hexAriaLabel": "Hex colour",
+  "ribbon.ink.color.hexHelpInvalid": "Invalid hex — press Escape to revert",
+  "ribbon.ink.color.hexHelpValid": "3 or 6 digit hex, with or without #"
+}

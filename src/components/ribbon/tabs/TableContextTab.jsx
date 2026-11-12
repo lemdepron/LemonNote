@@ -134,7 +134,7 @@ export function TableContextTab({ signals, shortcuts }) {
         </div>
       )}
 
-      <RibbonGroup label="Insert">
+      <RibbonGroup label="Insert" priority={70}>
         <TablePicker
           id="insert.table"
           onInsert={(rows, columns) => run(tableInsert(selection, rows, columns))}
@@ -178,11 +178,11 @@ export function TableContextTab({ signals, shortcuts }) {
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Table tools">
+      <RibbonGroup label="Table tools" priority={60}>
         <TableTools body={body} onChange={onChange} />
       </RibbonGroup>
 
-      <RibbonGroup label="Arrange">
+      <RibbonGroup label="Arrange" priority={50}>
         <Btn {...t({ id: "table.sortAsc", icon: ArrowDownAZ, label: "Sort A–Z", hint: "Sort the rows by the column under the cursor (numbers by value)", edit: op("sort-asc") })} />
         <Btn {...t({ id: "table.sortDesc", icon: ArrowUpAZ, label: "Sort Z–A", hint: "Sort the rows in reverse", edit: op("sort-desc") })} />
         <Btn {...t({ id: "table.moveRowUp", icon: ArrowUp, label: "Row up", hint: "Move this row up", edit: op("row-up") })} />
@@ -193,14 +193,14 @@ export function TableContextTab({ signals, shortcuts }) {
         <Btn {...t({ id: "table.transpose", icon: RotateCw, label: "Transpose", hint: "Swap rows and columns", edit: op("transpose") })} />
       </RibbonGroup>
 
-      <RibbonGroup label="Data">
+      <RibbonGroup label="Data" priority={40}>
         <Btn {...t({ id: "table.sumRow", icon: Sigma, label: "Sum row", hint: "Add a Total row summing the numeric columns", edit: op("totals-sum") })} />
         <Btn {...t({ id: "table.averageRow", icon: Sigma, label: "Average row", hint: "Add an Average row", edit: op("totals-average") })} />
         <Btn {...t({ id: "table.clearCells", icon: Eraser, label: "Clear cells", hint: "Empty every data cell, keep the header", edit: op("clear-cells") })} />
         <Btn {...t({ id: "table.tidy", icon: Wand2, label: "Tidy up", hint: "Align the | marks so the table is easy to read as text", edit: op("prettify") })} />
       </RibbonGroup>
 
-      <RibbonGroup label="Convert">
+      <RibbonGroup label="Convert" priority={30}>
         <RibbonMenu id="table.textToTable" icon={TableProperties} label="Text → table" hint="Turn the selected CSV / TSV lines into a table" width={200}>
           {(close) => (
             <>
@@ -229,7 +229,7 @@ export function TableContextTab({ signals, shortcuts }) {
       </RibbonGroup>
 
       {inTable && (
-        <RibbonGroup label="Export">
+        <RibbonGroup label="Export" priority={20}>
           <Btn
             id="table.exportXlsx"
             icon={FileX}

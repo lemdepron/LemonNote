@@ -11,7 +11,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "tauri": "tauri",
-    "check": "eslint src --quiet && vite build",
+    "check": "eslint src --quiet && node scripts/i18n-check.mjs && node scripts/check-theme-contrast.mjs",
     "smoke": "node scripts/smoke-ribbon.mjs"
   },
   "dependencies": {

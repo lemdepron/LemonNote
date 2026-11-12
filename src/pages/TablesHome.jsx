@@ -6,8 +6,10 @@ import SpaceListPage from "@/components/shell/SpaceListPage";
 import { makeTable } from "@/lib/table";
 import { relativeTime } from "@/lib/vault";
 import { confirm } from "@/components/ui/use-dialog";
+import { useI18n } from "@/lib/i18n";
 
 export default function TablesHome() {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -36,22 +38,22 @@ export default function TablesHome() {
 
   return (
     <SpaceListPage
-      eyebrow="Relational tables"
-      title="Structure what repeats."
-      description="Typed columns, rows you can edit inline, and relation fields that point at rows in another table — the database half of the workspace."
-      createLabel="New table"
+      eyebrow={t("vault.tables.label")}
+      title={t("vault.tables.heroTitle")}
+      description={t("vault.tables.hint")}
+      createLabel={t("vault.tables.addButton")}
       icon={Table2}
       loading={loading}
       onCreate={create}
       onDelete={remove}
       items={items.map((table) => ({
         id: table.id,
-        name: table.name || "Untitled table",
+        name: table.name || t("vault.tables.emptyState"),
         href: `/tables/${table.id}`,
         meta: `${table.rows?.length ?? 0} rows · ${table.columns?.length ?? 0} fields · ${relativeTime(table.updated_date)}`,
       }))}
-      emptyTitle="No tables yet."
-      emptyHint="A new table starts with Name, Status and Done fields plus three example rows."
+      emptyTitle={t("vault.tables.emptyState")}
+      emptyHint={t("vault.tables.tableGrid.noRows")}
     />
   );
 }

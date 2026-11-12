@@ -1,0 +1,12 @@
+{
+  "vault.queries.saveButton": "save",
+  "vault.queries.savedQueriesLabel": "saved queries",
+  "vault.queries.syntaxLabel": "syntax",
+  "vault.search.bin": "Bin",
+  "vault.search.createNote": "Create \"{query}\"",
+  "vault.search.noNoteMentions": "No note mentions \"{query}\".",
+  "vault.search.startWithTitle": "Start one with this title and the vault grows.",
+  "vault.shortcuts.cards.hint": "review what wants to be remembered",
+  "vault.shortcuts.extensions.hint": "plugins & integrations",
+  "vault.shortcuts.queries.hint": "ask the vault a question"
+}

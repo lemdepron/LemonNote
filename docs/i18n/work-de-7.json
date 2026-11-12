@@ -1,0 +1,12 @@
+{
+  "ribbon.code.copy": "Copy code",
+  "ribbon.code.copyHint": "Copy the code of this block",
+  "ribbon.code.deleteLine": "Delete line",
+  "ribbon.code.deleteLineHint": "Delete the current line",
+  "ribbon.code.duplicate": "Duplicate",
+  "ribbon.code.duplicateHint": "Duplicate the current line",
+  "ribbon.code.editLines": "Edit lines",
+  "ribbon.code.indent": "Indent lines",
+  "ribbon.code.indentHint": "Indent lines",
+  "ribbon.code.json": "JSON"
+}

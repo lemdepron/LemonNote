@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.smart.recognise": "Recognise",
+  "ribbon.ink.smart.resultsAndSearch": "Results and search",
+  "ribbon.ink.smart.resultsSearch": "Results & search",
+  "ribbon.ink.smart.resultsSearchHint": "Recognised text, insert it on the page, search all handwriting",
+  "ribbon.ink.tab.about": "About",
+  "ribbon.ink.tab.aboutText": "Every note can carry its own handwriting page. Pens, colours, selection, paper, smart ink and audio appear here once you start.",
+  "ribbon.ink.tab.attachOldPage": "Attach old page",
+  "ribbon.ink.tab.attachOldPageHint": "Bring in a handwriting page from before Ink moved inside notes",
+  "ribbon.ink.tab.fullPage": "Full page",
+  "ribbon.ink.tab.fullPageHint": "Switch to full-page ink surface"
+}

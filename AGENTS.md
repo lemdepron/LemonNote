@@ -40,7 +40,11 @@ All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do
 16. **Colours come from theme tokens** (`bg-background`, `text-foreground`, `bg-primary`, ...). No hard-coded colours in components except inside theme data. Any new or changed theme must pass the contrast check: text on page and on card at least 4.5:1, button text on button at least 4.5:1, link on page at least 4.5:1.
 17. **Overlays.** Panels that open over the page (Find Tags, Backup, import options, anything similar) use `src/components/ui/dialog.jsx` (modal) or a Popover with a fixed max width and max height, a scrolling body and a solid background. Content must never overflow its box. Check at a narrow window width and in right-to-left.
 18. **One sticky stack.** The app header and the note ribbon stick together as one element. Do not position them separately with measured pixel offsets.
-19. **Do not create planning or summary files** in the repo root (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`). Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
+19. **Do not create planning, summary or throwaway files** in the repo (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`, no `fix-*.cjs`, `debug-*.mjs`, `check-*.cjs`, no backup copies like `original_*.jsx`). Run one-off helper scripts from a temporary folder outside the repo, or delete them when done. Reusable checks go in `scripts/` with a one-line comment at the top and an entry in package.json. Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
+
+## Translation workflow
+
+One language per task. Work in batches of at most 150 keys using `scripts/i18n-worklist.mjs` and `scripts/i18n-merge.mjs`. Translate for real; never copy the English text as the translation; keep placeholders exactly; list doubtful terms in `docs/i18n/review-<lang>.md`.
 
 ## Where things are
 
@@ -73,6 +77,10 @@ All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do
 7. **Finish with:** (a) files changed or created, (b) what you tested and what you did NOT test, (c) a numbered "Test by hand" list for a beginner with exact clicks, including one step that proves an old note still opens, (d) anything risky or left undone.
 8. Never commit, push, tag or release. Never run destructive commands (`rm -rf`, `git reset --hard`, `git clean`). STOP and wait.
 
+## Honest reporting (very important)
+
+Never write "done", "completed" or "all fixed" unless every check below passes. If a check fails, write the exact failing number (for example "i18n-check: 5862 failures") and say which part of the task is NOT finished. A task that asks for 10 languages is not done when 1 language is complete. If you could only do part of a task, say so in the first line of your report.
+
 ## Before you say "done"
 
 Run these from the project folder and report the real output:
@@ -81,10 +89,12 @@ Run these from the project folder and report the real output:
 npx eslint src --quiet
 npm run build
 node scripts/i18n-check.mjs
+npm ci --dry-run
 ```
 
 - ESLint and the build must finish with no errors. Warnings about chunk size, dynamic imports and `EBUSY` watcher noise are known and harmless.
-- `i18n-check` must report no failures (if it fails for reasons outside your task, say which keys and do not hide it).
+- `i18n-check` must report no failures (if it fails for reasons outside your task, say which keys and how many, and do not hide it).
+- `npm ci --dry-run` must pass on the committed `package-lock.json` (run `npm install` first if you changed dependencies, then tell the owner to commit the lock file).
 - If you changed behaviour, say exactly how the owner can **test it by hand** in the browser (`npm run dev`, then http://localhost:5173), step by step.
 - Never claim something works if you did not run or test it.
 

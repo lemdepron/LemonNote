@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.shapeMode": "Shapes",
+  "ribbon.ink.draw.shapeModeHint": "Draw lines, boxes, circles and coordinate graphs",
+  "ribbon.ink.draw.shapes": "Shapes",
+  "ribbon.ink.draw.stroke": "Stroke",
+  "ribbon.ink.draw.strokeOpacity": "opacity",
+  "ribbon.ink.draw.strokeWidth": "width",
+  "ribbon.ink.draw.undo": "Undo",
+  "ribbon.ink.draw.undoHint": "Undo the last mark",
+  "ribbon.ink.draw.view": "View",
+  "ribbon.ink.draw.zoomIn": "Zoom in"
+}

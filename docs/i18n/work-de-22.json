@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.favPenEmpty": "save your favourite pen setups here (max 8)",
+  "ribbon.ink.draw.favouritePens": "Favourite pens",
+  "ribbon.ink.draw.fit": "Fit",
+  "ribbon.ink.draw.fitHint": "Fit the page to the ink",
+  "ribbon.ink.draw.history": "History",
+  "ribbon.ink.draw.insertSpaceMode": "Insert space",
+  "ribbon.ink.draw.insertSpaceModeHint": "Drag to insert or remove vertical space between ink marks",
+  "ribbon.ink.draw.insertSpaceToast": "Text does not move. Ink below the line moves away from the text it was written on.",
+  "ribbon.ink.draw.lassoMode": "Lasso",
+  "ribbon.ink.draw.lassoModeHint": "Select marks by circling them"
+}

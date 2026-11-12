@@ -1,0 +1,12 @@
+{
+  "ribbon.view.attach": "Attach",
+  "ribbon.view.attachFile": "Attach file",
+  "ribbon.view.attachFileHint": "Attach any file (PDF, Word, zip, etc.) — opens in viewer or downloads",
+  "ribbon.view.attachImage": "Insert image",
+  "ribbon.view.attachImageHint": "Insert an image from your computer",
+  "ribbon.view.chars": "chars",
+  "ribbon.view.checkAccessibility": "Check accessibility",
+  "ribbon.view.checkAccessibilityHint": "Check for missing alt text, skipped headings, weak links, and low contrast",
+  "ribbon.view.checking": "Checking…",
+  "ribbon.view.clickToJump": "Click an issue to jump to it in the note."
+}

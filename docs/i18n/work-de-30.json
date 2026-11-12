@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.tab.handwriting": "Handwriting",
+  "ribbon.ink.tab.ink": "Ink",
+  "ribbon.ink.tab.inkOverText": "Ink over text",
+  "ribbon.ink.tab.inkOverTextHint": "Show ink over note text in Read view",
+  "ribbon.ink.tab.marks": "{count} marks",
+  "ribbon.ink.tab.noUnattachedPages": "No unattached ink pages.",
+  "ribbon.ink.tab.overlay": "Overlay",
+  "ribbon.ink.tab.removeInk": "Remove ink",
+  "ribbon.ink.tab.removeInkHint": "Delete all handwriting in this note",
+  "ribbon.ink.tab.startInking": "Start inking"
+}

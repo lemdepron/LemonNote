@@ -1,0 +1,12 @@
+{
+  "ribbon.design.saveAsDefault": "Set as default for new notes",
+  "ribbon.design.saveAsDefaultHint": "Save current note's design as the default for new notes",
+  "ribbon.design.spaceBetweenParagraphs": "Space between paragraphs (em)",
+  "ribbon.design.styleSets": "Style sets",
+  "ribbon.design.themeColors": "Theme Colors",
+  "ribbon.design.themeFonts": "Theme Fonts",
+  "ribbon.design.themePreset": "Theme preset",
+  "ribbon.design.themePresetHint": "Apply a theme preset to this note only",
+  "ribbon.design.themePresetPerNote": "Theme Preset (per note)",
+  "ribbon.design.themes": "Themes"
+}

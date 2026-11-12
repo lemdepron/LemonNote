@@ -1,0 +1,12 @@
+{
+  "vault.graph.label": "Graph view",
+  "vault.graph.subtitle": "{notes} notes · {links} links · drag to rearrange · click to open",
+  "vault.queries.description": "Write a query and see results instantly. Use tags, titles, body text, word counts, links, dates, and more.",
+  "vault.queries.heroTitle": "Ask the vault a question.",
+  "vault.queries.indexing": "indexing…",
+  "vault.queries.label": "Dynamic queries",
+  "vault.queries.noSavedQueries": "Save a query to pin it here — it re-runs live every time you open it.",
+  "vault.queries.notesCount": "{total} of {all} notes",
+  "vault.queries.placeholder": "tag:basics words>80 sort:-created limit:40",
+  "vault.queries.resultsLabel": "Results"
+}

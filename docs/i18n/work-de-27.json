@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.select.deselect": "Deselect",
+  "ribbon.ink.select.deselectHint": "Clear the selection",
+  "ribbon.ink.select.lasso": "Lasso",
+  "ribbon.ink.select.lassoHint": "Select marks by circling them",
+  "ribbon.ink.select.nothingSelected": "nothing selected",
+  "ribbon.ink.select.recolor": "Recolor",
+  "ribbon.ink.select.recolorHint": "Paint the selection with the current ink",
+  "ribbon.ink.select.select": "Select",
+  "ribbon.ink.select.selectFirst": "Select marks with the lasso first",
+  "ribbon.ink.select.selectHint": "Select, move, resize and rotate objects"
+}

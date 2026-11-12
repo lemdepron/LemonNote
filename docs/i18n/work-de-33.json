@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.callout": "Callout",
+  "ribbon.insert.calloutHint": "Highlighted note box",
+  "ribbon.insert.card": "Card",
+  "ribbon.insert.cardHint": "Insert a flashcard",
+  "ribbon.insert.cards": "Cards",
+  "ribbon.insert.chart": "Chart",
+  "ribbon.insert.chartDisabled": "Put the cursor inside a table first",
+  "ribbon.insert.chartHint": "Insert a chart from a table (bar, line, pie)",
+  "ribbon.insert.chartTablePrompt": "Table index (0 to {count}):",
+  "ribbon.insert.chartTitlePrompt": "Chart title (optional):"
+}

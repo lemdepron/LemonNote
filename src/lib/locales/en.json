@@ -42,6 +42,8 @@
     },
     "file": "File",
     "fileHint": "File menu (Ctrl+Shift+F)",
+    "more": "More",
+    "groupsAria": "Ribbon groups",
     "home": {
       "clipboard": "Clipboard",
       "undo": "Undo",
@@ -145,6 +147,11 @@
         "copy": "Copy",
         "discard": "Discard"
       }
+    },
+    "share": {
+      "copiedAs": "Copied as {label}.",
+      "copyRichTextFallback": "Copied as {label} (rich text not supported, fell back to plain text).",
+      "copyFailed": "Copy failed: {error}"
     },
     "design": {
       "pageStyle": "Page style",
@@ -757,9 +764,17 @@
       "stroke": "Stroke",
       "precision": "Precision"
     }
-    }
   },
-  "fileMenu": {
+  "wordGoal": {
+    "wordGoal": "Word goal",
+    "targetWords": "Target words",
+    "setGoal": "Set goal",
+    "updateGoal": "Update goal",
+    "editGoal": "Edit goal",
+    "clearGoal": "Clear goal"
+  }
+},
+"fileMenu": {
     "title": "File",
     "close": "Close",
     "navAria": "File sections",
@@ -874,6 +889,25 @@
     "cancel": "Cancel",
     "next": "Next"
   },
+  "backup": {
+    "size": "Size",
+    "imported": "Imported {count} record{plural}",
+    "skipped": "skipped {count} already present",
+    "cancelled": "Import cancelled",
+    "renamed": "renamed {count}",
+    "overwritten": "overwritten {count}",
+    "table": "Table",
+    "importing": "Importing…",
+    "stage": "Stage",
+    "progress": "Progress",
+    "folders": "Folders",
+    "skip": "Skip",
+    "rename": "Rename",
+    "overwrite": "Overwrite",
+    "duplicate": "DUPLICATE",
+    "title": "Backup",
+    "desc": "Export or import your entire vault. Set a reminder to back up regularly."
+  },
   "dir": {
     "ltr": "Left-to-right",
     "rtl": "Right-to-left",
@@ -885,7 +919,20 @@
   },
   "lang": {
     "en": "English",
-    "ar": "العربية"
+    "ar": "العربية",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "zh": "中文",
+    "ja": "日本語",
+    "ko": "한국어",
+    "pt": "Português",
+    "ru": "Русский",
+    "it": "Italiano",
+    "nl": "Nederlands",
+    "tr": "Türkçe",
+    "pl": "Polski",
+    "hi": "हिन्दी"
   },
   "settings": {
     "title": "Settings",
@@ -903,7 +950,9 @@
       "import": "Import",
       "storage": "Storage",
       "mirror": "Mirror",
-      "updates": "Updates"
+      "updates": "Updates",
+      "window": "Window",
+      "ai": "AI Assist"
     },
     "defaultsReset": "Writing defaults reset.",
     "appearance": {
@@ -1293,179 +1342,260 @@
       },
       "cards": {
         "label": "Flashcards · spaced repetition",
-        "heroTitle": "Review what wants to be remembered.",
-        "newCard": "New card",
-        "stats": "{due} due · {total} cards",
-        "nothingDue": "Nothing due right now.",
-        "noCards": "No cards yet.",
-        "nextCard": "Next card comes back on {date}.",
-        "emptyHint": "Write a question and an answer, then review it when it resurfaces.",
-        "allCards": "all cards",
-        "reps": "{count} reps",
-        "newCard": "new",
-        "deleteCard": "Delete card"
+        "hint": "review what wants to be remembered"
       },
       "graph": {
         "label": "Graph view",
-        "hint": "the vault as a network",
-        "heroTitle": "The vault as a network",
-        "subtitle": "{notes} notes · {links} links · drag to rearrange · click to open",
-        "emptyState": "Write a note and link another with <span class=\"font-mono text-foreground\">[[double brackets]]</span> to grow the graph.",
-        "backToVault": "Back to vault"
+        "hint": "the vault as a network"
       },
       "canvas": {
         "label": "Infinite canvas",
-        "hint": "pan, zoom, wire cards",
-        "heroTitle": "Think in space.",
-        "subtitle": "{cards} cards · {connections} connections",
-        "emptyState": "This canvas is gone.",
-        "backToCanvases": "Back to canvases",
-        "cardInspector": "Card inspector",
-        "canvasGuide": "Canvas guide",
-        "guideText1": "Drag empty space to pan, scroll to zoom, double-click the plane to drop a card.",
-        "guideText2": "The <span class=\"text-foreground\">link handle</span> on a card wires it to another one.",
-        "stats": "{cards} cards · {connections} connections",
-        "newCardTitle": "New card",
-        "addCard": "Add card",
-        "saving": "saving…",
-        "saved": "saved",
-        "autosaveOn": "autosave on",
-        "backToCanvases": "back to canvases",
-        "canvasName": "Canvas name",
-        "status": {
-          "saving": "saving…",
-          "saved": "saved",
-          "autosaveOn": "autosave on"
-        }
+        "hint": "pan, zoom, wire cards"
       },
       "tables": {
         "label": "Relational tables",
-        "hint": "typed fields and relations",
-        "heroTitle": "Structure what repeats.",
-        "subtitle": "{rows} rows · {fields} fields",
-        "emptyState": "This table is gone.",
-        "backToTables": "Back to tables",
-        "viewTable": "Table",
-        "viewBoard": "Board",
-        "viewGallery": "Gallery",
-        "addColumn": "Add column",
-        "addRow": "Add row",
-        "priorityPlaceholder": "Priority",
-        "typePlaceholder": "Type",
-        "optionsPlaceholder": "low, medium, high",
-        "tablePickerPlaceholder": "Choose a table…",
-        "addButton": "Add",
-        "status": {
-          "saving": "saving…",
-          "saved": "saved",
-          "autosaveOn": "autosave on"
-        },
-        "stats": "{rows} rows · {fields} fields",
-        "backToTables": "back to tables",
-        "tableName": "Table name",
-        "columnTypes": {
-          "text": "Text",
-          "number": "Number",
-          "select": "Select",
-          "date": "Date",
-          "checkbox": "Checkbox",
-          "relation": "Relation"
-        },
-        "typeBadge": {
-          "text": "txt",
-          "number": "num",
-          "select": "sel",
-          "date": "date",
-          "checkbox": "chk",
-          "relation": "rel"
-        },
-        "tableGrid": {
-          "placeholder": "—",
-          "numberPlaceholder": "0",
-          "renameColumn": "Rename {name}",
-          "deleteColumn": "Delete {name} column",
-          "deleteRow": "Delete row",
-          "noRows": "No rows yet — add the first one below."
-        },
-        "boardView": {
-          "needsSelect": "Board view needs a select field.",
-          "addSelect": "Add a field of type “Select” to group rows into columns.",
-          "ungrouped": "ungrouped"
-        },
-        "galleryView": {
-          "noRows": "No rows yet.",
-          "addRow": "Add a row to see it as a card.",
-          "checkboxYes": "yes"
-        }
+        "hint": "typed fields and relations"
       },
       "code": {
         "label": "Code workspace",
-        "hint": "find & replace, autosave",
-        "heroTitle": "Write, find, replace — all in one place.",
-        "subtitle": "{lines} lines",
-        "emptyState": "This file is gone.",
-        "backToCode": "Back to code files",
-        "fileName": "File name",
-        "languagePlaceholder": "Language",
-        "findButton": "find",
-        "status": {
-          "saving": "saving…",
-          "saved": "saved",
-          "autosaveOn": "autosave on"
-        }
+        "hint": "find & replace, autosave"
       },
       "queries": {
         "label": "Dynamic queries",
-        "heroTitle": "Ask the vault a question.",
-        "description": "Write a query and see results instantly. Use tags, titles, body text, word counts, links, dates, and more.",
-        "placeholder": "tag:basics words>80 sort:-created limit:40",
-        "saveButton": "save",
-        "resultsLabel": "Results",
-        "indexing": "indexing…",
-        "notesCount": "{total} of {all} notes",
-        "savedQueriesLabel": "saved queries",
-        "noSavedQueries": "Save a query to pin it here — it re-runs live every time you open it.",
-        "syntaxLabel": "syntax"
+        "hint": "ask the vault a question"
       },
       "extensions": {
         "label": "Extensions",
-        "heroTitle": "Capabilities, not scripts.",
-        "description": "Every extension declares what it may touch — CSS variables, a panel or title-bar slot, a named save hook or the event stream. Nothing executes third-party code: handlers get a frozen sandbox, a failure stays inside its own plugin, and every run is logged below.",
-        "installedLabel": "Installed",
-        "activeCount": "{active} of {total} active · {contracts} contracts",
-        "cssOverridesLabel": "css variable overrides",
-        "cssOverridesDesc": "Values are raw HSL channels applied to the document root in both modes. Disabled extensions keep their defaults.",
-        "customThemeExample": "--primary: 205 58% 46%\n--link: 190 62% 30%\n--ring: 205 58% 46%",
-        "applyButton": "Apply overrides",
-        "resetButton": "Reset",
-        "appliedStatus": "applied",
-        "runtimeLogLabel": "runtime log",
-        "liveStatus": "live",
-        "tabManifestLabel": "Tab manifest",
-        "tabManifestDesc": "Routes, entities and the hook surface of all eleven tabs."
+        "hint": "plugins & integrations"
       },
       "trash": {
         "label": "Trash",
-        "heroTitle": "Deleted notes live here for 60 days.",
-        "description": "Deleting a note moves it here instead of erasing it. Restore puts it back in the vault with its links intact; anything older than {days} days is cleared on the next visit.",
-        "itemCount": "{count} item{plural}",
-        "loading": "loading…",
-        "emptyState": "The trash is empty.",
-        "emptyDescription": "Nothing has been deleted in the last 60 days.",
-        "noteSnippet": "empty note",
-        "deletedAgo": "deleted {time} ago · {daysLeft}",
-        "expiresToday": "expires today",
-        "daysLeft": "{count} days left",
-        "restoreButton": "restore",
-        "toastRestored": "Restored \"{title}\".",
-        "deleteForeverDialog": {
-          "title": "Delete forever?",
-          "description": "“{title}” will be erased immediately. This cannot be undone.",
-          "keepButton": "Keep it",
-          "deleteButton": "Delete forever"
-        },
-        "ariaDeleteForever": "Delete {title} forever"
+        "hint": "deleted notes for 60 days"
       }
+    },
+    "journal": {
+      "label": "Daily journal",
+      "heroTitle": "One page per day.",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "today": "Today",
+      "emptyEntry": "This entry is still empty.",
+      "openEntry": "Open entry",
+      "noEntry": "No entry for this day yet. LemonNote will create the note with a notes / tasks / log scaffold.",
+      "creating": "Creating…",
+      "startEntry": "Start this entry",
+      "recentEntries": "Recent entries",
+      "nothingJournaled": "Nothing journaled yet.",
+      "emptyEntrySnippet": "empty entry"
+    },
+    "tasks": {
+      "label": "Tasks · written as blocks",
+      "heroTitle": "Every task, straight from your notes.",
+      "description": "Write TODO, DOING or DONE at the start of any list line — click a task here to move it along. Add due:YYYY-MM-DD HH:MM for due dates.",
+      "sort": "Sort:",
+      "sortPlaceholder": "Sort",
+      "sortOptions": {
+        "dueDate": "Due date",
+        "state": "State",
+        "noteTitle": "Note title"
+      },
+      "noTasks": "No tasks match this filter.",
+      "allHint": "Add a line like \"- TODO Review the outline\" to any note.",
+      "filteredHint": "Try \"All\" filter or add due dates with due:YYYY-MM-DD HH:MM",
+      "states": {
+        "TODO": "To do",
+        "DOING": "Doing",
+        "DONE": "Done"
+      },
+      "filters": {
+        "ALL": "All",
+        "TODAY": "Today",
+        "THIS_WEEK": "This week",
+        "OVERDUE": "Overdue",
+        "NO_DATE": "No date"
+      }
+    },
+    "cards": {
+      "label": "Flashcards · spaced repetition",
+      "heroTitle": "Review what wants to be remembered.",
+      "newCard": "New card",
+      "stats": "{due} due · {total} cards",
+      "nothingDue": "Nothing due right now.",
+      "noCards": "No cards yet.",
+      "nextCard": "Next card comes back on {date}.",
+      "emptyHint": "Write a question and an answer, then review it when it resurfaces.",
+      "allCards": "all cards",
+      "reps": "{count} reps",
+      "newCard": "new",
+      "deleteCard": "Delete card"
+    },
+    "graph": {
+      "label": "Graph view",
+      "hint": "the vault as a network",
+      "heroTitle": "The vault as a network",
+      "subtitle": "{notes} notes · {links} links · drag to rearrange · click to open",
+      "emptyState": "Write a note and link another with <span class=\"font-mono text-foreground\">[[double brackets]]</span> to grow the graph.",
+      "backToVault": "Back to vault"
+    },
+    "canvas": {
+      "label": "Infinite canvas",
+      "hint": "pan, zoom, wire cards",
+      "heroTitle": "Think in space.",
+      "subtitle": "{cards} cards · {connections} connections",
+      "emptyState": "This canvas is gone.",
+      "backToCanvases": "Back to canvases",
+      "cardInspector": "Card inspector",
+      "canvasGuide": "Canvas guide",
+      "guideText1": "Drag empty space to pan, scroll to zoom, double-click the plane to drop a card.",
+      "guideText2": "The <span class=\"text-foreground\">link handle</span> on a card wires it to another one.",
+      "stats": "{cards} cards · {connections} connections",
+      "newCardTitle": "New card",
+      "addCard": "Add card",
+      "saving": "saving…",
+      "saved": "saved",
+      "autosaveOn": "autosave on",
+      "backToCanvases": "back to canvases",
+      "canvasName": "Canvas name",
+      "status": {
+        "saving": "saving…",
+        "saved": "saved",
+        "autosaveOn": "autosave on"
+      }
+    },
+    "tables": {
+      "label": "Relational tables",
+      "hint": "typed fields and relations",
+      "heroTitle": "Structure what repeats.",
+      "subtitle": "{rows} rows · {fields} fields",
+      "emptyState": "This table is gone.",
+      "backToTables": "Back to tables",
+      "viewTable": "Table",
+      "viewBoard": "Board",
+      "viewGallery": "Gallery",
+      "addColumn": "Add column",
+      "addRow": "Add row",
+      "priorityPlaceholder": "Priority",
+      "typePlaceholder": "Type",
+      "optionsPlaceholder": "low, medium, high",
+      "tablePickerPlaceholder": "Choose a table…",
+      "addButton": "Add",
+      "status": {
+        "saving": "saving…",
+        "saved": "saved",
+        "autosaveOn": "autosave on"
+      },
+      "stats": "{rows} rows · {fields} fields",
+      "backToTables": "back to tables",
+      "tableName": "Table name",
+      "columnTypes": {
+        "text": "Text",
+        "number": "Number",
+        "select": "Select",
+        "date": "Date",
+        "checkbox": "Checkbox",
+        "relation": "Relation"
+      },
+      "typeBadge": {
+        "text": "txt",
+        "number": "num",
+        "select": "sel",
+        "date": "date",
+        "checkbox": "chk",
+        "relation": "rel"
+      },
+      "tableGrid": {
+        "placeholder": "—",
+        "numberPlaceholder": "0",
+        "renameColumn": "Rename {name}",
+        "deleteColumn": "Delete {name} column",
+        "deleteRow": "Delete row",
+        "noRows": "No rows yet — add the first one below."
+      },
+      "boardView": {
+        "needsSelect": "Board view needs a select field.",
+        "addSelect": "Add a field of type “Select” to group rows into columns.",
+        "ungrouped": "ungrouped"
+      },
+      "galleryView": {
+        "noRows": "No rows yet.",
+        "addRow": "Add a row to see it as a card.",
+        "checkboxYes": "yes"
+      }
+    },
+    "code": {
+      "label": "Code workspace",
+      "hint": "find & replace, autosave",
+      "heroTitle": "Write, find, replace — all in one place.",
+      "subtitle": "{lines} lines",
+      "emptyState": "This file is gone.",
+      "backToCode": "Back to code files",
+      "fileName": "File name",
+      "languagePlaceholder": "Language",
+      "findButton": "find",
+      "newFile": "New file",
+      "status": {
+        "saving": "saving…",
+        "saved": "saved",
+        "autosaveOn": "autosave on"
+      }
+    },
+    "queries": {
+      "label": "Dynamic queries",
+      "heroTitle": "Ask the vault a question.",
+      "description": "Write a query and see results instantly. Use tags, titles, body text, word counts, links, dates, and more.",
+      "placeholder": "tag:basics words>80 sort:-created limit:40",
+      "saveButton": "save",
+      "resultsLabel": "Results",
+      "indexing": "indexing…",
+      "notesCount": "{total} of {all} notes",
+      "savedQueriesLabel": "saved queries",
+      "noSavedQueries": "Save a query to pin it here — it re-runs live every time you open it.",
+      "syntaxLabel": "syntax"
+    },
+    "extensions": {
+      "label": "Extensions",
+      "heroTitle": "Capabilities, not scripts.",
+      "description": "Every extension declares what it may touch — CSS variables, a panel or title-bar slot, a named save hook or the event stream. Nothing executes third-party code: handlers get a frozen sandbox, a failure stays inside its own plugin, and every run is logged below.",
+      "installedLabel": "Installed",
+      "activeCount": "{active} of {total} active · {contracts} contracts",
+      "cssOverridesLabel": "css variable overrides",
+      "cssOverridesDesc": "Values are raw HSL channels applied to the document root in both modes. Disabled extensions keep their defaults.",
+      "customThemeExample": "--primary: 205 58% 46%\n--link: 190 62% 30%\n--ring: 205 58% 46%",
+      "applyButton": "Apply overrides",
+      "resetButton": "Reset",
+      "appliedStatus": "applied",
+      "runtimeLogLabel": "runtime log",
+      "liveStatus": "live",
+      "tabManifestLabel": "Tab manifest",
+      "tabManifestDesc": "Routes, entities and the hook surface of all eleven tabs."
+    },
+    "trash": {
+      "label": "Trash",
+      "heroTitle": "Deleted notes live here for 60 days.",
+      "description": "Deleting a note moves it here instead of erasing it. Restore puts it back in the vault with its links intact; anything older than {days} days is cleared on the next visit.",
+      "itemCount": "{count} item{plural}",
+      "loading": "loading…",
+      "emptyState": "The trash is empty.",
+      "emptyDescription": "Nothing has been deleted in the last 60 days.",
+      "noteSnippet": "empty note",
+      "deletedAgo": "deleted {time} ago · {daysLeft}",
+      "expiresToday": "expires today",
+      "daysLeft": "{count} days left",
+      "restoreButton": "restore",
+      "toastRestored": "Restored \"{title}\".",
+      "deleteForeverDialog": {
+        "title": "Delete forever?",
+        "description": "“{title}” will be erased immediately. This cannot be undone.",
+        "keepButton": "Keep it",
+        "deleteButton": "Delete forever"
+      },
+      "ariaDeleteForever": "Delete {title} forever"
+    },
+    "search": {
+      "noNoteMentions": "No note mentions \"{query}\".",
+      "startWithTitle": "Start one with this title and the vault grows.",
+      "createNote": "Create \"{query}\"",
+      "bin": "Bin"
     },
     "stats": {
       "notes": "{count} note{plural}",

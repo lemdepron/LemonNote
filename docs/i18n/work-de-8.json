@@ -1,0 +1,12 @@
+{
+  "ribbon.code.language": "Language",
+  "ribbon.code.languageHint": "Change the language of the block under the cursor",
+  "ribbon.code.minifyJson": "Minify",
+  "ribbon.code.minifyJsonHint": "Squeeze the JSON onto one line",
+  "ribbon.code.moveDown": "Move line down",
+  "ribbon.code.moveDownHint": "Move line down",
+  "ribbon.code.moveUp": "Move line up",
+  "ribbon.code.moveUpHint": "Move line up",
+  "ribbon.code.needBlock": "Put the cursor inside a code block first.",
+  "ribbon.code.outdent": "Outdent lines"
+}

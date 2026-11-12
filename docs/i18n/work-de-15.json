@@ -1,0 +1,12 @@
+{
+  "ribbon.design.titleAlignment": "Title alignment",
+  "ribbon.design.titleAlignmentPlaceholder": "Alignment",
+  "ribbon.design.titleFont": "Font for the page title",
+  "ribbon.design.titleFontPlaceholder": "Title font",
+  "ribbon.design.titleSize": "Title font size (px)",
+  "ribbon.design.titleVisibility": "Title visibility",
+  "ribbon.design.watermark": "Watermark",
+  "ribbon.design.watermarkAngle": "Watermark angle",
+  "ribbon.design.watermarkAnglePlaceholder": "Angle",
+  "ribbon.design.watermarkColor": "Watermark color"
+}

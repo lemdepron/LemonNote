@@ -42,6 +42,8 @@
     },
     "file": "ملف",
     "fileHint": "قائمة الملف (Ctrl+Shift+F)",
+    "more": "المزيد",
+    "groupsAria": "مجموعات الشريط",
     "home": {
       "clipboard": "الحافظة",
       "undo": "تراجع",
@@ -885,7 +887,20 @@
   },
   "lang": {
     "en": "English",
-    "ar": "العربية"
+    "ar": "العربية",
+    "de": "الألمانية",
+    "es": "الإسبانية",
+    "fr": "الفرنسية",
+    "hi": "الهندية",
+    "it": "الإيطالية",
+    "ja": "اليابانية",
+    "ko": "الكورية",
+    "nl": "الهولندية",
+    "pl": "البولندية",
+    "pt": "البرتغالية",
+    "ru": "الروسية",
+    "tr": "التركية",
+    "zh": "الصينية"
   },
   "settings": {
     "title": "الإعدادات",
@@ -903,7 +918,9 @@
       "import": "الاستيراد",
       "storage": "التخزين",
       "mirror": "النسخ المتطابق",
-      "updates": "التحديثات"
+      "updates": "التحديثات",
+      "ai": "مساعد الذكاء الاصطناعي",
+      "window": "النافذة"
     },
     "defaultsReset": "أعيد ضبط تلقائيات الكتابة.",
     "appearance": {
@@ -920,7 +937,21 @@
       "comfortable": "مريحة",
       "spacious": "رحابة",
       "preview": "معاينة",
-      "previewDesc": "المظهر الحالي مطبق على هذه الصفحة."
+      "previewDesc": "المظهر الحالي مطبق على هذه الصفحة.",
+      "animationLevel": "مستوى الحركة",
+      "animationsExpressive": "معبرة",
+      "animationsOff": "إيقاف",
+      "animationsSubtle": "خفية",
+      "dayTime": "وضع النهار يبدأ في",
+      "followSystem": "اتباع وضع النظام الفاتح/الداكن",
+      "followSystemDesc": "عند التفعيل، يتبع التطبيق تفضيل النظام للوضع الفاتح أو الداكن.",
+      "followSystemLabel": "تبديل السمات تلقائيًا مع النظام",
+      "glassEffects": "تأثيرات الزجاج",
+      "glassEffectsDesc": "عند التعطيل، تزيل كل التمويه الخلفي لتحسين الأداء.",
+      "glassEffectsLabel": "تمكين تمويه الخلفية والأسطح الزجاجية",
+      "nightTime": "وضع الليل يبدأ في",
+      "scheduleDesc": "ضبط أوقات محددة للوضع الفاتح والداكن بدلاً من اتباع النظام.",
+      "scheduleLabel": "جدول مخصص للنهار/الليل"
     },
     "writing": {
       "title": "تلقائيات الكتابة",
@@ -999,9 +1030,9 @@
       "listed": "اختصاراً مدرجاً"
     },
     "backup": {
-      "title": "Backup",
-      "desc": "Export or import your entire vault. Set a reminder to back up regularly.",
-      "reminder": "Backup reminder",
+      "title": "النسخ الاحتياطي",
+      "desc": "تصدير أو استيراد خزانتك بالكامل. ضع تذكيرًا للنسخ الاحتياطي بانتظام.",
+      "reminder": "تذكير النسخ الاحتياطي",
       "never": "Never",
       "every7": "Every 7 days",
       "every14": "Every 14 days",
@@ -1264,6 +1295,13 @@
     "heroTitle": "كل ما تعرفه،",
     "heroSubtitle": "بشكل نصي بسيط.",
     "heroBadge": "المخزن · ماركداون عادي",
+    "stats": {
+      "notes": "{count} ملاحظة{plural}",
+      "tags": "{count} وسم{plural}",
+      "links": "{count} رابط{plural}",
+      "notesTagsLinks": "{notes} · {tags} · {links}"
+    },
+    "tagged": "موسم بـ #{tag}",
     "shortcuts": {
       "journal": {
         "label": "اليوميات اليومية",
@@ -1271,195 +1309,224 @@
       },
       "calendar": {
         "label": "التقويم",
-        "hint": "المهام واليوميات حسب التاريخ"
+        "hint": "مهام ويوميات بالتاريخ"
       },
       "tasks": {
-        "label": "صندوق المهام",
-        "hint": "مطلوب، جارٍ، مكتمل"
+        "label": "صندوق مهام",
+        "hint": "مطلوب، قيد التنفيذ، مكتمل"
       },
       "cards": {
-        "label": "بطاقات المراجعة · التكرار المتباعد",
-        "heroTitle": "راجع ما يريد أن يُتذكر.",
-        "newCard": "بطاقة جديدة",
-        "stats": "{due} مستحقة · {total} بطاقة",
-        "nothingDue": "لا شيء مستحق الآن.",
-        "noCards": "لا توجد بطاقات بعد.",
-        "nextCard": "البطاقة التالية تعود في {date}.",
-        "emptyHint": "اكتب سؤالاً وجواباً، ثم راجعه عندما يعود للظهور.",
-        "allCards": "كل البطاقات",
-        "reps": "{count} تكرار",
-        "newCard": "جديدة",
-        "deleteCard": "حذف البطاقة"
+        "label": "بطاقات تعليمية · تكرار متباعد",
+        "hint": "راجع ما يريد أن يُذكر"
       },
       "graph": {
         "label": "عرض الرسم البياني",
-        "hint": "المخزن كشبكة",
-        "heroTitle": "المخزن كشبكة",
-        "subtitle": "{notes} ملاحظات · {links} روابط · اسحب لإعادة الترتيب · انقر للفتح",
-        "emptyState": "اكتب ملاحظة واربط أخرى بـ <span class=\"font-mono text-foreground\">[[أقواس مزدوجة]]</span> لتنمية الرسم البياني.",
-        "backToVault": "العودة إلى المخزن"
+        "hint": "المخزن كشبكة"
       },
       "canvas": {
         "label": "لوحة لا نهائية",
-        "hint": "التحريك، التكبير، ربط البطاقات",
-        "heroTitle": "فكّر في المساحة.",
-        "subtitle": "{cards} بطاقات · {connections} روابط",
-        "emptyState": "هذه اللوحة قد ذهبت.",
-        "backToCanvases": "العودة إلى اللوحات",
-        "cardInspector": "مفتش البطاقة",
-        "canvasGuide": "دليل اللوحة",
-        "guideText1": "اسحب المساحة الفارغة للتحريك، مرر للتكبير، انقر نقراً مزدوجاً على اللوحة لإسقاط بطاقة.",
-        "guideText2": "مقبض <span class=\"text-foreground\">الرابط</span> على بطاقة يربطها بأخرى.",
-        "stats": "{cards} بطاقات · {connections} روابط",
-        "newCardTitle": "بطاقة جديدة",
-        "addCard": "إضافة بطاقة",
-        "saving": "جاري الحفظ…",
-        "saved": "محفوظ",
-        "autosaveOn": "الحفظ التلقائي مفعل",
-        "backToCanvases": "العودة إلى اللوحات",
-        "canvasName": "اسم اللوحة",
-        "status": {
-          "saving": "جاري الحفظ…",
-          "saved": "محفوظ",
-          "autosaveOn": "الحفظ التلقائي مفعل"
-        }
+        "hint": "تنقل، تكبير، ربط البطاقات"
       },
       "tables": {
         "label": "جداول علائقية",
-        "hint": "حقول مترابطة ومصنفة",
-        "heroTitle": "هيكلة ما يتكرر.",
-        "subtitle": "{rows} صفوف · {fields} حقول",
-        "emptyState": "هذا الجدول قد ذهب.",
-        "backToTables": "العودة إلى الجداول",
-        "viewTable": "جدول",
-        "viewBoard": "لوحة",
-        "viewGallery": "معرض",
-        "addColumn": "إضافة عمود",
-        "addRow": "إضافة صف",
-        "priorityPlaceholder": "الأولوية",
-        "typePlaceholder": "النوع",
-        "optionsPlaceholder": "منخفض، متوسط، عالي",
-        "tablePickerPlaceholder": "اختر جدولاً…",
-        "addButton": "إضافة",
-        "status": {
-          "saving": "جاري الحفظ…",
-          "saved": "محفوظ",
-          "autosaveOn": "الحفظ التلقائي مفعل"
-        },
-        "stats": "{rows} صفوف · {fields} حقول",
-        "backToTables": "العودة إلى الجداول",
-        "tableName": "اسم الجدول",
-        "columnTypes": {
-          "text": "نص",
-          "number": "رقم",
-          "select": "اختيار",
-          "date": "تاريخ",
-          "checkbox": "مربع اختيار",
-          "relation": "علاقة"
-        },
-        "typeBadge": {
-          "text": "نص",
-          "number": "رقم",
-          "select": "اختيار",
-          "date": "تاريخ",
-          "checkbox": "مربع",
-          "relation": "علاقة"
-        },
-        "tableGrid": {
-          "placeholder": "—",
-          "numberPlaceholder": "0",
-          "renameColumn": "إعادة تسمية {name}",
-          "deleteColumn": "حذف عمود {name}",
-          "deleteRow": "حذف صف",
-          "noRows": "لا توجد صفوف بعد — أضف أول صف أدناه."
-        },
-        "boardView": {
-          "needsSelect": "عرض اللوحة يحتاج حقل اختيار.",
-          "addSelect": "أضف حقلاً من نوع \"اختيار\" لتجميع الصفوف في أعمدة.",
-          "ungrouped": "غير مصنف"
-        },
-        "galleryView": {
-          "noRows": "لا توجد صفوف بعد.",
-          "addRow": "أضف صفاً لرؤيته كبطاقة.",
-          "checkboxYes": "نعم"
-        }
+        "hint": "حقول مرقمة وعلاقات"
       },
       "code": {
-        "label": "مساحة الكود",
-        "hint": "بحث واستبدال، حفظ تلقائي",
-        "heroTitle": "اكتب، ابحث، استبدل — كل شيء في مكان واحد.",
-        "subtitle": "{lines} أسطر",
-        "emptyState": "هذا الملف قد ذهب.",
-        "backToCode": "العودة إلى ملفات الكود",
-        "fileName": "اسم الملف",
-        "languagePlaceholder": "اللغة",
-        "findButton": "بحث",
-        "status": {
-          "saving": "جاري الحفظ…",
-          "saved": "محفوظ",
-          "autosaveOn": "الحفظ التلقائي مفعل"
-        }
+        "label": "مساحة عمل برمجية",
+        "hint": "بحث واستبدال، حفظ تلقائي"
       },
       "queries": {
         "label": "استعلامات ديناميكية",
-        "heroTitle": "اسأل المخزن سؤالاً.",
-        "description": "اكتب استعلاماً وشاهد النتائج فوراً. استخدم الوسوم، العناوين، نص الجسم، عدد الكلمات، الروابط، التواريخ، والمزيد.",
-        "placeholder": "tag:basics words>80 sort:-created limit:40",
-        "saveButton": "حفظ",
-        "resultsLabel": "النتائج",
-        "indexing": "فهرسة…",
-        "notesCount": "{total} من {all} ملاحظة",
-        "savedQueriesLabel": "استعلامات محفوظة",
-        "noSavedQueries": "احفظ استعلاماً لتثبيته هنا — سيعاد تشغيله مباشرة في كل مرة تفتحه.",
-        "syntaxLabel": "الصياغة"
+        "hint": "اسأل المخزن سؤالًا"
       },
       "extensions": {
         "label": "الإضافات",
-        "heroTitle": "قدرات، ليست نصوصاً برمجية.",
-        "description": "كل إضافة تعلن عما قد تلمسه — متغيرات CSS، لوحة أو فتحة شريط عنوان، خطاف حفظ مسمى أو تدفق الأحداث. لا يتم تنفيذ كود طرف ثالث: المعالجات تحصل على بيئة محمية، والفشل يبقى داخل إضافته الخاصة، وكل عملية مسجلة أدناه.",
-        "installedLabel": "مثبتة",
-        "activeCount": "{active} من {total} نشطة · {contracts} عقد",
-        "cssOverridesLabel": "تجاوزات متغيرات CSS",
-        "cssOverridesDesc": "القيم هي قنوات HSL خام مطبقة على جذر المستند في كلا الوضعين. الإضافات المعطلة تحتفظ بإعداداتها الافتراضية.",
-        "customThemeExample": "--primary: 205 58% 46%\n--link: 190 62% 30%\n--ring: 205 58% 46%",
-        "applyButton": "تطبيق التجاوزات",
-        "resetButton": "إعادة تعيين",
-        "appliedStatus": "تم التطبيق",
-        "runtimeLogLabel": "سجل وقت التشغيل",
-        "liveStatus": "مباشر",
-        "tabManifestLabel": "بيان التبويب",
-        "tabManifestDesc": "المسارات، الكيانات وسطح الخطافات لجميع التبويبات الإحدى عشر."
+        "hint": "الإضافات والتكاملات"
       },
       "trash": {
-        "label": "المهملات",
-        "heroTitle": "الملاحظات المحذوفة تبقى هنا لمدة 60 يوماً.",
-        "description": "حذف ملاحظة ينقلها إلى هنا بدلاً من مسحها. الاستعادة تعيدها إلى المخزن مع روابطها سليمة؛ أي شيء أقدم من {days} يوماً يتم مسحه في الزيارة التالية.",
-        "itemCount": "{count} عنصر{plural}",
-        "loading": "جاري التحميل…",
-        "emptyState": "المهملات فارغة.",
-        "emptyDescription": "لم يتم حذف أي شيء في آخر 60 يوماً.",
-        "noteSnippet": "ملاحظة فارغة",
-        "deletedAgo": "تم الحذف منذ {time} · {daysLeft}",
-        "expiresToday": "تنتهي اليوم",
-        "daysLeft": "{count} يوم متبقٍ",
-        "restoreButton": "استعادة",
-        "toastRestored": "تمت استعادة \"{title}\".",
-        "deleteForeverDialog": {
-          "title": "حذف للأبد؟",
-          "description": "«{title}» سيتم مسحه فوراً. لا يمكن التراجع عن ذلك.",
-          "keepButton": "ابقِه",
-          "deleteButton": "احذف للأبد"
-        },
-        "ariaDeleteForever": "احذف {title} للأبد"
+        "label": "سلة المهملات",
+        "hint": "ملاحظات محذوفة لمدة 60 يومًا"
       }
     },
-    "stats": {
-      "notes": "{count} ملاحظة{plural}",
-      "tags": "{count} وسم{plural}",
-      "links": "{count} رابط{plural}",
-      "notesTagsLinks": "{notes} · {tags} · {links}"
+    "canvas": {
+      "addCard": "إضافة بطاقة",
+      "autosaveOn": "الحفظ التلقائي مفعل",
+      "backToCanvases": "العودة للوحات",
+      "canvasGuide": "دليل اللوحة",
+      "canvasName": "اسم اللوحة",
+      "cardInspector": "مفتش البطاقة",
+      "emptyState": "هذه اللوحة غير موجودة.",
+      "guideText1": "اسحب المساحة الفارغة للتنقل، مرر للتكبير، انقر نقرًا مزدوجًا على المستوى لإسقاط بطاقة.",
+      "guideText2": "مقبض <span class=\"text-foreground\">الرابط</span> على البطاقة يربطها بأخرى.",
+      "heroTitle": "فكر في الفضاء.",
+      "hint": "تنقل، تكبير، ربط البطاقات",
+      "label": "لوحة لا نهائية",
+      "newCardTitle": "بطاقة جديدة",
+      "saved": "تم الحفظ",
+      "saving": "جاري الحفظ…",
+      "stats": "{cards} بطاقة · {connections} ربط",
+      "status": {
+        "autosaveOn": "الحفظ التلقائي مفعل",
+        "saved": "تم الحفظ",
+        "saving": "جاري الحفظ…"
+      },
+      "subtitle": "{cards} بطاقة · {connections} ربط"
     },
-    "tagged": "موسم بـ #{tag}"
+    "cards": {
+      "allCards": "كل البطاقات",
+      "deleteCard": "حذف بطاقة",
+      "emptyHint": "اكتب سؤالًا وجوابًا، ثم راجعه عندما يظهر مرة أخرى.",
+      "heroTitle": "راجع ما يريد أن يُذكر.",
+      "label": "بطاقات تعليمية · تكرار متباعد",
+      "newCard": "جديد",
+      "nextCard": "البطاقة التالية تعود في {date}.",
+      "noCards": "لا توجد بطاقات بعد.",
+      "nothingDue": "لا شيء مستحق الآن.",
+      "reps": "{count} تكرارات",
+      "stats": "{due} مستحقة · {total} بطاقة"
+    },
+    "code": {
+      "backToCode": "العودة للملفات البرمجية",
+      "emptyState": "هذا الملف غير موجود.",
+      "fileName": "اسم الملف",
+      "findButton": "بحث",
+      "heroTitle": "اكتب، ابحث، استبدل — كل شيء في مكان واحد.",
+      "hint": "بحث واستبدال، حفظ تلقائي",
+      "label": "مساحة عمل برمجية",
+      "languagePlaceholder": "اللغة",
+      "status": {
+        "autosaveOn": "الحفظ التلقائي مفعل",
+        "saved": "تم الحفظ",
+        "saving": "جاري الحفظ…"
+      },
+      "subtitle": "{lines} أسطر",
+      "newFile": "ملف جديد"
+    },
+    "extensions": {
+      "activeCount": "{active} من {total} نشط · {contracts} عقود",
+      "appliedStatus": "مطبق",
+      "applyButton": "تطبيق التجاوزات",
+      "cssOverridesDesc": "القيم هي قنوات HSL خام مطبقة على جذر المستند في كلا الوضعين. الإضافات المعطلة تحتفظ بقيمها الافتراضية.",
+      "cssOverridesLabel": "تجاوزات متغيرات CSS",
+      "customThemeExample": "--primary: 205 58% 46%\n--link: 190 62% 30%\n--ring: 205 58% 46%",
+      "description": "تعلن كل إضافة عما قد تلمسه — متغيرات CSS، أو فتحة لوحة أو شريط عنوان، أو خطاف حفظ مسمى، أو دفق الأحداث. لا يُنفذ كود طرف ثالث: المعالجات تحصل على بيئة معزولة مجمدة، والفشل يبقى داخل إضافته الخاصة، وكل عملية مسجلة أدناه.",
+      "heroTitle": "إمكانيات، نصوص برمجية.",
+      "installedLabel": "مثبتة",
+      "label": "الإضافات",
+      "liveStatus": "مباشر",
+      "resetButton": "إعادة تعيين",
+      "runtimeLogLabel": "سجل وقت التشغيل",
+      "tabManifestDesc": "المسارات، الكيانات، وسطح الخطافات لجميع التبويبات الـ 11.",
+      "tabManifestLabel": "بيان التبويبات"
+    },
+    "graph": {
+      "backToVault": "العودة للخزانة",
+      "emptyState": "اكتب ملاحظة واربط أخرى بـ <span class=\"font-mono text-foreground\">[[أقواس مزدوجة]]</span> لتنمية الرسم البياني.",
+      "heroTitle": "الخزانة كشبكة",
+      "hint": "الخزانة كشبكة",
+      "label": "عرض الرسم البياني",
+      "subtitle": "{notes} ملاحظة · {links} رابط · اسحب لإعادة الترتيب · انقر للفتح"
+    },
+    "queries": {
+      "description": "اكتب استعلامًا وشاهد النتائج فورًا. استخدم الوسوم، العناوين، نص المحتوى، عدد الكلمات، الروابط، التواريخ، والمزيد.",
+      "heroTitle": "اسأل الخزانة سؤالًا.",
+      "indexing": "جاري الفهرسة…",
+      "label": "استعلامات ديناميكية",
+      "noSavedQueries": "احفظ استعلامًا لتثبيته هنا — سيعاد تشغيله مباشرة في كل مرة تفتحه.",
+      "notesCount": "{total} من {all} ملاحظة",
+      "placeholder": "tag:basics words>80 sort:-created limit:40",
+      "resultsLabel": "النتائج",
+      "saveButton": "حفظ",
+      "savedQueriesLabel": "استعلامات محفوظة",
+      "syntaxLabel": "بنية الجملة"
+    },
+    "search": {
+      "bin": "سلة",
+      "createNote": "إنشاء \"{query}\"",
+      "noNoteMentions": "لا توجد ملاحظة تذكر \"{query}\".",
+      "startWithTitle": "ابدأ واحدة بهذا العنوان وتنمو الخزانة."
+    },
+    "tables": {
+      "addButton": "إضافة",
+      "addColumn": "إضافة عمود",
+      "addRow": "إضافة صف",
+      "backToTables": "العودة للجداول",
+      "boardView": {
+        "addSelect": "أضف حقلًا من نوع \"اختيار\" لتجميع الصفوف في أعمدة.",
+        "needsSelect": "عرض اللوحة يحتاج حقل اختيار.",
+        "ungrouped": "غير مصنفة"
+      },
+      "columnTypes": {
+        "checkbox": "مربع اختيار",
+        "date": "تاريخ",
+        "number": "رقم",
+        "relation": "علاقة",
+        "select": "اختيار",
+        "text": "نص"
+      },
+      "emptyState": "هذا الجدول غير موجود.",
+      "galleryView": {
+        "addRow": "أضف صفًا لتراه كبطاقة.",
+        "checkboxYes": "نعم",
+        "noRows": "لا توجد صفوف بعد."
+      },
+      "heroTitle": "نظم ما يتكرر.",
+      "hint": "حقول مرقمة وعلاقات",
+      "label": "جداول علائقية",
+      "optionsPlaceholder": "منخفض، متوسط، عالٍ",
+      "priorityPlaceholder": "الأولوية",
+      "stats": "{rows} صفوف · {fields} حقول",
+      "status": {
+        "autosaveOn": "الحفظ التلقائي مفعل",
+        "saved": "تم الحفظ",
+        "saving": "جاري الحفظ…"
+      },
+      "subtitle": "{rows} صفوف · {fields} حقول",
+      "tableGrid": {
+        "deleteColumn": "حذف عمود {name}",
+        "deleteRow": "حذف صف",
+        "noRows": "لا توجد صفوف بعد — أضف أول واحد بالأسفل.",
+        "numberPlaceholder": "0",
+        "placeholder": "—",
+        "renameColumn": "إعادة تسمية {name}"
+      },
+      "tableName": "اسم الجدول",
+      "tablePickerPlaceholder": "اختر جدولًا…",
+      "typeBadge": {
+        "checkbox": "مختار",
+        "date": "تاريخ",
+        "number": "رقم",
+        "relation": "علاقة",
+        "select": "اختيار",
+        "text": "نص"
+      },
+      "typePlaceholder": "النوع",
+      "viewBoard": "لوحة",
+      "viewGallery": "معرض",
+      "viewTable": "جدول"
+    },
+    "trash": {
+      "ariaDeleteForever": "حذف {title} نهائيًا",
+      "daysLeft": "{count} يوم متبقٍ",
+      "deleteForeverDialog": {
+        "deleteButton": "حذف نهائيًا",
+        "description": "سيتم مسح \"{title}\" فورًا. لا يمكن التراجع عن ذلك.",
+        "keepButton": "احتفظ به",
+        "title": "حذف نهائيًا؟"
+      },
+      "deletedAgo": "محذوف منذ {time} · {daysLeft}",
+      "description": "حذف ملاحظة ينقلها إلى هنا بدلاً من مسحها. الاستعادة تعيدها إلى الخزانة مع روابطها سليمة؛ أي شيء أقدم من {days} يومًا يُمسح في الزيارة التالية.",
+      "emptyDescription": "لم يتم حذف أي شيء في آخر 60 يومًا.",
+      "emptyState": "سلة المهملات فارغة.",
+      "expiresToday": "تنتهي اليوم",
+      "heroTitle": "الملاحظات المحذوفة تبقى هنا لمدة 60 يومًا.",
+      "itemCount": "{count} عنصر{plural}",
+      "label": "سلة المهملات",
+      "loading": "جاري التحميل…",
+      "noteSnippet": "ملاحظة فارغة",
+      "restoreButton": "استعادة",
+      "toastRestored": "تمت استعادة \"{title}\"."
+    }
   },
   "common": {
     "clearSearch": "Clear search",
@@ -1482,7 +1549,8 @@
     "errors": "errors",
     "error": "error",
     "unknownDate": "unknown date",
-    "clear": "Clear"
+    "clear": "Clear",
+    "import": "استيراد"
   },
   "findTags": {
     "title": "Find Tags",
@@ -1510,5 +1578,41 @@
     "startWithTitle": "ابدأ بهذا العنوان وينمو المخزن.",
     "createNote": "إنشاء \"{query}\"",
     "bin": "المهملات"
+  },
+  "ai": {
+    "continue": "متابعة الكتابة",
+    "error": {
+      "emptyResponse": "أعاد الذكاء الاصطناعي ردًا فارغًا.",
+      "notEnabled": "الذكاء الاصطناعي غير مفعل. اذهب إلى الإعدادات > الذكاء الاصطناعي لتكوينه."
+    },
+    "fixGrammar": "تصحيح القواعد",
+    "panel": {
+      "append": "إلحاق بالملاحظة",
+      "close": "إغلاق مساعد الذكاء الاصطناعي",
+      "discard": "تجاهل",
+      "replace": "استبدال الملاحظة",
+      "title": "مساعد الذكاء الاصطناعي"
+    },
+    "summarize": "تلخيص",
+    "translate": "ترجمة"
+  },
+  "backup": {
+    "cancelled": "تم إلغاء الاستيراد",
+    "desc": "تصدير أو استيراد خزانتك بالكامل. ضع تذكيرًا للنسخ الاحتياطي بانتظام.",
+    "duplicate": "مكرر",
+    "folders": "مجلدات",
+    "imported": "تم استيراد {count} سجل{plural}",
+    "importing": "جاري الاستيراد…",
+    "overwrite": "استبدال",
+    "overwritten": "تم استبدال {count}",
+    "progress": "التقدم",
+    "rename": "إعادة تسمية",
+    "renamed": "أعيدت تسميتها {count}",
+    "size": "الحجم",
+    "skip": "تخطي",
+    "skipped": "تم تخطي {count} موجود بالفعل",
+    "stage": "مرحلة",
+    "table": "جدول",
+    "title": "نسخة احتياطية"
   }
 }

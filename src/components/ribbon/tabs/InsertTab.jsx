@@ -247,7 +247,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
 
   return (
     <>
-      <RibbonGroup label={t("ribbon.insert.pictures")} icon={ImagePlus} priority={10}>
+      <RibbonGroup label={t("ribbon.insert.pictures")} icon={ImagePlus} priority={130}>
         <Btn id="insert.image" icon={ImagePlus} label={t("ribbon.insert.image")} hint={t("ribbon.insert.imageHint")} shortcut="Ctrl+Alt+I" onClick={onPickImage} />
         <UrlMenu
           id="insert.imageUrl"
@@ -270,7 +270,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.media")} icon={Film} priority={20}>
+      <RibbonGroup label={t("ribbon.insert.media")} icon={Film} priority={10}>
         <Btn
           id="insert.gif"
           icon={Film}
@@ -293,7 +293,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.links")} icon={Link2} priority={30}>
+      <RibbonGroup label={t("ribbon.insert.links")} icon={Link2} priority={110}>
         <Btn id="insert.noteLink" icon={Link2} label={t("ribbon.insert.noteLink")} hint={t("ribbon.insert.noteLinkHint")} edit={wikiLink} />
         <Btn id="insert.bookmark" icon={Bookmark} label={t("ribbon.insert.bookmark")} hint={t("ribbon.insert.bookmarkHint")} onClick={async () => {
           const name = await prompt(t("ribbon.insert.bookmarkPrompt"));
@@ -312,7 +312,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
       </RibbonGroup>
 
       {/* Bookmarks menu - lists all bookmarks in the current note */}
-      <RibbonGroup label={t("ribbon.insert.bookmarks")} icon={Bookmark} priority={40}>
+      <RibbonGroup label={t("ribbon.insert.bookmarks")} icon={Bookmark} priority={20}>
         <RibbonMenu id="insert.bookmarks" icon={Bookmark} label={t("ribbon.insert.bookmarks")} hint="Jump to a bookmark in this note" width={240}>
           {(close) => {
             const bookmarks = [...value.matchAll(/<span id="(bm-[^"]+)"><\/span>/g)].map(m => m[1]);
@@ -342,7 +342,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.blocks")} icon={MessageSquareQuote} priority={50}>
+      <RibbonGroup label={t("ribbon.insert.blocks")} icon={MessageSquareQuote} priority={30}>
         <Btn id="insert.divider" icon={Minus} label={t("ribbon.insert.divider")} hint={t("ribbon.insert.dividerHint")} edit={(s) => insertBlock(s, "---")} />
         <RibbonMenu id="insert.callout" icon={MessageSquareQuote} label={t("ribbon.insert.callout")} hint={t("ribbon.insert.calloutHint")} width={200}>
           {(close) =>
@@ -409,7 +409,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.symbols")} icon={Omega} priority={60}>
+      <RibbonGroup label={t("ribbon.insert.symbols")} icon={Omega} priority={40}>
         <RibbonMenu id="insert.symbols" icon={Omega} label={t("ribbon.insert.symbols")} hint={t("ribbon.insert.symbolsMenuHint")} width={330}>
           {(close) =>
             SYMBOLS.map((group) => (
@@ -429,7 +429,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.codeBlock")} icon={SquareCode} priority={70}>
+      <RibbonGroup label={t("ribbon.insert.codeBlock")} icon={SquareCode} priority={50}>
         <RibbonMenu id="insert.codeBlock" icon={SquareCode} label={t("ribbon.insert.codeBlockMenu", { label: fenceLabel(active) })} hint={t("ribbon.insert.codeBlockMenuHint")} width={320} shortcut="Ctrl+Alt+C">
           {(close) => (
             <>
@@ -479,7 +479,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         <Btn id="insert.inlineCode" icon={Braces} label={t("ribbon.insert.inlineCode")} hint={t("ribbon.insert.inlineCodeHint")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.table")} icon={Table} priority={80}>
+      <RibbonGroup label={t("ribbon.insert.table")} icon={Table} priority={120}>
         <TablePicker
           id="insert.table"
           onInsert={(rows, columns) => run(tableInsert(selection, rows, columns))}
@@ -489,7 +489,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.shapes")} icon={Square} priority={90}>
+      <RibbonGroup label={t("ribbon.insert.shapes")} icon={Square} priority={60}>
         <Btn id="insert.shape.rect" icon={Square} label={t("ribbon.insert.shapeRect")} hint={t("ribbon.insert.shapeRectHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rect" })} />
         <Btn id="insert.shape.rounded" icon={SquareDashed} label={t("ribbon.insert.shapeRounded")} hint={t("ribbon.insert.shapeRoundedHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "rounded-rect" })} />
         <Btn id="insert.shape.ellipse" icon={Ellipse} label={t("ribbon.insert.shapeEllipse")} hint={t("ribbon.insert.shapeEllipseHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "ellipse" })} />
@@ -499,7 +499,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         <Btn id="insert.shape.star" icon={StarIcon} label={t("ribbon.insert.shapeStar")} hint={t("ribbon.insert.shapeStarHint")} onClick={() => ink?.addObject?.("shape", 100, 100, { shapeType: "star" })} />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.stickers")} icon={Star} priority={100}>
+      <RibbonGroup label={t("ribbon.insert.stickers")} icon={Star} priority={70}>
         <RibbonMenu id="insert.sticker" icon={Star} label={t("ribbon.insert.stickers")} hint={t("ribbon.insert.stickersMenuHint")} width={320}>
           {(close) => (
             <div className="p-1">
@@ -525,12 +525,12 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.textNotes")} icon={SquarePen} priority={110}>
+      <RibbonGroup label={t("ribbon.insert.textNotes")} icon={SquarePen} priority={80}>
         <Btn id="insert.textbox" icon={SquarePen} label={t("ribbon.insert.textbox")} hint={t("ribbon.insert.textboxHint")} onClick={() => ink?.addObject?.("textbox", 100, 100)} />
         <Btn id="insert.sticky" icon={StickyNote} label={t("ribbon.insert.sticky")} hint={t("ribbon.insert.stickyHint")} onClick={() => ink?.addObject?.("sticky", 100, 100)} />
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.timeCalendar")} icon={Calendar} priority={120}>
+      <RibbonGroup label={t("ribbon.insert.timeCalendar")} icon={Calendar} priority={90}>
         <Btn id="insert.today" icon={CalendarPlus} label={t("ribbon.insert.today")} hint={t("ribbon.insert.todayHint")} shortcut="Ctrl+Alt+D" onClick={() => goTo(today, JOURNAL_TEMPLATE)} />
         <Btn id="insert.yesterday" icon={CalendarClock} label={t("ribbon.insert.yesterday")} hint={t("ribbon.insert.yesterdayHint")} onClick={() => goTo(shiftDay(today, -1), JOURNAL_TEMPLATE)} />
         <Btn id="insert.tomorrow" icon={CalendarCheck} label={t("ribbon.insert.tomorrow")} hint={t("ribbon.insert.tomorrowHint")} onClick={() => goTo(shiftDay(today, 1), JOURNAL_TEMPLATE)} />
@@ -591,7 +591,7 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label={t("ribbon.insert.cards")} icon={Layers} priority={130}>
+      <RibbonGroup label={t("ribbon.insert.cards")} icon={Layers} priority={100}>
         <CardComposer
           id="insert.card"
           body={body}

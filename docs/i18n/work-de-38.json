@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.logEntry": "Log entry",
+  "ribbon.insert.logEntryHint": "Start a new time-stamped log line",
+  "ribbon.insert.media": "Media",
+  "ribbon.insert.micPermissionError": "Microphone permission denied. Please allow microphone access in your browser settings.",
+  "ribbon.insert.nextDay": "Next",
+  "ribbon.insert.nextDayDisabled": "This note's title is not a date, week (2026-W45) or month (2026-11)",
+  "ribbon.insert.nextDayHint": "The day, week or month after this note",
+  "ribbon.insert.noBookmarks": "No bookmarks in this note",
+  "ribbon.insert.noteLink": "Note link",
+  "ribbon.insert.noteLinkHint": "Link another note with [[ ]]"
+}

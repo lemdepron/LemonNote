@@ -1,0 +1,12 @@
+{
+  "ribbon.view.navigationPaneLabel": "Navigation pane",
+  "ribbon.view.noIssuesFound": "No issues found",
+  "ribbon.view.outline": "Outline",
+  "ribbon.view.outlineHint": "Collapsible heading tree",
+  "ribbon.view.pageDisplay": "Page display",
+  "ribbon.view.passesAllChecks": "Your note passes all accessibility checks.",
+  "ribbon.view.printLayout": "Print Layout",
+  "ribbon.view.printLayoutHint": "Pages with shadows, numbers, margins",
+  "ribbon.view.read": "read",
+  "ribbon.view.readMode": "Read Mode"
+}

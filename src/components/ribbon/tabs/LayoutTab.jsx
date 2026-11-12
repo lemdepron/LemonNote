@@ -388,7 +388,7 @@ export function LayoutTab({ ink }) {
   return (
     <>
       {/* 1. Page Setup */}
-      <RibbonGroup label="Page setup" icon={FileText}>
+      <RibbonGroup label="Page setup" icon={FileText} priority={70}>
         <RibbonSelect
           title="Paper size for printing and PDF export"
           placeholder="Page size"
@@ -486,7 +486,7 @@ export function LayoutTab({ ink }) {
       </RibbonGroup>
 
       {/* 2. Columns */}
-      <RibbonGroup label="Columns" icon={Columns}>
+      <RibbonGroup label="Columns" icon={Columns} priority={60}>
         <RibbonSelect
           title="Number of columns in the reader (CSS columns)"
           placeholder="Columns"
@@ -525,7 +525,7 @@ export function LayoutTab({ ink }) {
       </RibbonGroup>
 
       {/* 3. Editor */}
-      <RibbonGroup label="Editor" icon={Type}>
+      <RibbonGroup label="Editor" icon={Type} priority={50}>
         <Btn
           id="layout.lineNumbers"
           icon={Maximize2}
@@ -549,7 +549,7 @@ export function LayoutTab({ ink }) {
       </RibbonGroup>
 
       {/* 4. Paragraph (Indent & Spacing) */}
-      <RibbonGroup label="Paragraph" icon={AlignLeft}>
+      <RibbonGroup label="Paragraph" icon={AlignLeft} priority={40}>
         <div className="flex flex-wrap gap-1">
           <Stepper
             title="Indent left (em) — 0.5em steps"
@@ -634,7 +634,7 @@ export function LayoutTab({ ink }) {
       </RibbonGroup>
 
       {/* 5. Floating Objects */}
-      <RibbonGroup label="Floating objects" icon={MoreHorizontal}>
+      <RibbonGroup label="Floating objects" icon={MoreHorizontal} priority={30}>
         {/* Position */}
         <RibbonMenu
           id="layout.position"

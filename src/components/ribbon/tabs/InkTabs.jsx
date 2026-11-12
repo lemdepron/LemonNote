@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
-import { MenuItem, RibbonContext, RibbonMenu, RibbonSelect } from "@/components/ribbon/RibbonKit";
+import { MenuItem, RibbonMenu, RibbonSelect } from "@/components/ribbon/RibbonKit";
 import { readPref, writePref } from "@/lib/preferences";
 import { toast } from "@/lib/toast";
 import { Chip, Slider } from "@/components/ink/StudioSection";
@@ -149,7 +149,7 @@ export function InkDrawTab({ ink }) {
 
   return (
     <>
-      <RibbonGroup label="Mode">
+      <RibbonGroup label="Mode" priority={70}>
         {getModes(tool).map((mode) => (
           <RibbonButton
             key={mode.id}
@@ -162,7 +162,7 @@ export function InkDrawTab({ ink }) {
         ))}
       </RibbonGroup>
 
-      <RibbonGroup label="Pens">
+      <RibbonGroup label="Pens" priority={60}>
         {BRUSHES.map((brush) => {
           const preview = brushPreviewStyle(brush.id, tool.color);
           const active = tool.brush === brush.id && tool.mode !== "erase";
@@ -194,7 +194,7 @@ export function InkDrawTab({ ink }) {
         })}
       </RibbonGroup>
 
-      <RibbonGroup label="Favourite pens">
+      <RibbonGroup label="Favourite pens" priority={50}>
         <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
           {favPens.map((pen, index) => {
             const preview = brushPreviewStyle(pen.brush, pen.color);
@@ -241,7 +241,7 @@ export function InkDrawTab({ ink }) {
         )}
       </RibbonGroup>
 
-      <RibbonGroup label="Stroke">
+      <RibbonGroup label="Stroke" priority={40}>
         <Slider label="width" value={tool.width} min={0.5} max={24} step={0.5} onChange={(width) => onTool({ width })} display={`${tool.width}px`} />
         <Slider label="opacity" value={Math.round(tool.alpha * 100)} min={5} max={100} onChange={(value) => onTool({ alpha: value / 100 })} display={`${Math.round(tool.alpha * 100)}%`} />
         <RibbonMenu icon={Brush} label="Brush engine" hint="Pen behaviour, eraser engine, shape and ruler assists" width={300}>
@@ -255,7 +255,7 @@ export function InkDrawTab({ ink }) {
         </RibbonMenu>
       </RibbonGroup>
 
-      <RibbonGroup label="Eraser">
+      <RibbonGroup label="Eraser" priority={35}>
         <Chip active={tool.eraserMode === "stroke"} onClick={() => onTool({ eraserMode: "stroke", mode: "erase" })}>Stroke</Chip>
         <Chip active={tool.eraserMode === "precision"} onClick={() => onTool({ eraserMode: "precision", mode: "erase" })}>Point</Chip>
         <div className="flex gap-1">
@@ -296,12 +296,12 @@ export function InkDrawTab({ ink }) {
         <Slider label="radius" value={tool.size} min={6} max={90} onChange={(size) => onTool({ size })} display={`${tool.size}px`} />
       </RibbonGroup>
 
-      <RibbonGroup label="History">
+      <RibbonGroup label="History" priority={30}>
         <RibbonButton icon={Undo2} label="Undo" hint="Undo the last mark" shortcut="Ctrl+Z" disabled={!ink.canUndo} onClick={ink.onUndo} />
         <RibbonButton icon={Redo2} label="Redo" hint="Redo" shortcut="Ctrl+Shift+Z" disabled={!ink.canRedo} onClick={ink.onRedo} />
       </RibbonGroup>
 
-      <RibbonGroup label="View">
+      <RibbonGroup label="View" priority={25}>
         <RibbonButton icon={ZoomOut} hint="Zoom out" onClick={() => ink.onZoom(0.85)} />
         <RibbonButton icon={ZoomIn} hint="Zoom in" onClick={() => ink.onZoom(1.18)} />
         <RibbonButton icon={Maximize} label="Fit" hint="Fit the page to the ink" onClick={ink.onFit} />
@@ -309,7 +309,7 @@ export function InkDrawTab({ ink }) {
         <span className="self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
       </RibbonGroup>
 
-      <RibbonGroup label="Shapes">
+      <RibbonGroup label="Shapes" priority={20}>
         <RibbonMenu icon={CoordinateGraphIcon} label="Coordinate graph" hint="Insert a coordinate graph with axes, grid and tick marks" width={220}>
           {() => (
             <div className="p-2 space-y-2">
@@ -379,7 +379,7 @@ export function InkColorTab({ ink }) {
 
   return (
     <>
-      <RibbonGroup label="Current">
+      <RibbonGroup label="Current" priority={70}>
         <div className="flex items-center gap-1.5">
           <input
             type="text"
@@ -413,7 +413,7 @@ export function InkColorTab({ ink }) {
         </p>
       </RibbonGroup>
 
-      <RibbonGroup label="Quick inks">
+      <RibbonGroup label="Quick inks" priority={60}>
         <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
           {QUICK_COLORS.map((color) => (
             <button
@@ -432,7 +432,7 @@ export function InkColorTab({ ink }) {
         </div>
       </RibbonGroup>
 
-      <RibbonGroup label="Recent">
+      <RibbonGroup label="Recent" priority={50}>
         <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content' }}>
           {recent.length === 0 && <span className="font-mono text-[10px] text-muted-foreground">colours you use appear here</span>}
           {recent.map((color) => (
@@ -441,7 +441,7 @@ export function InkColorTab({ ink }) {
         </div>
       </RibbonGroup>
 
-      <RibbonGroup label="Studio">
+      <RibbonGroup label="Studio" priority={40}>
         <RibbonMenu icon={Palette} label="Colour studio" hint="Mixer, palettes, opacity and custom colours" width={300}>
           {() => (
             <ColorStudio
@@ -470,7 +470,7 @@ export function InkSelectTab({ ink }) {
   const strokeNone = { disabled: strokeCount === 0, disabledReason: "Select marks with the lasso first" };
   return (
     <>
-      <RibbonGroup label="Select">
+      <RibbonGroup label="Select" priority={70}>
         <RibbonButton icon={MousePointerIcon} label="Select" hint="Select, move, resize and rotate objects" active={tool.mode === "select"} onClick={() => ink.onTool({ mode: "select" })} />
         <RibbonButton icon={LassoIcon} label="Lasso" hint="Select marks by circling them" active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
         <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">
@@ -479,7 +479,7 @@ export function InkSelectTab({ ink }) {
       </RibbonGroup>
 
       {obj && (
-        <RibbonGroup label="Object">
+        <RibbonGroup label="Object" priority={60}>
           <RibbonButton icon={Trash2} label="Delete" hint="Delete the selected object" shortcut="Del" {...objNone} onClick={() => deleteObject(obj.id)} />
           <RibbonButton icon={Layers} label="Front" hint="Bring to front" {...objNone} onClick={() => bringToFront(obj.id)} />
           <RibbonButton icon={Layers} label="Back" hint="Send to back" {...objNone} onClick={() => sendToBack(obj.id)} />
@@ -487,7 +487,7 @@ export function InkSelectTab({ ink }) {
       )}
 
       {strokeCount > 0 && (
-        <RibbonGroup label="Strokes">
+        <RibbonGroup label="Strokes" priority={50}>
           <RibbonButton icon={Check} label="Apply" hint="Commit the move, scale or rotation" {...strokeNone} onClick={() => engine()?.commitSelection()} />
           <RibbonButton icon={Droplets} label="Recolor" hint="Paint the selection with the current ink" {...strokeNone} onClick={() => engine()?.recolorSelection(tool.color, tool.alpha)} />
           <RibbonButton icon={Trash2} label="Delete" hint="Delete the selected marks" shortcut="Del" {...strokeNone} onClick={() => engine()?.deleteSelection()} />
@@ -496,7 +496,7 @@ export function InkSelectTab({ ink }) {
       )}
 
       {strokeCount > 0 && (
-        <RibbonGroup label="Transform">
+        <RibbonGroup label="Transform" priority={40}>
           <RibbonMenu icon={SquareDashedMousePointer} label="Selection studio" hint="Move, scale and rotate the selection precisely" width={300} disabled={strokeCount === 0} disabledReason="Select marks with the lasso first">
             {() => (
               <SelectionStudio
@@ -525,22 +525,22 @@ export function InkPaperTab({ ink }) {
   const paper = page.paper || {};
   return (
     <>
-      <RibbonGroup label="Template">
+      <RibbonGroup label="Template" priority={70}>
         <RibbonSelect title="Paper template" value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
         <RibbonSelect title="Paper tone" value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
       </RibbonGroup>
 
-      <RibbonGroup label="Page size">
+      <RibbonGroup label="Page size" priority={60}>
         <RibbonSelect title="Page size" value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
       </RibbonGroup>
 
-      <RibbonGroup label="Pages">
+      <RibbonGroup label="Pages" priority={50}>
         <RibbonButton icon={ChevronLeft} hint="Previous page" disabled={pageIndex <= 0} onClick={() => ink.onPage(-1)} />
         <RibbonButton icon={ChevronRight} hint="Next page" onClick={() => ink.onPage(1)} />
         <span className="self-center font-mono text-[10.5px] text-muted-foreground">page {pageIndex + 1}</span>
       </RibbonGroup>
 
-      <RibbonGroup label="Studio">
+      <RibbonGroup label="Studio" priority={40}>
         <RibbonMenu icon={Layers} label="Paper studio" hint="All paper options in one place" width={300}>
           {() => <PaperStudio paper={paper} onPaper={ink.onPaper} pageIndex={pageIndex} onPage={ink.onPage} onClear={ink.onClear} />}
         </RibbonMenu>
@@ -558,12 +558,12 @@ export function InkSmartTab({ ink }) {
   const busy = Boolean(recognition.busy);
   return (
     <>
-      <RibbonGroup label="Recognise">
+      <RibbonGroup label="Recognise" priority={70}>
         <RibbonButton icon={recognition.busy === "text" ? Loader2 : ScanText} spinning={recognition.busy === "text"} label="Handwriting" hint="Turn the lasso selection, or the page in view, into text" disabled={busy} onClick={() => ink.onRecognize("text")} />
         <RibbonButton icon={recognition.busy === "math" ? Loader2 : Sigma} spinning={recognition.busy === "math"} label="Equation" hint="Turn handwritten maths into LaTeX" disabled={busy} onClick={() => ink.onRecognize("math")} />
       </RibbonGroup>
 
-      <RibbonGroup label="Results and search">
+      <RibbonGroup label="Results and search" priority={60}>
         <RibbonMenu icon={BookOpen} label="Results & search" hint="Recognised text, insert it on the page, search all handwriting" width={300}>
           {() => (
             <SmartInkStudio
@@ -594,18 +594,18 @@ export function InkAudioTab({ ink }) {
   const audio = page.audio;
   return (
     <>
-      <RibbonGroup label="Record">
+      <RibbonGroup label="Record" priority={70}>
         <RibbonButton icon={recording ? Square : Mic} label={recording ? "Stop" : "Record"} hint="Record audio while you write; every stroke is time-stamped" active={recording} onClick={recording ? ink.onStop : ink.onRecord} />
         {recording && <span className="self-center font-mono text-[10.5px] text-destructive">recording…</span>}
       </RibbonGroup>
 
-      <RibbonGroup label="Playback">
+      <RibbonGroup label="Playback" priority={60}>
         <RibbonButton icon={replay.syncing ? Loader2 : replay.playing ? Pause : Play} spinning={replay.syncing} label={replay.playing ? "Pause" : "Play"} hint="Play the recording and redraw the page as it was written" disabled={!audio?.file_uri} disabledReason="Record some audio first" onClick={ink.onPlay} />
         <RibbonButton icon={History} label="Replay ink" hint="Replay the strokes without sound" onClick={ink.onReplayInk} />
         <span className="self-center font-mono text-[10.5px] text-muted-foreground">{audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : "no recording"}</span>
       </RibbonGroup>
 
-      <RibbonGroup label="Manage">
+      <RibbonGroup label="Manage" priority={50}>
         <RibbonMenu icon={Mic} label="Audio studio" hint="Scrub through the recording" width={300}>
           {() => (
             <AudioStudio
@@ -642,9 +642,6 @@ const SUBTABS = [
   ["smart", "Smart ink", InkSmartTab],
   ["audio", "Audio", InkAudioTab],
 ];
-
-// Ink controls never depend on a markdown editor, so the shared kit sees an always-enabled context.
-const INK_CONTEXT = { markdown: true, offReason: "", selection: { value: "", start: 0, end: 0 }, run() {}, typography: {}, setTypography() {} };
 
 /**
  * The Ink tab of the note ribbon. `noteInk` is the note's own handwriting page
@@ -692,10 +689,10 @@ export function InkTab({ noteInk }) {
   );
 
   return (
-    <RibbonContext.Provider value={INK_CONTEXT}>
+    <>
       {!noteInk.hasPage ? (
         <>
-          <RibbonGroup label="Handwriting">
+          <RibbonGroup label="Handwriting" priority={70}>
             <RibbonButton
               icon={noteInk.starting ? Loader2 : PenLine}
               spinning={noteInk.starting}
@@ -706,7 +703,7 @@ export function InkTab({ noteInk }) {
             />
             {attach}
           </RibbonGroup>
-          <RibbonGroup label="About">
+          <RibbonGroup label="About" priority={60}>
             <p className="max-w-[24rem] self-center font-mono text-[10.5px] leading-snug text-muted-foreground">
               Every note can carry its own handwriting page. Pens, colours, selection, paper, smart ink and audio appear here once you start.
             </p>
@@ -714,7 +711,7 @@ export function InkTab({ noteInk }) {
         </>
       ) : (
         <>
-          <RibbonGroup label="Ink">
+          <RibbonGroup label="Ink" priority={70}>
             <div className="grid grid-cols-3 gap-1" style={{ minWidth: 'max-content' }}>
               {SUBTABS.map(([id, label]) => (
                 <button
@@ -734,7 +731,7 @@ export function InkTab({ noteInk }) {
             </div>
           </RibbonGroup>
           {noteInk.overlayMode !== undefined && (
-            <RibbonGroup label="Overlay">
+            <RibbonGroup label="Overlay" priority={60}>
               <button
                 type="button"
                 onClick={noteInk.onToggleOverlayMode}
@@ -751,7 +748,7 @@ export function InkTab({ noteInk }) {
             </RibbonGroup>
           )}
           {noteInk.ink && <Section ink={noteInk.ink} />}
-          <RibbonGroup label="Handwriting page">
+          <RibbonGroup label="Handwriting page" priority={50}>
             <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>
               <span>{noteInk.markCount} marks</span>
               <span>{noteInk.status === "saving" ? "saving…" : noteInk.status === "saved" ? "saved" : "autosave on"}</span>
@@ -761,6 +758,6 @@ export function InkTab({ noteInk }) {
           </RibbonGroup>
         </>
       )}
-    </RibbonContext.Provider>
+    </>
   );
 }

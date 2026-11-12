@@ -1,6 +1,6 @@
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, Target } from "lucide-react";
 import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
 import { dateKey } from "@/lib/journal";
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { tableAt } from "@/lib/ribbon-actions";
 import { FilePanel } from "@/components/ribbon/FilePanel";
 import { toast } from "@/lib/toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const MAIN_TABS = [
   { id: "home", label: "Home" },
@@ -84,6 +85,13 @@ export function initialRibbonTab() {
 export default function NoteRibbon({
   body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
   onFindTags,
+  wordGoal = 0,
+  wordGoalPopoverOpen = false,
+  setWordGoalPopoverOpen = () => {},
+  wordGoalDraft = "",
+  setWordGoalDraft = () => {},
+  saveWordGoalFromPopover = () => {},
+  clearWordGoal = () => {},
 }) {
   const { t: tr } = useI18n();
   const navigate = useNavigate();
@@ -215,6 +223,86 @@ export default function NoteRibbon({
     />
   );
 
+  // Word goal target button with popover
+  const wordGoalProgress = wordGoal > 0 ? Math.min(100, Math.round((0 / wordGoal) * 100)) : 0; // Will be updated with actual word count from parent
+
+  const WordGoalButton = () => (
+    <Popover open={wordGoalPopoverOpen} onOpenChange={setWordGoalPopoverOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          title={tr("ribbon.wordGoal.wordGoal")}
+          aria-label={tr("ribbon.wordGoal.wordGoal")}
+          className={cn(
+            "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition flex items-center gap-1.5",
+            "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          <Target className="h-3.5 w-3.5 shrink-0" />
+          {wordGoal > 0 && (
+            <span className="text-[10px] font-mono">{wordGoalDraft || wordGoal}</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        style={{ width: 280 }}
+        className="max-h-[70vh] overflow-auto p-3"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{tr("ribbon.wordGoal.wordGoal")}</span>
+            {wordGoal > 0 && (
+              <button
+                type="button"
+                onClick={clearWordGoal}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                {tr("ribbon.wordGoal.clearGoal")}
+              </button>
+            )}
+          </div>
+          <form onSubmit={saveWordGoalFromPopover} className="space-y-2">
+            <label className="block text-[12px] text-muted-foreground">
+              {tr("ribbon.wordGoal.targetWords")}
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100000"
+              step="50"
+              value={wordGoalDraft}
+              onChange={(e) => setWordGoalDraft(e.target.value)}
+              placeholder="500"
+              className="w-full h-8 rounded-md border border-border/70 bg-card/60 px-2 py-1 font-mono text-[11px] text-foreground outline-none focus:border-primary/40"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 h-8 rounded-md bg-primary text-primary-foreground font-mono text-[10.5px] transition hover:bg-primary/90"
+              >
+                {wordGoal > 0 ? tr("ribbon.wordGoal.updateGoal") : tr("ribbon.wordGoal.setGoal")}
+              </button>
+              {wordGoal > 0 && (
+                <button
+                  type="button"
+                  onClick={clearWordGoal}
+                  className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 font-mono text-[10.5px] text-foreground transition hover:bg-accent"
+                >
+                  {tr("ribbon.wordGoal.clearGoal")}
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   return (
     <RibbonContext.Provider value={context}>
       <RibbonFrame
@@ -223,6 +311,7 @@ export default function NoteRibbon({
         onTab={chooseTab}
         leading={<><QuickAccess />{leading}</>}
         isFirstTabActive={activeTab === "home"}
+        afterTabs={<WordGoalButton />}
         trailing={
           (images?.busy || images?.error) && (
             <div

@@ -1,0 +1,12 @@
+{
+  "vault.code.emptyState": "This file is gone.",
+  "vault.code.fileName": "File name",
+  "vault.code.findButton": "find",
+  "vault.code.heroTitle": "Write, find, replace — all in one place.",
+  "vault.code.hint": "find & replace, autosave",
+  "vault.code.label": "Code workspace",
+  "vault.code.languagePlaceholder": "Language",
+  "vault.code.status.autosaveOn": "autosave on",
+  "vault.code.status.saved": "saved",
+  "vault.code.status.saving": "saving…"
+}

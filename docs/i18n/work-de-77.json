@@ -1,0 +1,12 @@
+{
+  "vault.tables.tableGrid.noRows": "No rows yet — add the first one below.",
+  "vault.tables.tableGrid.numberPlaceholder": "0",
+  "vault.tables.tableGrid.placeholder": "—",
+  "vault.tables.tableGrid.renameColumn": "Rename {name}",
+  "vault.tables.tableName": "Table name",
+  "vault.tables.tablePickerPlaceholder": "Choose a table…",
+  "vault.tables.typeBadge.checkbox": "chk",
+  "vault.tables.typeBadge.date": "date",
+  "vault.tables.typeBadge.number": "num",
+  "vault.tables.typeBadge.relation": "rel"
+}

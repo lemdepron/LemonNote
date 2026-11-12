@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.outline": "Outline",
+  "ribbon.insert.outlineDisabled": "Add some # headings first",
+  "ribbon.insert.outlineHint": "Insert a list of this note's headings",
+  "ribbon.insert.pictures": "Pictures",
+  "ribbon.insert.prevDay": "Previous",
+  "ribbon.insert.prevDayDisabled": "This note's title is not a date, week (2026-W45) or month (2026-11)",
+  "ribbon.insert.prevDayHint": "The day, week or month before this note",
+  "ribbon.insert.quickLanguageHint": "Insert a {lang} code block",
+  "ribbon.insert.quoteBlock": "Quote",
+  "ribbon.insert.quoteBlockHint": "Block quote"
+}

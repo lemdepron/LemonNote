@@ -1,0 +1,12 @@
+{
+  "vault.canvas.newCardTitle": "New card",
+  "vault.canvas.saved": "saved",
+  "vault.canvas.saving": "saving…",
+  "vault.canvas.stats": "{cards} cards · {connections} connections",
+  "vault.canvas.status.autosaveOn": "autosave on",
+  "vault.canvas.status.saved": "saved",
+  "vault.canvas.status.saving": "saving…",
+  "vault.canvas.subtitle": "{cards} cards · {connections} connections",
+  "vault.cards.allCards": "all cards",
+  "vault.cards.deleteCard": "Delete card"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.thisWeekHint": "Open or create this week's note, e.g. 2026-W45",
+  "ribbon.insert.time": "Time",
+  "ribbon.insert.timeCalendar": "Time and calendar",
+  "ribbon.insert.timeHint": "Insert the current time",
+  "ribbon.insert.today": "Today",
+  "ribbon.insert.todayHint": "Open or create today's daily note",
+  "ribbon.insert.tomorrow": "Tomorrow",
+  "ribbon.insert.tomorrowHint": "Open or create tomorrow's note",
+  "ribbon.insert.webLink": "Web link",
+  "ribbon.insert.webLinkHint": "Turn the selection into a web link"
+}

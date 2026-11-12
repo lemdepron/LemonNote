@@ -1,0 +1,12 @@
+{
+  "ribbon.design.watermarkColorHint": "Color of the watermark text",
+  "ribbon.design.watermarkMaxChars": "Max 30 characters",
+  "ribbon.design.watermarkOpacity": "Watermark opacity",
+  "ribbon.design.watermarkPresets": "Presets",
+  "ribbon.design.watermarkText": "Watermark text",
+  "ribbon.design.watermarkTextHint": "Text to show as watermark (e.g. DRAFT, CONFIDENTIAL)",
+  "ribbon.design.watermarkTextPlaceholder": "Watermark text",
+  "ribbon.ink.audio.audioStudio": "Audio studio",
+  "ribbon.ink.audio.audioStudioHint": "Scrub through the recording",
+  "ribbon.ink.audio.manage": "Manage"
+}

@@ -1,0 +1,12 @@
+{
+  "vault.tables.columnTypes.number": "Number",
+  "vault.tables.columnTypes.relation": "Relation",
+  "vault.tables.columnTypes.select": "Select",
+  "vault.tables.columnTypes.text": "Text",
+  "vault.tables.emptyState": "This table is gone.",
+  "vault.tables.galleryView.addRow": "Add a row to see it as a card.",
+  "vault.tables.galleryView.checkboxYes": "yes",
+  "vault.tables.galleryView.noRows": "No rows yet.",
+  "vault.tables.heroTitle": "Structure what repeats.",
+  "vault.tables.hint": "typed fields and relations"
+}

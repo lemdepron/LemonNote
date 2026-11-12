@@ -166,7 +166,7 @@ export function DesignTab() {
   return (
     <>
       {/* 1. Page Style */}
-      <RibbonGroup label={t("ribbon.design.pageStyle")} icon={Grid} priority={10}>
+      <RibbonGroup label={t("ribbon.design.pageStyle")} icon={Grid} priority={70}>
         <RibbonSelect
           title={t("ribbon.design.pageStyleTitle")}
           placeholder={t("ribbon.design.pageStylePlaceholder")}
@@ -203,7 +203,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 2. Style Sets */}
-      <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={20}>
+      <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={60}>
         <MenuLabel>{t("ribbon.design.documentFormatting")}</MenuLabel>
         <TextGrid
           items={STYLE_SETS.map((s) => s.id)}
@@ -233,7 +233,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 3. Themes */}
-      <RibbonGroup label={t("ribbon.design.themes")} icon={Palette} priority={30}>
+      <RibbonGroup label={t("ribbon.design.themes")} icon={Palette} priority={50}>
         <MenuLabel>{t("ribbon.design.themePresetPerNote")}</MenuLabel>
         <RibbonMenu
           id="design.themePreset"
@@ -319,7 +319,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 4. Paragraph Spacing */}
-      <RibbonGroup label="Paragraph spacing" icon={Type}>
+      <RibbonGroup label="Paragraph spacing" icon={Type} priority={40}>
         <RibbonSelect
           title="Paragraph spacing preset"
           placeholder="Spacing preset"
@@ -349,7 +349,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 5. Page Appearance */}
-      <RibbonGroup label="Page appearance" icon={Square}>
+      <RibbonGroup label="Page appearance" icon={Square} priority={30}>
         <MenuLabel>Page Color</MenuLabel>
         <RibbonMenu
           id="design.pageColor"
@@ -541,7 +541,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 6. Page Title Style */}
-      <RibbonGroup label="Page title style" icon={Heading}>
+      <RibbonGroup label="Page title style" icon={Heading} priority={20}>
         <MenuLabel>Font</MenuLabel>
         <RibbonSelect
           title="Font for the page title"
@@ -575,7 +575,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* Note Language */}
-      <RibbonGroup label="Language" icon={Globe}>
+      <RibbonGroup label="Language" icon={Globe} priority={15}>
         <RibbonSelect
           title="Note language (for spell check and hyphenation)"
           placeholder="Language"
@@ -586,7 +586,7 @@ export function DesignTab() {
       </RibbonGroup>
 
       {/* 7. Defaults */}
-      <RibbonGroup label="Defaults" icon={Save}>
+      <RibbonGroup label="Defaults" icon={Save} priority={10}>
         <Btn
           id="design.saveAsDefault"
           icon={Save}

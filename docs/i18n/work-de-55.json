@@ -1,0 +1,12 @@
+{
+  "ribbon.table.exportXlsxHint": "Export this table as .xlsx",
+  "ribbon.table.fromCsv": "From CSV/TSV",
+  "ribbon.table.fromCsvHint": "Insert a .csv or .tsv file as a table",
+  "ribbon.table.fromXlsx": "From Excel (.xlsx)",
+  "ribbon.table.fromXlsxHint": "Insert from an Excel workbook — choose sheet if multiple",
+  "ribbon.table.insert": "Insert",
+  "ribbon.table.moveColLeft": "Col left",
+  "ribbon.table.moveColLeftHint": "Move this column left",
+  "ribbon.table.moveColRight": "Col right",
+  "ribbon.table.moveColRightHint": "Move this column right"
+}

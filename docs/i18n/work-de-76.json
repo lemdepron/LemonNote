@@ -1,0 +1,12 @@
+{
+  "vault.tables.label": "Relational tables",
+  "vault.tables.optionsPlaceholder": "low, medium, high",
+  "vault.tables.priorityPlaceholder": "Priority",
+  "vault.tables.stats": "{rows} rows · {fields} fields",
+  "vault.tables.status.autosaveOn": "autosave on",
+  "vault.tables.status.saved": "saved",
+  "vault.tables.status.saving": "saving…",
+  "vault.tables.subtitle": "{rows} rows · {fields} fields",
+  "vault.tables.tableGrid.deleteColumn": "Delete {name} column",
+  "vault.tables.tableGrid.deleteRow": "Delete row"
+}

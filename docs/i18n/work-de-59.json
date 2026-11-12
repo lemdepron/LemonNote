@@ -1,0 +1,12 @@
+{
+  "ribbon.view.draft": "Draft",
+  "ribbon.view.draftHint": "Plain writing box, no styling",
+  "ribbon.view.editor": "Editor",
+  "ribbon.view.editorFont": "Font of the writing box",
+  "ribbon.view.editorFontPlaceholder": "Editor font",
+  "ribbon.view.editorSize": "Editor text size (px)",
+  "ribbon.view.find": "Find",
+  "ribbon.view.findHint": "Find in this note (Ctrl+F)",
+  "ribbon.view.gridlines": "Gridlines",
+  "ribbon.view.gridlinesHint": "Show overlay grid on the page"
+}

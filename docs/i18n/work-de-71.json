@@ -1,0 +1,12 @@
+{
+  "vault.extensions.label": "Extensions",
+  "vault.extensions.liveStatus": "live",
+  "vault.extensions.resetButton": "Reset",
+  "vault.extensions.runtimeLogLabel": "runtime log",
+  "vault.extensions.tabManifestDesc": "Routes, entities and the hook surface of all eleven tabs.",
+  "vault.extensions.tabManifestLabel": "Tab manifest",
+  "vault.graph.backToVault": "Back to vault",
+  "vault.graph.emptyState": "Write a note and link another with <span class=\"font-mono text-foreground\">[[double brackets]]</span> to grow the graph.",
+  "vault.graph.heroTitle": "The vault as a network",
+  "vault.graph.hint": "the vault as a network"
+}

@@ -1,0 +1,12 @@
+{
+  "vault.cards.emptyHint": "Write a question and an answer, then review it when it resurfaces.",
+  "vault.cards.heroTitle": "Review what wants to be remembered.",
+  "vault.cards.label": "Flashcards · spaced repetition",
+  "vault.cards.newCard": "new",
+  "vault.cards.nextCard": "Next card comes back on {date}.",
+  "vault.cards.noCards": "No cards yet.",
+  "vault.cards.nothingDue": "Nothing due right now.",
+  "vault.cards.reps": "{count} reps",
+  "vault.cards.stats": "{due} due · {total} cards",
+  "vault.code.backToCode": "Back to code files"
+}

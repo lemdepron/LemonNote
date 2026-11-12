@@ -6,9 +6,14 @@ module.exports = {
   	extend: {
   		opacity: Object.fromEntries(Array.from({ length: 101 }, (_, i) => [i, `${i / 100}`])),
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			none: '0',
+  			sm: 'calc(var(--r-control) * 0.5)',
+  			DEFAULT: 'var(--r-control)',
+  			md: 'var(--r-control)',
+  			lg: 'var(--r-card)',
+  			xl: 'var(--r-card)',
+  			'2xl': 'calc(var(--r-card) * 1.5)',
+  			full: '9999px',
   		},
   		colors: {
   			background: 'hsl(var(--background))',

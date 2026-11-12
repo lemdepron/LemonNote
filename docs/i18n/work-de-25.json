@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.zoomOut": "Zoom out",
+  "ribbon.ink.eraserModes.precision": "Precision",
+  "ribbon.ink.eraserModes.stroke": "Stroke",
+  "ribbon.ink.paper.clearPage": "Clear page",
+  "ribbon.ink.paper.clearPageHint": "Remove every mark on this page",
+  "ribbon.ink.paper.nextPage": "Next page",
+  "ribbon.ink.paper.pageNumber": "page {num}",
+  "ribbon.ink.paper.pageSize": "Page size",
+  "ribbon.ink.paper.pages": "Pages",
+  "ribbon.ink.paper.paperStudio": "Paper studio"
+}

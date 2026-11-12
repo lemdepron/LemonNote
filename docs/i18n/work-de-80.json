@@ -1,0 +1,6 @@
+{
+  "vault.trash.loading": "loading…",
+  "vault.trash.noteSnippet": "empty note",
+  "vault.trash.restoreButton": "restore",
+  "vault.trash.toastRestored": "Restored \"{title}\"."
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.chartTypePrompt": "Chart type (bar, line, pie):",
+  "ribbon.insert.codeBlock": "Code block",
+  "ribbon.insert.codeBlockMenu": "Block: {label}",
+  "ribbon.insert.codeBlockMenuHint": "Insert a fenced code block; wraps the selection when there is one",
+  "ribbon.insert.codeBlockSearchPlaceholder": "Search {count} languages…",
+  "ribbon.insert.collapsible": "Collapsible",
+  "ribbon.insert.collapsibleHint": "A section that opens and closes",
+  "ribbon.insert.date": "Today's date",
+  "ribbon.insert.dateFormats": "Formats",
+  "ribbon.insert.dateFormatsHint": "Every date and time format"
+}

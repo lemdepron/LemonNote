@@ -1,0 +1,12 @@
+{
+  "ribbon.design.headingFont": "Heading font for this note",
+  "ribbon.design.headingFontPlaceholder": "Heading font",
+  "ribbon.design.hexColorPlaceholder": "#rrggbb",
+  "ribbon.design.hidePageTitle": "Hide page title",
+  "ribbon.design.hidePageTitleHint": "Hide the large title above the note body in reader view",
+  "ribbon.design.language": "Language",
+  "ribbon.design.languagePlaceholder": "Language",
+  "ribbon.design.lightThemes": "Light themes",
+  "ribbon.design.lineHeight": "Line height",
+  "ribbon.design.lineSpacing": "Line spacing (px)"
+}

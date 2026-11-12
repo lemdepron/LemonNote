@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.pageWidth": "Custom page width (mm)",
+  "ribbon.layout.paragraph": "Paragraph",
+  "ribbon.layout.position": "Position",
+  "ribbon.layout.positionHint": "Move the selected object to a preset position on the page",
+  "ribbon.layout.redo": "Redo",
+  "ribbon.layout.redoHint": "Redo last floating object change (Ctrl+Shift+Z)",
+  "ribbon.layout.requiresMultipleObjects": "Requires multiple objects selected",
+  "ribbon.layout.rotate": "Rotate",
+  "ribbon.layout.rotate180": "Rotate 180°",
+  "ribbon.layout.rotateHint": "Rotate or flip the selected object"
+}

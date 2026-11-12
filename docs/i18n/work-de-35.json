@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.dateHint": "Insert 2026-11-06 style date",
+  "ribbon.insert.divider": "Divider",
+  "ribbon.insert.dividerHint": "Horizontal line",
+  "ribbon.insert.email": "Email",
+  "ribbon.insert.emailHint": "Insert an email link",
+  "ribbon.insert.emailPlaceholder": "name@example.com",
+  "ribbon.insert.figure": "Figure",
+  "ribbon.insert.figureHint": "Insert an image with a caption (Figure N: caption)",
+  "ribbon.insert.file": "Attach file",
+  "ribbon.insert.fileAttachError": "Failed to attach file."
+}

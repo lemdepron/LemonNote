@@ -1,0 +1,12 @@
+{
+  "vault.trash.deleteForeverDialog.keepButton": "Keep it",
+  "vault.trash.deleteForeverDialog.title": "Delete forever?",
+  "vault.trash.deletedAgo": "deleted {time} ago · {daysLeft}",
+  "vault.trash.description": "Deleting a note moves it here instead of erasing it. Restore puts it back in the vault with its links intact; anything older than {days} days is cleared on the next visit.",
+  "vault.trash.emptyDescription": "Nothing has been deleted in the last 60 days.",
+  "vault.trash.emptyState": "The trash is empty.",
+  "vault.trash.expiresToday": "expires today",
+  "vault.trash.heroTitle": "Deleted notes live here for 60 days.",
+  "vault.trash.itemCount": "{count} item{plural}",
+  "vault.trash.label": "Trash"
+}

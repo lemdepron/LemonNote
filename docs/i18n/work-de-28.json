@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.select.selectObjectFirst": "Select an object with the Select tool first",
+  "ribbon.ink.select.selectionInfo": "Object: {type}",
+  "ribbon.ink.select.selectionStudio": "Selection studio",
+  "ribbon.ink.select.selectionStudioHint": "Move, scale and rotate the selection precisely",
+  "ribbon.ink.select.strokesSelected": "{count} strokes",
+  "ribbon.ink.select.transform": "Transform",
+  "ribbon.ink.smart.equation": "Equation",
+  "ribbon.ink.smart.equationHint": "Turn handwritten maths into LaTeX",
+  "ribbon.ink.smart.handwriting": "Handwriting",
+  "ribbon.ink.smart.handwritingHint": "Turn the lasso selection, or the page in view, into text"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.mode": "Mode",
+  "ribbon.ink.draw.panMode": "Pan",
+  "ribbon.ink.draw.panModeHint": "Move the page around",
+  "ribbon.ink.draw.pens": "Pens",
+  "ribbon.ink.draw.redo": "Redo",
+  "ribbon.ink.draw.redoHint": "Redo",
+  "ribbon.ink.draw.removeFavPen": "Remove favourite pen",
+  "ribbon.ink.draw.saveFavPen": "Save current pen as favourite",
+  "ribbon.ink.draw.selectMode": "Select",
+  "ribbon.ink.draw.selectModeHint": "Select, move, resize and rotate objects"
+}

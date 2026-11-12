@@ -1,0 +1,16 @@
+{
+  "settings.appearance.animationLevel": "Уровень анимаций",
+  "settings.appearance.animationsExpressive": "Выразительные",
+  "settings.appearance.animationsOff": "Выкл.",
+  "settings.appearance.animationsSubtle": "Тонкие",
+  "settings.appearance.dayTime": "Дневной режим начинается в",
+  "settings.appearance.followSystem": "Следовать системе (светлая/тёмная)",
+  "settings.appearance.followSystemDesc": "Когда включено, приложение следует настройке системы светлая/тёмная тема.",
+  "settings.appearance.followSystemLabel": "Автоматически переключать темы с системой",
+  "settings.appearance.glassEffects": "Эффекты стекла",
+  "settings.appearance.glassEffectsDesc": "Когда отключено, убирает все размытия фона для лучшей производительности.",
+  "settings.appearance.glassEffectsLabel": "Включить размытие фона и стеклянные поверхности",
+  "settings.appearance.nightTime": "Ночной режим начинается в",
+  "settings.appearance.scheduleDesc": "Установить конкретное время для светлой и тёмной темы вместо следования системе.",
+  "settings.appearance.scheduleLabel": "Свой распорядок день/ночь"
+}

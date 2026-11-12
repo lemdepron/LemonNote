@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.audio.noRecording": "no recording",
+  "ribbon.ink.audio.pause": "Pause",
+  "ribbon.ink.audio.play": "Play",
+  "ribbon.ink.audio.playHint": "Play the recording and redraw the page as it was written",
+  "ribbon.ink.audio.playback": "Playback",
+  "ribbon.ink.audio.record": "Record",
+  "ribbon.ink.audio.recordFirst": "Record some audio first",
+  "ribbon.ink.audio.recordLabel": "Record audio while you write; every stroke is time-stamped",
+  "ribbon.ink.audio.removeAudio": "Remove audio",
+  "ribbon.ink.audio.removeAudioHint": "Delete the recording from this page"
+}

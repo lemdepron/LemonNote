@@ -1,0 +1,12 @@
+{
+  "vault.shortcuts.trash.hint": "deleted notes for 60 days",
+  "vault.tables.addButton": "Add",
+  "vault.tables.addColumn": "Add column",
+  "vault.tables.addRow": "Add row",
+  "vault.tables.backToTables": "back to tables",
+  "vault.tables.boardView.addSelect": "Add a field of type “Select” to group rows into columns.",
+  "vault.tables.boardView.needsSelect": "Board view needs a select field.",
+  "vault.tables.boardView.ungrouped": "ungrouped",
+  "vault.tables.columnTypes.checkbox": "Checkbox",
+  "vault.tables.columnTypes.date": "Date"
+}

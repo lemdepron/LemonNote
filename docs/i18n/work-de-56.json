@@ -1,0 +1,12 @@
+{
+  "ribbon.table.moveRowDown": "Row down",
+  "ribbon.table.moveRowDownHint": "Move this row down",
+  "ribbon.table.moveRowUp": "Row up",
+  "ribbon.table.moveRowUpHint": "Move this row up",
+  "ribbon.table.needTable": "Put the cursor inside a table first.",
+  "ribbon.table.sortAsc": "Sort A–Z",
+  "ribbon.table.sortAscHint": "Sort the rows by the column under the cursor (numbers by value)",
+  "ribbon.table.sortDesc": "Sort Z–A",
+  "ribbon.table.sortDescHint": "Sort the rows in reverse",
+  "ribbon.table.sumRow": "Sum row"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.alignJustifyHint": "Justify selected paragraphs",
+  "ribbon.layout.alignLeft": "Align left",
+  "ribbon.layout.alignLeftHint": "Align selected paragraphs left",
+  "ribbon.layout.alignLeftLabel": "Align Left",
+  "ribbon.layout.alignMiddle": "Align Middle",
+  "ribbon.layout.alignRight": "Align right",
+  "ribbon.layout.alignRightHint": "Align selected paragraphs right",
+  "ribbon.layout.alignRightLabel": "Align Right",
+  "ribbon.layout.alignTop": "Align Top",
+  "ribbon.layout.bringForward": "Bring Forward"
+}

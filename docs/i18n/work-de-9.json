@@ -1,0 +1,12 @@
+{
+  "ribbon.code.outdentHint": "Outdent lines",
+  "ribbon.code.prettyJson": "Pretty",
+  "ribbon.code.prettyJsonHint": "Format the JSON in the selection or in the block under the cursor",
+  "ribbon.code.snippet": "Snippet",
+  "ribbon.code.snippetHint": "Insert a small example block",
+  "ribbon.code.unwrap": "Unwrap",
+  "ribbon.code.unwrapHint": "Remove the fences and keep the code",
+  "ribbon.design.accentColor": "Accent color",
+  "ribbon.design.accentColorHint": "Pick an accent color for this note (hex input supported)",
+  "ribbon.design.bodyFont": "Body font for this note"
+}

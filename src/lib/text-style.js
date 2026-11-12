@@ -448,18 +448,10 @@ export function readerProps(style, hasInk = false) {
   if (s.themeHeadingFont) css["--nt-theme-heading-font"] = fontStack(s.themeHeadingFont);
   if (s.themeBodyFont) css["--nt-theme-body-font"] = fontStack(s.themeBodyFont);
   
-  // Fixed page width for notes with ink (page mode)
-  if (hasInk) {
-    const pageWidth = s.pageWidth || 736; // 46rem = 736px default
-    css.maxWidth = `${pageWidth}px`;
-    if (s.pageLineHeight) {
-      css.lineHeight = s.pageLineHeight;
-    }
-  } else {
-    const width = WIDTHS.find((item) => item.id === s.width);
-    if (width && width.value !== "none") {
-      css.maxWidth = width.value;
-    }
+  // Content width from typography settings (not 736px ink width - that's only for Write mode)
+  const width = WIDTHS.find((item) => item.id === s.width);
+  if (width && width.value !== "none") {
+    css.maxWidth = width.value;
   }
   
   const classes = [s.indent ? "nt-indent" : "", s.dropCap ? "nt-dropcap" : ""].filter(Boolean).join(" ");
@@ -467,7 +459,7 @@ export function readerProps(style, hasInk = false) {
 }
 
 /** Inline style for the markdown textarea. */
-export function editorProps(style, hasInk = false) {
+export function editorProps(style, hasInk = false, isPageMode = false) {
   const s = normalizeStyle(style);
   const css = {};
   if (s.editorFont) css.fontFamily = fontStack(s.editorFont);
@@ -502,8 +494,8 @@ export function editorProps(style, hasInk = false) {
   if (s.themeHeadingFont) css["--nt-theme-heading-font"] = fontStack(s.themeHeadingFont);
   if (s.themeBodyFont) css["--nt-theme-body-font"] = fontStack(s.themeBodyFont);
   
-  // Fixed page width for notes with ink (page mode)
-  if (hasInk) {
+  // Fixed page width for notes with ink in page mode (Write mode with ink)
+  if (isPageMode) {
     const pageWidth = s.pageWidth || 736; // 46rem = 736px default
     css.maxWidth = `${pageWidth}px`;
     if (s.pageLineHeight) {

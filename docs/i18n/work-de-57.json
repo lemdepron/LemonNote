@@ -1,0 +1,12 @@
+{
+  "ribbon.table.sumRowHint": "Add a Total row summing the numeric columns",
+  "ribbon.table.tableTools": "Table tools",
+  "ribbon.table.textToTable": "Text → table",
+  "ribbon.table.textToTableHint": "Turn the selected CSV / TSV lines into a table",
+  "ribbon.table.tidy": "Tidy up",
+  "ribbon.table.tidyHint": "Align the | marks so the table is easy to read as text",
+  "ribbon.table.transpose": "Transpose",
+  "ribbon.table.transposeHint": "Swap rows and columns",
+  "ribbon.view.accessibility": "Accessibility",
+  "ribbon.view.accessibilityIssues": "Accessibility Issues ({count})"
+}

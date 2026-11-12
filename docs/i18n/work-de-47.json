@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.bringForwardHint": "Move the selected object one layer forward",
+  "ribbon.layout.bringToFront": "Bring to Front",
+  "ribbon.layout.bringToFrontHint": "Move the selected object to the front layer",
+  "ribbon.layout.columnBreak": "Column break",
+  "ribbon.layout.columnBreakHint": "Insert a column break at the cursor (forces next content to next column)",
+  "ribbon.layout.columnGap": "Gap between columns (em)",
+  "ribbon.layout.columnGapPlaceholder": "Column gap",
+  "ribbon.layout.columns": "Columns",
+  "ribbon.layout.columnsPlaceholder": "Columns",
+  "ribbon.layout.columnsTitle": "Number of columns in the reader (CSS columns)"
+}

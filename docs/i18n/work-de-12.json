@@ -1,0 +1,12 @@
+{
+  "ribbon.design.loadDefault": "Apply default to this note",
+  "ribbon.design.loadDefaultHint": "Load the saved default style into this note",
+  "ribbon.design.noteLanguage": "Note language (for spell check and hyphenation)",
+  "ribbon.design.pageAppearance": "Page appearance",
+  "ribbon.design.pageBorderColor": "Border color",
+  "ribbon.design.pageBorderColorHint": "Color of the page border",
+  "ribbon.design.pageBorderPlaceholder": "Border",
+  "ribbon.design.pageBorderStyle": "Page border style",
+  "ribbon.design.pageBorders": "Page Borders",
+  "ribbon.design.pageColor": "Page color"
+}

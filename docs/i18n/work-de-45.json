@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.webLinkPlaceholder": "https://example.com",
+  "ribbon.insert.yesterday": "Yesterday",
+  "ribbon.insert.yesterdayHint": "Open yesterday's note",
+  "ribbon.layout.align": "Align",
+  "ribbon.layout.alignBottom": "Align Bottom",
+  "ribbon.layout.alignCenter": "Centre",
+  "ribbon.layout.alignCenterHint": "Centre selected paragraphs",
+  "ribbon.layout.alignCenterLabel": "Align Center",
+  "ribbon.layout.alignHint": "Align the selected object relative to the page",
+  "ribbon.layout.alignJustify": "Justify"
+}

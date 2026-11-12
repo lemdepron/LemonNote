@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.imageUrl": "Image URL",
+  "ribbon.insert.imageUrlHint": "Insert an image from a web address",
+  "ribbon.insert.imageUrlPlaceholder": "https://…/picture.png",
+  "ribbon.insert.inlineCode": "Inline",
+  "ribbon.insert.inlineCodeHint": "Inline code",
+  "ribbon.insert.lineBreak": "Line break",
+  "ribbon.insert.lineBreakHint": "Force a new line inside a paragraph",
+  "ribbon.insert.linkDay": "Link day",
+  "ribbon.insert.linkDayHint": "Insert a [[link]] to a day note",
+  "ribbon.insert.links": "Links"
+}

@@ -1,0 +1,423 @@
+// Update theme presets with new shape tokens - pre-escaped bg-pattern
+import { readFileSync, writeFileSync } from "node:fs";
+
+const source = readFileSync("src/lib/theme-presets.js", "utf8");
+
+// Family configurations with pre-escaped bg-pattern values
+const FAMILY_CONFIG = {
+  GLASS_LIGHT_THEMES: {
+    shadowStyle: 'soft',
+    light: {
+      '--r-control': '0.75rem', '--r-card': '1rem', '--r-pill': '9999px', '--r-tab': '0.75rem',
+      '--shadow-card': '0 8px 24px -4px hsl(var(--shadow) / 0.3), 0 4px 12px -2px hsl(var(--shadow) / 0.2)',
+      '--shadow-pop': '0 12px 32px -4px hsl(var(--shadow) / 0.3), 0 6px 16px -3px hsl(var(--shadow) / 0.2)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'pill',
+      '--blur': '16px', '--surface-opacity': '0.85',
+      '--bg-gradient': 'linear-gradient(135deg, hsl(45 60% 97%) 0%, hsl(35 70% 94%) 100%)',
+      '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '0.75rem', '--r-card': '1rem', '--r-pill': '9999px', '--r-tab': '0.75rem',
+      '--shadow-card': '0 8px 24px -4px hsl(var(--shadow) / 0.4), 0 4px 12px -2px hsl(var(--shadow) / 0.3)',
+      '--shadow-pop': '0 12px 32px -4px hsl(var(--shadow) / 0.4), 0 6px 16px -3px hsl(var(--shadow) / 0.3)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'pill',
+      '--blur': '24px', '--surface-opacity': '0.85',
+      '--bg-gradient-dark': 'linear-gradient(135deg, hsl(25 15% 8%) 0%, hsl(35 12% 6%) 100%)',
+      '--bg-pattern': 'none',
+    }
+  },
+  GLASS_DARK_THEMES: {
+    shadowStyle: 'soft',
+    light: {
+      '--r-control': '0.5rem', '--r-card': '0.75rem', '--r-pill': '9999px', '--r-tab': '0.5rem',
+      '--shadow-card': '0 8px 24px -4px hsl(var(--shadow) / 0.3), 0 4px 12px -2px hsl(var(--shadow) / 0.2)',
+      '--shadow-pop': '0 12px 32px -4px hsl(var(--shadow) / 0.3), 0 6px 16px -3px hsl(var(--shadow) / 0.2)',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '20px', '--surface-opacity': '0.8',
+      '--bg-gradient': 'linear-gradient(145deg, hsl(280 20% 96%) 0%, hsl(300 30% 93%) 100%)',
+      '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '0.5rem', '--r-card': '0.75rem', '--r-pill': '9999px', '--r-tab': '0.5rem',
+      '--shadow-card': '0 8px 24px -4px hsl(var(--shadow) / 0.4), 0 4px 12px -2px hsl(var(--shadow) / 0.3)',
+      '--shadow-pop': '0 12px 32px -4px hsl(var(--shadow) / 0.4), 0 6px 16px -3px hsl(var(--shadow) / 0.3)',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '32px', '--surface-opacity': '0.8',
+      '--bg-gradient-dark': 'radial-gradient(ellipse at 50% 0%, hsl(300 20% 12%) 0%, hsl(280 25% 4%) 70%)',
+      '--bg-pattern': 'none',
+    }
+  },
+  NEUBRUTALISM_THEMES: {
+    shadowStyle: 'hard-offset',
+    light: {
+      '--r-control': '0', '--r-card': '0', '--r-pill': '9999px', '--r-tab': '0',
+      '--shadow-card': '4px 4px 0 0 hsl(var(--shadow))',
+      '--shadow-pop': '6px 6px 0 0 hsl(var(--shadow))',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Cfilter id=\\'noise\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.9\\' numOctaves=\\'4\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'100\\' height=\\'100\\' filter=\\'url(%23noise)\\'' opacity=\\'0.03\\''/%3E%3C/svg%3E")',
+    },
+    dark: {
+      '--r-control': '0', '--r-card': '0', '--r-pill': '9999px', '--r-tab': '0',
+      '--shadow-card': '4px 4px 0 0 hsl(var(--shadow))',
+      '--shadow-pop': '6px 6px 0 0 hsl(var(--shadow))',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\' viewBox=\\'0 0 100 100\\'%3E%3Cfilter id=\\'noise\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.9\\' numOctaves=\\'4\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'100\\' height=\\'100\\' filter=\\'url(%23noise)\\'' opacity=\\'0.05\\''/%3E%3C/svg%3E")',
+    }
+  },
+  EDITORIAL_THEMES: {
+    shadowStyle: 'soft',
+    light: {
+      '--r-control': '0.25rem', '--r-card': '0.5rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': '0 1px 3px hsl(var(--shadow) / 0.2)',
+      '--shadow-pop': '0 2px 6px hsl(var(--shadow) / 0.2)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Georgia", serif',
+      '--tab-style': 'underline', '--button-style': 'outline',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '0.25rem', '--r-card': '0.5rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': '0 1px 3px hsl(var(--shadow) / 0.3)',
+      '--shadow-pop': '0 2px 6px hsl(var(--shadow) / 0.3)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Georgia", serif',
+      '--tab-style': 'underline', '--button-style': 'outline',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  PASTEL_THEMES: {
+    shadowStyle: 'soft',
+    light: {
+      '--r-control': '1rem', '--r-card': '1.5rem', '--r-pill': '9999px', '--r-tab': '1rem',
+      '--shadow-card': '0 4px 16px -2px hsl(var(--shadow) / 0.25), 0 2px 8px -1px hsl(var(--shadow) / 0.15)',
+      '--shadow-pop': '0 8px 24px -4px hsl(var(--shadow) / 0.25), 0 4px 12px -2px hsl(var(--shadow) / 0.15)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'pill', '--button-style': 'pill',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '1rem', '--r-card': '1.5rem', '--r-pill': '9999px', '--r-tab': '1rem',
+      '--shadow-card': '0 4px 16px -2px hsl(var(--shadow) / 0.35), 0 2px 8px -1px hsl(var(--shadow) / 0.25)',
+      '--shadow-pop': '0 8px 24px -4px hsl(var(--shadow) / 0.35), 0 4px 12px -2px hsl(var(--shadow) / 0.25)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'pill', '--button-style': 'pill',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  GRADIENT_DUOTONE_THEMES: {
+    shadowStyle: 'none',
+    light: {
+      '--r-control': '9999px', '--r-card': '0.5rem', '--r-pill': '9999px', '--r-tab': '9999px',
+      '--shadow-card': 'none', '--shadow-pop': 'none',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--tab-style': 'pill', '--button-style': 'pill',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'linear-gradient(135deg, hsl(15 50% 95%) 0%, hsl(35 70% 88%) 50%, hsl(45 80% 85%) 100%)',
+      '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '9999px', '--r-card': '0.5rem', '--r-pill': '9999px', '--r-tab': '9999px',
+      '--shadow-card': 'none', '--shadow-pop': 'none',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--tab-style': 'pill', '--button-style': 'pill',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'linear-gradient(135deg, hsl(15 20% 6%) 0%, hsl(30 15% 8%) 50%, hsl(45 12% 10%) 100%)',
+      '--bg-pattern': 'none',
+    }
+  },
+  NEUMORPHISM_THEMES: {
+    shadowStyle: 'inset-and-outset',
+    light: {
+      '--r-control': '1.25rem', '--r-card': '1.5rem', '--r-pill': '9999px', '--r-tab': '1.25rem',
+      '--shadow-card': 'inset 2px 2px 4px hsl(var(--shadow) / 0.4), inset -2px -2px 4px hsl(var(--scrim) / 0.3), 4px 4px 8px -2px hsl(var(--shadow) / 0.3), -2px -2px 4px -1px hsl(var(--scrim) / 0.2)',
+      '--shadow-pop': 'inset 3px 3px 6px hsl(var(--shadow) / 0.5), inset -3px -3px 6px hsl(var(--scrim) / 0.4), 6px 6px 12px -3px hsl(var(--shadow) / 0.3), -3px -3px 6px -2px hsl(var(--scrim) / 0.2)',
+      '--heading-font': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '1.25rem', '--r-card': '1.5rem', '--r-pill': '9999px', '--r-tab': '1.25rem',
+      '--shadow-card': 'inset 2px 2px 4px hsl(var(--shadow) / 0.5), inset -2px -2px 4px hsl(var(--scrim) / 0.4), 4px 4px 8px -2px hsl(var(--shadow) / 0.4), -2px -2px 4px -1px hsl(var(--scrim) / 0.3)',
+      '--shadow-pop': 'inset 3px 3px 6px hsl(var(--shadow) / 0.6), inset -3px -3px 6px hsl(var(--scrim) / 0.5), 6px 6px 12px -3px hsl(var(--shadow) / 0.4), -3px -3px 6px -2px hsl(var(--scrim) / 0.3)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  CYBERPUNK_THEMES: {
+    shadowStyle: 'hard-offset',
+    light: {
+      '--r-control': '0.25rem', '--r-card': '0.25rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': '0 0 16px hsl(var(--primary) / 0.5), 0 0 32px hsl(var(--accent) / 0.3)',
+      '--shadow-pop': '0 0 24px hsl(var(--primary) / 0.6), 0 0 48px hsl(var(--accent) / 0.4)',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'40\\' viewBox=\\'0 0 40 40\\'%3E%3Cpath d=\\'M0 40H40M40 0V40\\' stroke=\\'hsl(280 15% 50% / 0.1)\\' stroke-width=\\'1\\'/%3E%3C/svg%3E")',
+    },
+    dark: {
+      '--r-control': '0.25rem', '--r-card': '0.25rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': '0 0 20px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--accent) / 0.4)',
+      '--shadow-pop': '0 0 32px hsl(var(--primary) / 0.7), 0 0 64px hsl(var(--accent) / 0.5)',
+      '--heading-font': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--font-body': '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'radial-gradient(ellipse at 50% 50%, hsl(280 20% 12%) 0%, hsl(260 25% 5%) 70%)',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'40\\' height=\\'40\\' viewBox=\\'0 0 40 40\\'%3E%3Cpath d=\\'M0 40H40M40 0V40\\' stroke=\\'hsl(180 90% 55% / 0.08)\\' stroke-width=\\'1\\'/%3E%3C/svg%3E")',
+    }
+  },
+  BAUHAUS_THEMES: {
+    shadowStyle: 'hard-offset',
+    light: {
+      '--r-control': '0', '--r-card': '0', '--r-pill': '9999px', '--r-tab': '0',
+      '--shadow-card': '4px 4px 0 0 hsl(var(--shadow))',
+      '--shadow-pop': '6px 6px 0 0 hsl(var(--shadow))',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '0', '--r-card': '0', '--r-pill': '9999px', '--r-tab': '0',
+      '--shadow-card': '4px 4px 0 0 hsl(var(--shadow))',
+      '--shadow-pop': '6px 6px 0 0 hsl(var(--shadow))',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'square', '--button-style': 'square-offset',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  CLAYMORPHISM_THEMES: {
+    shadowStyle: 'inset-and-outset',
+    light: {
+      '--r-control': '1.5rem', '--r-card': '2rem', '--r-pill': '9999px', '--r-tab': '1.5rem',
+      '--shadow-card': 'inset 2px 2px 4px hsl(var(--shadow) / 0.4), inset -2px -2px 4px hsl(var(--scrim) / 0.3), 8px 8px 16px -4px hsl(var(--shadow) / 0.3), -4px -4px 8px -2px hsl(var(--scrim) / 0.2)',
+      '--shadow-pop': 'inset 3px 3px 6px hsl(var(--shadow) / 0.5), inset -3px -3px 6px hsl(var(--scrim) / 0.4), 12px 12px 24px -6px hsl(var(--shadow) / 0.3), -6px -6px 12px -3px hsl(var(--scrim) / 0.2)',
+      '--heading-font': '"Georgia", serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '1.5rem', '--r-card': '2rem', '--r-pill': '9999px', '--r-tab': '1.5rem',
+      '--shadow-card': 'inset 2px 2px 4px hsl(var(--shadow) / 0.5), inset -2px -2px 4px hsl(var(--scrim) / 0.4), 8px 8px 16px -4px hsl(var(--shadow) / 0.4), -4px -4px 8px -2px hsl(var(--scrim) / 0.3)',
+      '--shadow-pop': 'inset 3px 3px 6px hsl(var(--shadow) / 0.6), inset -3px -3px 6px hsl(var(--scrim) / 0.5), 12px 12px 24px -6px hsl(var(--shadow) / 0.4), -6px -6px 12px -3px hsl(var(--scrim) / 0.3)',
+      '--heading-font': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--font-body': '"Inter", ui-sans-serif, system-ui, sans-serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  HIGH_CONTRAST_THEMES: {
+    shadowStyle: 'none',
+    light: {
+      '--r-control': '0.25rem', '--r-card': '0.25rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': 'none', '--shadow-pop': 'none',
+      '--heading-font': 'system-ui, sans-serif',
+      '--font-body': 'system-ui, sans-serif',
+      '--tab-style': 'underline', '--button-style': 'outline',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient': 'none', '--bg-pattern': 'none',
+    },
+    dark: {
+      '--r-control': '0.25rem', '--r-card': '0.25rem', '--r-pill': '9999px', '--r-tab': '0.25rem',
+      '--shadow-card': 'none', '--shadow-pop': 'none',
+      '--heading-font': 'system-ui, sans-serif',
+      '--font-body': 'system-ui, sans-serif',
+      '--tab-style': 'underline', '--button-style': 'outline',
+      '--blur': '0', '--surface-opacity': '1',
+      '--bg-gradient-dark': 'none', '--bg-pattern': 'none',
+    }
+  },
+  SKEUOMORPHIC_THEMES: {
+    shadowStyle: 'soft',
+    light: {
+      '--r-control': '0.5rem', '--r-card': '0.75rem', '--r-pill': '9999px', '--r-tab': '0.5rem',
+      '--shadow-card': '0 2px 8px -2px hsl(var(--shadow) / 0.3), 0 1px 3px -1px hsl(var(--shadow) / 0.2)',
+      '--shadow-pop': '0 4px 12px -2px hsl(var(--shadow) / 0.3), 0 2px 6px -1px hsl(var(--shadow) / 0.2)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Georgia", serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '8px', '--surface-opacity': '0.9',
+      '--bg-gradient': 'none',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\' viewBox=\\'0 0 200 200\\'%3E%3Cfilter id=\\'linen\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.02 0.1\\' numOctaves=\\'4\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'200\\' height=\\'200\\' filter=\\'url(%23linen)\\'' opacity=\\'0.06\\''/%3E%3C/svg%3E")',
+    },
+    dark: {
+      '--r-control': '0.5rem', '--r-card': '0.75rem', '--r-pill': '9999px', '--r-tab': '0.5rem',
+      '--shadow-card': '0 2px 8px -2px hsl(var(--shadow) / 0.4), 0 1px 3px -1px hsl(var(--shadow) / 0.3)',
+      '--shadow-pop': '0 4px 12px -2px hsl(var(--shadow) / 0.4), 0 2px 6px -1px hsl(var(--shadow) / 0.3)',
+      '--heading-font': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--font-body': '"Instrument Serif", ui-serif, Georgia, serif',
+      '--tab-style': 'rounded', '--button-style': 'solid',
+      '--blur': '12px', '--surface-opacity': '0.9',
+      '--bg-gradient-dark': 'none',
+      '--bg-pattern': 'url("data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\' viewBox=\\'0 0 200 200\\'%3E%3Cfilter id=\\'linen\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.02 0.1\\' numOctaves=\\'4\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'200\\' height=\\'200\\' filter=\\'url(%23linen)\\'' opacity=\\'0.08\\''/%3E%3C/svg%3E")',
+    }
+  }
+};
+
+// Build new style layer text - use template literals directly, no extra escaping needed
+function buildStyleLayer(config, mode, shadowStyle) {
+  const c = config[mode];
+  // JSON-escape font strings for proper output (they contain commas)
+  const escapeForJson = (str) => JSON.stringify(str);
+  const lines = [
+    '      // Style layer',
+    `      "--r-control": "${c['--r-control']}",`,
+    `      "--r-card": "${c['--r-card']}",`,
+    `      "--r-pill": "${c['--r-pill']}",`,
+    `      "--r-tab": "${c['--r-tab']}",`,
+    `      "--border-width": "1px",`,
+    `      "--shadow-style": "${shadowStyle}",`,
+    `      "--shadow-card": "${c['--shadow-card']}",`,
+    `      "--shadow-pop": "${c['--shadow-pop']}",`,
+    `      "--blur": "${c['--blur']}",`,
+    `      "--surface-opacity": "${c['--surface-opacity']}",`,
+    `      "--font-heading": ${escapeForJson(c['--heading-font'])},`,
+    `      "--font-body": ${escapeForJson(c['--font-body'])},`,
+    `      "--tab-style": "${c['--tab-style']}",`,
+    `      "--button-style": "${c['--button-style']}",`,
+    `      "${mode === 'light' ? '--bg-gradient' : '--bg-gradient-dark'}": "${c[mode === 'light' ? '--bg-gradient' : '--bg-gradient-dark']}",`,
+    `      "--bg-pattern": "${c['--bg-pattern']}",`,
+  ];
+  return lines.join('\n');
+}
+
+// Parse the file and replace style layers
+let result = source;
+let searchIndex = 0;
+let familyIndex = 0;
+const families = Object.keys(FAMILY_CONFIG);
+let styleLayerCount = 0;
+
+while (true) {
+  const styleLayerIdx = result.indexOf('// Style layer', searchIndex);
+  if (styleLayerIdx === -1) break;
+  
+  const nextStyleLayer = result.indexOf('// Style layer', styleLayerIdx + 1);
+  const nextBrace = result.indexOf('},', styleLayerIdx);
+  const nextBracket = result.indexOf('],', styleLayerIdx);
+  
+  const bgPatternIdx = result.indexOf('"--bg-pattern"', styleLayerIdx);
+  let endIdx = styleLayerIdx;
+  if (bgPatternIdx !== -1) {
+    let commaIdx = bgPatternIdx;
+    while (commaIdx < result.length && result[commaIdx] !== ',') commaIdx++;
+    if (commaIdx < result.length) {
+      endIdx = commaIdx + 1;
+    }
+  }
+  
+  if (endIdx === styleLayerIdx) {
+    endIdx = nextStyleLayer !== -1 ? nextStyleLayer : (nextBrace !== -1 ? nextBrace + 2 : styleLayerIdx + 500);
+  }
+  
+  const oldStyleLayer = result.slice(styleLayerIdx, endIdx);
+  
+  const family = families[familyIndex];
+  const config = FAMILY_CONFIG[family];
+  const shadowStyle = config.shadowStyle;
+  const themeInFamily = Math.floor(styleLayerCount / 2) % 2;
+  const mode = styleLayerCount % 2 === 0 ? 'light' : 'dark';
+  
+  const newStyleLayer = buildStyleLayer(config, mode, shadowStyle);
+  
+  result = result.slice(0, styleLayerIdx) + newStyleLayer + result.slice(endIdx);
+  
+  searchIndex = styleLayerIdx + newStyleLayer.length;
+  styleLayerCount++;
+  
+  if (styleLayerCount % 4 === 0) {
+    familyIndex++;
+  }
+  
+  if (familyIndex >= families.length) break;
+}
+
+// Update DEFAULT_PRESET
+const defaultPresetRegex = /const DEFAULT_PRESET = \{[\s\S]*?tokens: \{ light: \{\}, dark: \{\} \},/;
+const newDefaultPreset = `const DEFAULT_PRESET = {
+  id: "notecraft",
+  name: "LemonNote default",
+  mode: null,
+  surface: "plain",
+  tokens: {
+    light: {
+      "--r-control": "0.5rem",
+      "--r-card": "0.75rem",
+      "--r-pill": "9999px",
+      "--r-tab": "0.5rem",
+      "--border-width": "1px",
+      "--shadow-style": "soft",
+      "--shadow-card": "0 2px 8px -2px hsl(var(--shadow) / 0.3), 0 1px 3px -1px hsl(var(--shadow) / 0.2)",
+      "--shadow-pop": "0 4px 12px -2px hsl(var(--shadow) / 0.3), 0 2px 6px -1px hsl(var(--shadow) / 0.2)",
+      "--blur": "0",
+      "--surface-opacity": "1",
+      "--font-heading": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "--font-body": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "--tab-style": "rounded",
+      "--button-style": "solid",
+      "--bg-gradient": "none",
+      "--bg-pattern": "none",
+    },
+    dark: {
+      "--r-control": "0.5rem",
+      "--r-card": "0.75rem",
+      "--r-pill": "9999px",
+      "--r-tab": "0.5rem",
+      "--border-width": "1px",
+      "--shadow-style": "soft",
+      "--shadow-card": "0 2px 8px -2px hsl(var(--shadow) / 0.4), 0 1px 3px -1px hsl(var(--shadow) / 0.3)",
+      "--shadow-pop": "0 4px 12px -2px hsl(var(--shadow) / 0.4), 0 2px 6px -1px hsl(var(--shadow) / 0.3)",
+      "--blur": "0",
+      "--surface-opacity": "1",
+      "--font-heading": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "--font-body": "Inter, ui-sans-serif, system-ui, sans-serif",
+      "--tab-style": "rounded",
+      "--button-style": "solid",
+      "--bg-gradient-dark": "none",
+      "--bg-pattern": "none",
+    },
+  },
+};`;
+
+result = result.replace(defaultPresetRegex, newDefaultPreset);
+
+writeFileSync("src/lib/theme-presets.js", result);
+console.log("Theme presets updated!");
+console.log(`Processed ${styleLayerCount} style layers across ${familyIndex} families`);

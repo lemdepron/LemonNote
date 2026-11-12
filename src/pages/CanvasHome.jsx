@@ -6,8 +6,10 @@ import SpaceListPage from "@/components/shell/SpaceListPage";
 import { makeCanvas } from "@/lib/canvas";
 import { relativeTime } from "@/lib/vault";
 import { confirm } from "@/components/ui/use-dialog";
+import { useI18n } from "@/lib/i18n";
 
 export default function CanvasHome() {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -36,22 +38,22 @@ export default function CanvasHome() {
 
   return (
     <SpaceListPage
-      eyebrow="Infinite canvas"
-      title="Think in space."
-      description="A pan-and-zoom plane for ideas you cannot outline yet. Drop cards anywhere, wire them together, then promote the cluster into a note."
-      createLabel="New canvas"
+      eyebrow={t("vault.canvas.label")}
+      title={t("vault.canvas.heroTitle")}
+      description={t("vault.canvas.hint")}
+      createLabel={t("vault.canvas.addCard")}
       icon={LayoutGrid}
       loading={loading}
       onCreate={create}
       onDelete={remove}
       items={items.map((canvas) => ({
         id: canvas.id,
-        name: canvas.name || "Untitled canvas",
+        name: canvas.name || t("vault.canvas.emptyState"),
         href: `/canvas/${canvas.id}`,
-        meta: `${canvas.nodes?.length ?? 0} cards · ${canvas.edges?.length ?? 0} connections · ${relativeTime(canvas.updated_date)}`,
+        meta: `${canvas.nodes?.length ?? 0} ${t("vault.canvas.stats").split(" · ")[0].replace("{cards}", "")} · ${canvas.edges?.length ?? 0} ${t("vault.canvas.stats").split(" · ")[1].replace("{connections}", "")} · ${relativeTime(canvas.updated_date)}`,
       }))}
-      emptyTitle="No canvases yet."
-      emptyHint="Every new canvas opens with three starter cards so you can see how connections work."
+      emptyTitle={t("vault.canvas.emptyState")}
+      emptyHint={t("vault.canvas.guideText1")}
     />
   );
 }

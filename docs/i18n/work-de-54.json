@@ -1,0 +1,12 @@
+{
+  "ribbon.table.convert": "Convert",
+  "ribbon.table.copyCsv": "Copy as CSV",
+  "ribbon.table.copyCsvHint": "Copy this table as CSV text",
+  "ribbon.table.data": "Data",
+  "ribbon.table.duplicateRow": "Duplicate row",
+  "ribbon.table.duplicateRowHint": "Copy this row below itself",
+  "ribbon.table.export": "Export",
+  "ribbon.table.exportCsv": "CSV (.csv)",
+  "ribbon.table.exportCsvHint": "Export this table as .csv",
+  "ribbon.table.exportXlsx": "Excel (.xlsx)"
+}

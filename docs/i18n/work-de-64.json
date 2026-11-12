@@ -1,0 +1,12 @@
+{
+  "ribbon.view.zoomOut": "Zoom out",
+  "ribbon.view.zoomOutHint": "Decrease zoom (Ctrl+-)",
+  "ribbon.view.zoomPlaceholder": "Zoom",
+  "ribbon.view.zoomSlider": "Slider:",
+  "settings.appearance.animationLevel": "Animation level",
+  "settings.appearance.animationsExpressive": "Expressive",
+  "settings.appearance.animationsOff": "Off",
+  "settings.appearance.animationsSubtle": "Subtle",
+  "settings.appearance.dayTime": "Day mode starts at",
+  "settings.appearance.followSystem": "Follow system light/dark"
+}

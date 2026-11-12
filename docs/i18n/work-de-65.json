@@ -1,0 +1,12 @@
+{
+  "settings.appearance.followSystemDesc": "When enabled, the app follows your system light/dark preference.",
+  "settings.appearance.followSystemLabel": "Automatically switch themes with system",
+  "settings.appearance.glassEffects": "Glass effects",
+  "settings.appearance.glassEffectsDesc": "When disabled, removes all backdrop blur for better performance.",
+  "settings.appearance.glassEffectsLabel": "Enable backdrop blur and glass surfaces",
+  "settings.appearance.nightTime": "Night mode starts at",
+  "settings.appearance.scheduleDesc": "Set specific times for light and dark mode instead of following system.",
+  "settings.appearance.scheduleLabel": "Custom day/night schedule",
+  "vault.canvas.addCard": "Add card",
+  "vault.canvas.autosaveOn": "autosave on"
+}

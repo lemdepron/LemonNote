@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.audio": "Record audio",
+  "ribbon.insert.audioHint": "Record audio from microphone",
+  "ribbon.insert.audioStopHint": "Stop recording",
+  "ribbon.insert.blocks": "Blocks",
+  "ribbon.insert.bookmark": "Bookmark",
+  "ribbon.insert.bookmarkHint": "Insert a named anchor at the cursor",
+  "ribbon.insert.bookmarkPrompt": "Bookmark name:",
+  "ribbon.insert.bookmarks": "Bookmarks",
+  "ribbon.insert.bookmarksMenu": "Bookmarks",
+  "ribbon.insert.bookmarksMenuHint": "Jump to a bookmark in this note"
+}

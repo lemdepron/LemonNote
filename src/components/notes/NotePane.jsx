@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Target } from "lucide-react";
+import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -93,7 +93,7 @@ export default function NotePane({
 
   // Word goal state (from extension storage)
   const [wordGoal, setWordGoal] = useState(0);
-  const [editingWordGoal, setEditingWordGoal] = useState(false);
+  const [wordGoalPopoverOpen, setWordGoalPopoverOpen] = useState(false);
   const [wordGoalDraft, setWordGoalDraft] = useState("");
 
   // View mode state (persisted in note.style)
@@ -333,21 +333,25 @@ export default function NotePane({
   };
 
   // Word goal handlers
-  const openWordGoal = () => {
+  const openWordGoalPopover = () => {
     setWordGoalDraft(wordGoal ? String(wordGoal) : "");
-    setEditingWordGoal(true);
+    setWordGoalPopoverOpen(true);
   };
 
-  const saveWordGoal = (event) => {
+  const closeWordGoalPopover = () => {
+    setWordGoalPopoverOpen(false);
+  };
+
+  const saveWordGoalFromPopover = (event) => {
     event.preventDefault();
     const value = Math.max(0, Math.min(100000, Math.round(Number(wordGoalDraft)) || 0));
     setWordGoal(value);
-    setEditingWordGoal(false);
+    setWordGoalPopoverOpen(false);
   };
 
-  const cancelWordGoal = () => {
-    setWordGoalDraft(wordGoal ? String(wordGoal) : "");
-    setEditingWordGoal(false);
+  const clearWordGoal = () => {
+    setWordGoal(0);
+    setWordGoalPopoverOpen(false);
   };
 
   // Handwriting
@@ -997,6 +1001,34 @@ export default function NotePane({
     );
   }
 
+  // Consolidated empty state component
+  function EmptyState({ noteInk, inkActive, mode }) {
+    if (!noteInk.hasPage || noteInk.markCount === 0) {
+      return (
+        <p className="text-[14px] text-muted-foreground text-center py-8">
+          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
+        </p>
+      );
+    }
+    return (
+      <div className="text-center py-8 space-y-2">
+        <p className="text-[14px] text-muted-foreground">
+          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
+        </p>
+        <div className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
+          <PenLine className="h-3.5 w-3.5" />
+          <span>Handwriting · {noteInk.markCount} mark{noteInk.markCount !== 1 ? "s" : ""}</span>
+          {!inkActive && (
+            <>
+              <span className="text-muted-foreground/40">·</span>
+              <span>Ink is shown in Read view</span>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const insertLink = async (rawTitle, goToNote) => {
     const clean = rawTitle.trim();
     if (!clean) return;
@@ -1148,7 +1180,7 @@ export default function NotePane({
         <main
           className={cn(
             "pb-24 pt-6",
-            !isInSplit && "mx-auto max-w-[1180px] px-5 sm:px-6 lg:px-8",
+            !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
             isInSplit && "px-2",
             focus && "pr-12 sm:pr-14"
           )}
@@ -1216,6 +1248,13 @@ export default function NotePane({
             onTab={setRibbonTab}
             noteInk={noteInk}
             onFindTags={() => setFindTagsOpen(true)}
+            wordGoal={wordGoal}
+            wordGoalPopoverOpen={wordGoalPopoverOpen}
+            setWordGoalPopoverOpen={setWordGoalPopoverOpen}
+            wordGoalDraft={wordGoalDraft}
+            setWordGoalDraft={setWordGoalDraft}
+            saveWordGoalFromPopover={saveWordGoalFromPopover}
+            clearWordGoal={clearWordGoal}
           />
         </VaultHeader>
       ) : (
@@ -1224,7 +1263,7 @@ export default function NotePane({
       <main
         className={cn(
           "pb-24 pt-4",
-          !isInSplit && "mx-auto px-5 sm:px-6 lg:px-8",
+          !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
           isInSplit && "px-2",
           focus && "pr-12 sm:pr-14"
         )}
@@ -1431,7 +1470,7 @@ export default function NotePane({
                               onImageFiles={images.insert}
                               hasInk={noteInk.hasPage && noteInk.markCount > 0}
                               showLineNumbers={typography.showLineNumbers}
-                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
+                              {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
                             />
                             <MacroBar
                               body={body}
@@ -1522,12 +1561,10 @@ export default function NotePane({
                                 scale={1}
                               />
                             )}
+                            {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
+                              <EmptyState noteInk={noteInk} inkActive={inkActive} mode={viewMode} />
+                            )}
                           </div>
-                        )}
-                        {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
-                          <p className="text-[14px] text-muted-foreground">
-                            Nothing written yet. Press <span className="font-mono text-[12px]">Write</span> and start.
-                          </p>
                         )}
                       </div>
                     </div>
@@ -1536,34 +1573,61 @@ export default function NotePane({
                     <div className={cn("gap-10", mode === "split" ? "grid lg:grid-cols-2" : "block")}>
                       {mode !== "read" && (
                         <div className="min-w-0">
-                          {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
-                            <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
-                              <PenLine className="h-3 w-3 text-muted-foreground/50" />
-                              Ink is shown in Read view · {noteInk.markCount} marks
-                            </div>
+                          {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && !body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
+                            <EmptyState noteInk={noteInk} inkActive={inkActive} mode="write" />
                           )}
                           {markdown ? (
                             <>
-                              <MarkdownEditor
-                                value={body}
-                                onChange={(next) => {
-                                  setBody(next);
-                                  touch();
-                                }}
-                                titles={titles}
-                                onCreateNote={(newTitle) => insertLink(newTitle, false)}
-                                onImageFiles={images.insert}
-                                hasInk={noteInk.hasPage && noteInk.markCount > 0}
-                                showLineNumbers={typography.showLineNumbers}
-                                {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0)}
-                              />
-                              <MacroBar
-                                body={body}
-                                onChange={(next) => {
-                                  setBody(next);
-                                  touch();
-                                }}
-                              />
+                              {mode === "write" && noteInk.hasPage && noteInk.markCount > 0 ? (
+                                // Page mode: centered 736px editor with paper look
+                                <div className="flex justify-center">
+                                  <div className="w-[736px] min-w-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm rounded-lg p-6 md:p-8">
+                                    <MarkdownEditor
+                                      value={body}
+                                      onChange={(next) => {
+                                        setBody(next);
+                                        touch();
+                                      }}
+                                      titles={titles}
+                                      onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                      onImageFiles={images.insert}
+                                      hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                      showLineNumbers={typography.showLineNumbers}
+                                      {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, true)}
+                                    />
+                                    <MacroBar
+                                      body={body}
+                                      onChange={(next) => {
+                                        setBody(next);
+                                        touch();
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <MarkdownEditor
+                                    value={body}
+                                    onChange={(next) => {
+                                      setBody(next);
+                                      touch();
+                                    }}
+                                    titles={titles}
+                                    onCreateNote={(newTitle) => insertLink(newTitle, false)}
+                                    onImageFiles={images.insert}
+                                    hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                    showLineNumbers={typography.showLineNumbers}
+                                    {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
+                                  />
+                                  <MacroBar
+                                    body={body}
+                                    onChange={(next) => {
+                                      setBody(next);
+                                      touch();
+                                    }}
+                                  />
+                                </>
+                              )}
                             </>
                           ) : (
                             <FormatEditor value={body} onChange={changeBody} format={format} />
@@ -1648,9 +1712,7 @@ export default function NotePane({
                             </div>
                           )}
                           {!body.trim() && viewMode !== "draft" && viewMode !== "immersive" && (
-                            <p className="text-[14px] text-muted-foreground">
-                              Nothing written yet. Press <span className="font-mono text-[12px]">Write</span> and start.
-                            </p>
+                            <EmptyState noteInk={noteInk} inkActive={inkActive} mode={viewMode} />
                           )}
                         </div>
                       )}
@@ -1670,40 +1732,6 @@ export default function NotePane({
                 <span className="text-muted-foreground">
                   {wordCount} word{wordCount !== 1 ? "s" : ""}
                 </span>
-                {/* Word goal */}
-                {editingWordGoal ? (
-                  <form onSubmit={saveWordGoal} className="flex items-center gap-1.5">
-                    <Target className="h-3 w-3 text-muted-foreground" />
-                    <input
-                      type="number"
-                      min="0"
-                      max="100000"
-                      step="50"
-                      value={wordGoalDraft}
-                      onChange={(e) => setWordGoalDraft(e.target.value)}
-                      onBlur={cancelWordGoal}
-                      onKeyDown={(e) => e.key === "Enter" && saveWordGoal(e)}
-                      placeholder="500"
-                      className="w-16 rounded border border-border/70 bg-card/60 px-1.5 py-0.5 font-mono text-[11px] text-foreground outline-none focus:border-primary/40"
-                      autoFocus
-                    />
-                    <span className="text-muted-foreground">{t("common.wordGoal")}s</span>
-                    <button type="submit" className="px-2 py-0.5 text-[10px] rounded border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 transition">{t("common.setGoal")}</button>
-                    <button type="button" onClick={cancelWordGoal} className="px-2 py-0.5 text-[10px] rounded border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground transition">{t("common.editGoal")}</button>
-                  </form>
-                ) : wordGoal > 0 ? (
-                  <span className="flex items-center gap-1.5">
-                    <Target className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-foreground">{wordCount} / {wordGoal}</span>
-                    <span className="text-muted-foreground">({Math.min(100, Math.round((wordCount / wordGoal) * 100))}%)</span>
-                    <button type="button" onClick={openWordGoal} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground hover:bg-accent rounded transition">{t("common.editGoal")}</button>
-                  </span>
-                ) : (
-                  <button type="button" onClick={openWordGoal} className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/70 text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                    <Target className="h-3 w-3" />
-                    <span className="text-[9.5px] uppercase tracking-[0.12em]">{t("common.setGoal")}</span>
-                  </button>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">{statusLabel === "saving…" ? t("common.savingStatus") : statusLabel === "saved" ? t("common.savedStatus") : t("common.draftStatus")}</span>

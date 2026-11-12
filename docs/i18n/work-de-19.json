@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.color.hexPlaceholder": "#RRGGBB",
+  "ribbon.ink.color.opacity": "opacity",
+  "ribbon.ink.color.pick": "Pick",
+  "ribbon.ink.color.pickHint": "Pick a colour from the page",
+  "ribbon.ink.color.quickInks": "Quick inks",
+  "ribbon.ink.color.recent": "Recent",
+  "ribbon.ink.color.recentEmpty": "colours you use appear here",
+  "ribbon.ink.color.studio": "Studio",
+  "ribbon.ink.draw.addCoordinateGraph": "Add coordinate graph",
+  "ribbon.ink.draw.brushEngine": "Brush engine"
+}

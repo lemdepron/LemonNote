@@ -1,0 +1,14 @@
+{
+  "vault.code.label": "Рабочая область кода",
+  "vault.code.hint": "поиск и замена, автосохранение",
+  "vault.code.heroTitle": "Пишите, ищите, заменяйте — всё в одном месте.",
+  "vault.code.subtitle": "{lines} строк",
+  "vault.code.emptyState": "Этот файл удалён.",
+  "vault.code.backToCode": "Назад к файлам кода",
+  "vault.code.fileName": "Имя файла",
+  "vault.code.languagePlaceholder": "Язык",
+  "vault.code.findButton": "найти",
+  "vault.code.status.saving": "сохранение…",
+  "vault.code.status.saved": "сохранено",
+  "vault.code.status.autosaveOn": "автосохранение включено"
+}

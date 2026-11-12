@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.erasePrecisionHint": "Precision eraser",
+  "ribbon.ink.draw.eraseStroke": "Stroke",
+  "ribbon.ink.draw.eraseStrokeHint": "Erase entire strokes",
+  "ribbon.ink.draw.eraser": "Eraser",
+  "ribbon.ink.draw.eraserLarge": "Large eraser (50px)",
+  "ribbon.ink.draw.eraserMedium": "Medium eraser (26px)",
+  "ribbon.ink.draw.eraserRadius": "radius",
+  "ribbon.ink.draw.eraserSmall": "Small eraser (12px)",
+  "ribbon.ink.draw.eyedropperMode": "Pick",
+  "ribbon.ink.draw.eyedropperModeHint": "Pick a colour from the page"
+}

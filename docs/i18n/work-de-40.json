@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.recordingSaveError": "Failed to save recording.",
+  "ribbon.insert.recordingStartError": "Failed to start recording.",
+  "ribbon.insert.recordingToast": "Recording… click again to stop.",
+  "ribbon.insert.shapeArrow": "Arrow",
+  "ribbon.insert.shapeArrowHint": "Insert an arrow",
+  "ribbon.insert.shapeEllipse": "Ellipse",
+  "ribbon.insert.shapeEllipseHint": "Insert an ellipse",
+  "ribbon.insert.shapeLine": "Line",
+  "ribbon.insert.shapeLineHint": "Insert a line",
+  "ribbon.insert.shapeRect": "Rectangle"
+}

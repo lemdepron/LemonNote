@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.rotateLeft90": "Rotate Left 90°",
+  "ribbon.layout.rotateRight90": "Rotate Right 90°",
+  "ribbon.layout.selectionPane": "Selection Pane",
+  "ribbon.layout.selectionPaneHint": "Show a panel listing all floating objects with visibility and lock controls",
+  "ribbon.layout.sendBackward": "Send Backward",
+  "ribbon.layout.sendBackwardHint": "Move the selected object one layer backward",
+  "ribbon.layout.sendToBack": "Send to Back",
+  "ribbon.layout.sendToBackHint": "Move the selected object to the back layer",
+  "ribbon.layout.spacingAfter": "Spacing after (em) — 0.5em steps",
+  "ribbon.layout.spacingBefore": "Spacing before (em) — 0.5em steps"
+}

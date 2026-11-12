@@ -210,7 +210,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
   return (
     <>
-      <RibbonGroup label={tr("ribbon.home.clipboard")} icon={Copy} priority={10}>
+      <RibbonGroup label={tr("ribbon.home.clipboard")} icon={Copy} priority={90}>
         <Btn id="home.undo" icon={Undo2} label={tr("ribbon.home.undo")} hint={tr("ribbon.home.undoHint")} onClick={() => execEditor("undo")} />
         <Btn id="home.redo" icon={Redo2} label={tr("ribbon.home.redo")} hint={tr("ribbon.home.redoHint")} onClick={() => execEditor("redo")} />
         <Btn id="home.cut" icon={Scissors} label={tr("ribbon.home.cut")} hint={tr("ribbon.home.cutHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={cut} />
@@ -227,7 +227,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.font")} icon={Bold} priority={20}>
+      <RibbonGroup label={tr("ribbon.home.font")} icon={Bold} priority={80}>
         <Btn id="home.bold" icon={Bold} hint={tr("ribbon.home.bold")} shortcut="Ctrl+B" edit={(s) => toggleWrap(s, "**")} />
         <Btn id="home.italic" icon={Italic} hint={tr("ribbon.home.italic")} shortcut="Ctrl+I" edit={toggleItalic} />
         <Btn id="home.underline" icon={Underline} hint={tr("ribbon.home.underline")} shortcut="Ctrl+U" edit={(s) => toggleWrap(s, "<u>", "</u>")} />
@@ -237,7 +237,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.style")} icon={Pilcrow} priority={30}>
+      <RibbonGroup label={tr("ribbon.home.style")} icon={Pilcrow} priority={50}>
         <RibbonSelect
           title={tr("ribbon.home.paragraphStyle")}
           disabled={!markdown}
@@ -250,7 +250,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lists")} icon={List} priority={40}>
+      <RibbonGroup label={tr("ribbon.home.lists")} icon={List} priority={70}>
         <Btn id="home.bulletList" icon={List} hint={tr("ribbon.home.bulletList")} edit={(s) => toggleLinePrefix(s, "bullet")} />
         <Btn id="home.numberList" icon={ListOrdered} hint={tr("ribbon.home.numberList")} edit={(s) => toggleLinePrefix(s, "number")} />
         <Btn id="home.checklist" icon={ListChecks} hint={tr("ribbon.home.checklist")} edit={(s) => toggleLinePrefix(s, "check")} />
@@ -259,7 +259,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.outdent" icon={IndentDecrease} hint={tr("ribbon.home.outdent")} edit={(s) => shiftIndent(s, -1)} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.align")} icon={AlignLeft} priority={50}>
+      <RibbonGroup label={tr("ribbon.home.align")} icon={AlignLeft} priority={60}>
         {[
           ["left", AlignLeft, tr("ribbon.home.alignLeft")],
           ["center", AlignCenter, tr("ribbon.home.alignCenter")],
@@ -273,7 +273,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.dirAuto" icon={MoveHorizontal} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lines")} icon={ArrowDownAZ} priority={60}>
+      <RibbonGroup label={tr("ribbon.home.lines")} icon={ArrowDownAZ} priority={40}>
         <Btn id="home.sortAsc" icon={ArrowDownAZ} hint={tr("ribbon.home.sortAsc")} edit={(s) => lineTool(s, "sort-asc")} />
         <Btn id="home.sortDesc" icon={ArrowUpAZ} hint={tr("ribbon.home.sortDesc")} edit={(s) => lineTool(s, "sort-desc")} />
         <Btn id="home.reverse" icon={ArrowLeftRight} hint={tr("ribbon.home.reverseHint")} label={tr("ribbon.home.reverse")} edit={(s) => lineTool(s, "reverse")} />
@@ -383,7 +383,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.tasks")} icon={CircleCheck} priority={70}>
+      <RibbonGroup label={tr("ribbon.home.tasks")} icon={CircleCheck} priority={30}>
         {STATUS.map(([id, icon, hintKey, key, qa]) => (
           <Btn key={id} id={qa} icon={icon} label={id} hint={tr(hintKey)} shortcut={key} active={status === id} edit={(s) => toggleTask(s, id)} />
         ))}
@@ -393,7 +393,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       {/* AI Actions - only shown when AI is enabled and note is markdown */}
       {markdown && isAIEnabled() && (
-        <RibbonGroup label={tr("ribbon.home.ai")} icon={Wand2} priority={5}>
+        <RibbonGroup label={tr("ribbon.home.ai")} icon={Wand2} priority={20}>
           <Btn
             id="home.ai.translate"
             icon={Globe}
@@ -439,7 +439,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       <TagGroup format={format} />
 
-      <RibbonGroup label={tr("ribbon.home.search")} icon={Search} priority={80}>
+      <RibbonGroup label={tr("ribbon.home.search")} icon={Search} priority={15}>
         <Btn
           id="home.findTags"
           icon={Search}
@@ -449,7 +449,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.noteType")} icon={FileText} priority={90}>
+      <RibbonGroup label={tr("ribbon.home.noteType")} icon={FileText} priority={10}>
         <Select value={format} onValueChange={onFormat}>
           <SelectTrigger aria-label={tr("ribbon.home.noteFormatAria")} className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]">
             <SelectValue placeholder={tr("ribbon.home.noteFormatTitle")} />

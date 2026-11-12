@@ -168,7 +168,7 @@ export function ViewTab() {
   return (
     <>
       {/* 1. Views */}
-      <RibbonGroup label="Views" icon={LayoutDashboard}>
+      <RibbonGroup label="Views" icon={LayoutDashboard} priority={70}>
         <div className="flex flex-wrap gap-1">
           {VIEW_MODES.map(({ id, label, icon: Icon, hint }) => (
             <Btn
@@ -185,7 +185,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 2. Navigation Pane */}
-      <RibbonGroup label="Navigation pane" icon={AlignLeft}>
+      <RibbonGroup label="Navigation pane" icon={AlignLeft} priority={60}>
         <Btn
           id="view.navPane"
           icon={AlignLeft}
@@ -211,7 +211,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 3. Zoom */}
-      <RibbonGroup label="Zoom" icon={Maximize2}>
+      <RibbonGroup label="Zoom" icon={Maximize2} priority={50}>
         <div className="flex items-center gap-2">
           <Btn
             id="view.zoomOut"
@@ -260,7 +260,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 4. Page Display */}
-      <RibbonGroup label="Page display" icon={LayoutGrid}>
+      <RibbonGroup label="Page display" icon={LayoutGrid} priority={40}>
         <Btn
           id="view.ruler"
           icon={Ruler}
@@ -280,7 +280,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 5. Scroll Mode */}
-      <RibbonGroup label="Scroll mode" icon={MoveVertical}>
+      <RibbonGroup label="Scroll mode" icon={MoveVertical} priority={35}>
         <div className="flex gap-1">
           <Btn
             id="view.scrollVertical"
@@ -303,7 +303,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 6. Reading page width (existing) */}
-      <RibbonGroup label="Reading page">
+      <RibbonGroup label="Reading page" priority={30}>
         <RibbonSelect
           title="Width of the reading column"
           placeholder="Width"
@@ -314,7 +314,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* Attach files */}
-      <RibbonGroup label={t("ribbon.view.attach")} icon={Paperclip}>
+      <RibbonGroup label={t("ribbon.view.attach")} icon={Paperclip} priority={25}>
         <Btn
           id="view.attachFile"
           icon={Paperclip}
@@ -332,7 +332,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* Insert Table */}
-      <RibbonGroup label={t("ribbon.view.table")} icon={Table}>
+      <RibbonGroup label={t("ribbon.view.table")} icon={Table} priority={20}>
         <Btn
           id="view.insertTable"
           icon={Table}
@@ -343,7 +343,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 7. Editor (existing) */}
-      <RibbonGroup label="Editor">
+      <RibbonGroup label="Editor" priority={15}>
         <RibbonSelect
           title="Font of the writing box"
           placeholder="Editor font"
@@ -364,7 +364,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 8. Statistics (existing) */}
-      <RibbonGroup label="Statistics">
+      <RibbonGroup label="Statistics" priority={10}>
         <div className="flex items-center divide-x divide-border/50" style={{ minWidth: 'max-content' }}>
           {stat("words", words)}
           {stat("chars", body.length)}
@@ -375,7 +375,7 @@ export function ViewTab() {
       </RibbonGroup>
 
       {/* 9. Accessibility Checker */}
-      <RibbonGroup label="Accessibility" icon={Shield}>
+      <RibbonGroup label="Accessibility" icon={Shield} priority={5}>
         <Btn
           id="view.a11yCheck"
           icon={Shield}

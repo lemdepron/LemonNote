@@ -1,0 +1,12 @@
+{
+  "ribbon.ink.draw.brushEngineHint": "Pen behaviour, eraser engine, shape and ruler assists",
+  "ribbon.ink.draw.clearPage": "Clear page",
+  "ribbon.ink.draw.clearPageHint": "Remove every mark on this page",
+  "ribbon.ink.draw.coordinateGraph": "Coordinate graph",
+  "ribbon.ink.draw.coordinateGraphHint": "Insert a coordinate graph with axes, grid and tick marks",
+  "ribbon.ink.draw.drawMode": "Draw",
+  "ribbon.ink.draw.drawModeHint": "Draw with the current pen",
+  "ribbon.ink.draw.eraseMode": "Eraser",
+  "ribbon.ink.draw.eraseModeHint": "Erase marks",
+  "ribbon.ink.draw.erasePrecision": "Point"
+}

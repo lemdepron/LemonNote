@@ -1,0 +1,12 @@
+{
+  "ribbon.insert.tagHint": "Insert a #tag",
+  "ribbon.insert.tagPlaceholder": "tag-name",
+  "ribbon.insert.templates": "Templates",
+  "ribbon.insert.templatesHint": "Ready-made journal blocks",
+  "ribbon.insert.textNotes": "Text & Notes",
+  "ribbon.insert.textbox": "Text box",
+  "ribbon.insert.textboxHint": "Insert a text box",
+  "ribbon.insert.thisMonth": "This month",
+  "ribbon.insert.thisMonthHint": "Open or create this month's note, e.g. 2026-11",
+  "ribbon.insert.thisWeek": "This week"
+}

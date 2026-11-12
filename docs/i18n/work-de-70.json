@@ -1,0 +1,12 @@
+{
+  "vault.code.subtitle": "{lines} lines",
+  "vault.extensions.activeCount": "{active} of {total} active · {contracts} contracts",
+  "vault.extensions.appliedStatus": "applied",
+  "vault.extensions.applyButton": "Apply overrides",
+  "vault.extensions.cssOverridesDesc": "Values are raw HSL channels applied to the document root in both modes. Disabled extensions keep their defaults.",
+  "vault.extensions.cssOverridesLabel": "css variable overrides",
+  "vault.extensions.customThemeExample": "--primary: 205 58% 46%\n--link: 190 62% 30%\n--ring: 205 58% 46%",
+  "vault.extensions.description": "Every extension declares what it may touch — CSS variables, a panel or title-bar slot, a named save hook or the event stream. Nothing executes third-party code: handlers get a frozen sandbox, a failure stays inside its own plugin, and every run is logged below.",
+  "vault.extensions.heroTitle": "Capabilities, not scripts.",
+  "vault.extensions.installedLabel": "Installed"
+}

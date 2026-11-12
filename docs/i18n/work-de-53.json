@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.undo": "Undo",
+  "ribbon.layout.undoHint": "Undo last floating object change (Ctrl+Z)",
+  "ribbon.layout.ungroupLabel": "Ungroup",
+  "ribbon.layout.wrapText": "Wrap Text",
+  "ribbon.layout.wrapTextHint": "Choose how text wraps around the selected object",
+  "ribbon.table.arrange": "Arrange",
+  "ribbon.table.averageRow": "Average row",
+  "ribbon.table.averageRowHint": "Add an Average row",
+  "ribbon.table.clearCells": "Clear cells",
+  "ribbon.table.clearCellsHint": "Empty every data cell, keep the header"
+}

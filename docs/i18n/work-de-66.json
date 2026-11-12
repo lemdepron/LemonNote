@@ -1,0 +1,12 @@
+{
+  "vault.canvas.backToCanvases": "back to canvases",
+  "vault.canvas.canvasGuide": "Canvas guide",
+  "vault.canvas.canvasName": "Canvas name",
+  "vault.canvas.cardInspector": "Card inspector",
+  "vault.canvas.emptyState": "This canvas is gone.",
+  "vault.canvas.guideText1": "Drag empty space to pan, scroll to zoom, double-click the plane to drop a card.",
+  "vault.canvas.guideText2": "The <span class=\"text-foreground\">link handle</span> on a card wires it to another one.",
+  "vault.canvas.heroTitle": "Think in space.",
+  "vault.canvas.hint": "pan, zoom, wire cards",
+  "vault.canvas.label": "Infinite canvas"
+}

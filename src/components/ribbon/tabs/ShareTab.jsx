@@ -143,7 +143,7 @@ export function ShareTab() {
 
   return (
     <>
-      <RibbonGroup label="Copy note">
+      <RibbonGroup label="Copy note" priority={70}>
         <Btn 
           id="share.copyMarkdown" 
           icon={FileText} 
@@ -174,7 +174,7 @@ export function ShareTab() {
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Export this note">
+      <RibbonGroup label="Export this note" priority={60}>
         <Btn 
           id="share.exportMarkdown" 
           icon={FileText} 
@@ -223,7 +223,7 @@ export function ShareTab() {
         )}
       </RibbonGroup>
 
-      <RibbonGroup label="Share & print">
+      <RibbonGroup label="Share & print" priority={50}>
         <Btn 
           id="share.print" 
           icon={Printer} 
@@ -248,7 +248,7 @@ export function ShareTab() {
         />
       </RibbonGroup>
 
-      <RibbonGroup label="Vault">
+      <RibbonGroup label="Vault" priority={40}>
         <Btn 
           id="share.exportAllNotes" 
           icon={Archive} 

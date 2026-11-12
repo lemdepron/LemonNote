@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.pageBreak": "Page break",
+  "ribbon.layout.pageBreakHint": "Insert a page break at the cursor (forces next content to next page when printing)",
+  "ribbon.layout.pageHeight": "Custom page height (mm)",
+  "ribbon.layout.pageMargins": "Page margins",
+  "ribbon.layout.pageMarginsPlaceholder": "Margins",
+  "ribbon.layout.pageOrientation": "Page orientation",
+  "ribbon.layout.pageOrientationPlaceholder": "Orientation",
+  "ribbon.layout.pageSetup": "Page setup",
+  "ribbon.layout.pageSetupPlaceholder": "Page size",
+  "ribbon.layout.pageSetupTitle": "Paper size for printing and PDF export"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.design.pageColorHint": "Background color for the page",
+  "ribbon.design.pageStyle": "Page style",
+  "ribbon.design.pageStylePlaceholder": "Page style",
+  "ribbon.design.pageStyleTitle": "Background pattern for the reading and writing page",
+  "ribbon.design.pageTitleStyle": "Page title style",
+  "ribbon.design.paragraphSpacing": "Paragraph spacing",
+  "ribbon.design.paragraphSpacingPlaceholder": "Spacing preset",
+  "ribbon.design.paragraphSpacingPreset": "Paragraph spacing preset",
+  "ribbon.design.resetDesign": "Reset to app defaults",
+  "ribbon.design.resetDesignHint": "Clear all design settings on this note"
+}

@@ -1,0 +1,12 @@
+{
+  "vault.tables.typeBadge.select": "sel",
+  "vault.tables.typeBadge.text": "txt",
+  "vault.tables.typePlaceholder": "Type",
+  "vault.tables.viewBoard": "Board",
+  "vault.tables.viewGallery": "Gallery",
+  "vault.tables.viewTable": "Table",
+  "vault.trash.ariaDeleteForever": "Delete {title} forever",
+  "vault.trash.daysLeft": "{count} days left",
+  "vault.trash.deleteForeverDialog.deleteButton": "Delete forever",
+  "vault.trash.deleteForeverDialog.description": "“{title}” will be erased immediately. This cannot be undone."
+}

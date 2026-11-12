@@ -3,7 +3,6 @@ import { Check, RotateCcw } from "lucide-react";
 import {
   DEFAULT_PRESET,
   THEME_PRESETS,
-  presetPreview,
   readPresetId,
   setPreset,
 } from "@/lib/theme-presets";
@@ -15,17 +14,61 @@ const GROUPS = [
   { id: "dark", label: "Dark" },
 ];
 
+function ThemeMiniPreview({ preset, mode }) {
+  const tokens = preset?.tokens?.[mode];
+  if (!tokens || !tokens["--background"]) return null;
+
+  const style = {
+    // Apply theme tokens as inline styles
+    '--background': `hsl(${tokens["--background"]})`,
+    '--foreground': `hsl(${tokens["--foreground"]})`,
+    '--card': `hsl(${tokens["--card"]})`,
+    '--card-foreground': `hsl(${tokens["--card-foreground"]})`,
+    '--primary': `hsl(${tokens["--primary"]})`,
+    '--primary-foreground': `hsl(${tokens["--primary-foreground"]})`,
+    '--secondary': `hsl(${tokens["--secondary"]})`,
+    '--secondary-foreground': `hsl(${tokens["--secondary-foreground"]})`,
+    '--border': `hsl(${tokens["--border"]})`,
+    '--ring': `hsl(${tokens["--ring"]})`,
+    '--r-control': tokens["--r-control"],
+    '--r-card': tokens["--r-card"],
+    '--r-pill': tokens["--r-pill"],
+    '--r-tab': tokens["--r-tab"],
+    '--border-width': tokens["--border-width"],
+    '--shadow-card': tokens["--shadow-card"],
+    '--shadow-pop': tokens["--shadow-pop"],
+    '--font-heading': tokens["--font-heading"],
+    '--font-body': tokens["--font-body"],
+  };
+
+  return (
+    <div
+      className="nb-theme-preview"
+      style={style}
+      data-shadow-style={tokens["--shadow-style"]}
+      data-tab-style={tokens["--tab-style"]}
+      data-button-style={tokens["--button-style"]}
+    >
+      <div className="nb-preview-card nb-card p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="nb-preview-chip nb-chip px-2 py-0.5 text-[10px] font-mono">Tag</span>
+          <span className="nb-preview-tab nb-tab px-3 py-1 text-[10px] font-mono">Tab</span>
+        </div>
+        <button className="nb-preview-btn nb-button nb-btn-base w-full py-1.5 text-[11px] font-medium">Button</button>
+      </div>
+    </div>
+  );
+}
+
 export default function ThemeGallery() {
   const { resolved, setMode } = useTheme();
   const [activeId, setActiveId] = useState(readPresetId);
   const [group, setGroup] = useState(() => (resolved === "light" ? "light" : "dark"));
 
-  // Single-mode presets belong to one tab; dual-mode presets show their matching build in both.
   const presets = THEME_PRESETS.filter((preset) => !preset.mode || preset.mode === group);
   const dualCount = THEME_PRESETS.filter((preset) => preset.id !== DEFAULT_PRESET.id && !preset.mode).length;
 
   const applyPreset = (preset) => {
-    // A dual-mode preset keeps the app in the tab it was picked from; the built-in keeps the mode as is.
     if (preset.mode) setMode(preset.mode);
     else if (preset.id !== DEFAULT_PRESET.id) setMode(group);
     setPreset(preset.id);
@@ -87,7 +130,9 @@ export default function ThemeGallery() {
                   : "border-border/60 hover:border-primary/40"
               )}
             >
-              <span className="block h-14 w-full" style={presetPreview(preset, group)} aria-hidden="true" />
+              <div className="relative h-28 w-full bg-[hsl(var(--card))]">
+                <ThemeMiniPreview preset={preset} mode={group} />
+              </div>
               <span className="flex items-center gap-1.5 border-t border-border/50 px-2 py-1.5">
                 <span className="min-w-0 flex-1 truncate text-[11.5px] text-foreground">{preset.name}</span>
                 {active ? (

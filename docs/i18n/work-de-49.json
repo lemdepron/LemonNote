@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.hyphenation": "Hyphenation",
+  "ribbon.layout.hyphenationPlaceholder": "Hyphenation",
+  "ribbon.layout.indentLeft": "Indent left (em) — 0.5em steps",
+  "ribbon.layout.indentRight": "Indent right (em) — 0.5em steps",
+  "ribbon.layout.lineNumbers": "Line numbers",
+  "ribbon.layout.lineNumbersHint": "Show line numbers in the writing box (gutter that scrolls with the text)",
+  "ribbon.layout.marginBottom": "Bottom margin (mm)",
+  "ribbon.layout.marginLeft": "Left margin (mm)",
+  "ribbon.layout.marginRight": "Right margin (mm)",
+  "ribbon.layout.marginTop": "Top margin (mm)"
+}

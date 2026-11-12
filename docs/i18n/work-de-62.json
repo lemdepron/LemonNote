@@ -1,0 +1,12 @@
+{
+  "ribbon.view.readModeHint": "Rendered markdown with styling",
+  "ribbon.view.readingPage": "Reading page",
+  "ribbon.view.readingPagePlaceholder": "Width",
+  "ribbon.view.readingPageWidth": "Width of the reading column",
+  "ribbon.view.ruler": "Ruler",
+  "ribbon.view.rulerHint": "Show horizontal ruler with page width and margins",
+  "ribbon.view.scrollMode": "Scroll mode",
+  "ribbon.view.selected": "selected",
+  "ribbon.view.spellCheck": "Spell check",
+  "ribbon.view.spellCheckHint": "Underline misspelled words in the writing box"
+}

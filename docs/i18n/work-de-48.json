@@ -1,0 +1,12 @@
+{
+  "ribbon.layout.customAngle": "Custom angle (degrees)",
+  "ribbon.layout.distributeHorizontally": "Distribute Horizontally",
+  "ribbon.layout.distributeVertically": "Distribute Vertically",
+  "ribbon.layout.editor": "Editor",
+  "ribbon.layout.flipHorizontal": "Flip Horizontal",
+  "ribbon.layout.flipVertical": "Flip Vertical",
+  "ribbon.layout.floatingObjects": "Floating objects",
+  "ribbon.layout.group": "Group",
+  "ribbon.layout.groupHint": "Group or ungroup selected objects",
+  "ribbon.layout.groupLabel": "Group"
+}

@@ -1,0 +1,12 @@
+{
+  "ribbon.view.horizontal": "Side to Side",
+  "ribbon.view.horizontalHint": "Horizontal page flow (Print Layout only)",
+  "ribbon.view.immersiveReader": "Immersive Reader",
+  "ribbon.view.immersiveReaderHint": "Distraction-free, large text, read-aloud",
+  "ribbon.view.insertTable": "Insert table",
+  "ribbon.view.insertTableHint": "Insert a markdown table",
+  "ribbon.view.line": "Line",
+  "ribbon.view.lines": "lines",
+  "ribbon.view.navigationPane": "Navigation pane",
+  "ribbon.view.navigationPaneHint": "Show side panel with headings and find"
+}
