@@ -282,6 +282,11 @@ html[data-rail="collapsed"] {
     /* The tab rail is fixed, so the page shell reserves exactly its width. */
     padding-inline-start: var(--rail-w, 0px);
   }
+  /* A page shell nested inside another page shell (the note page lives inside the tab
+     container) must not reserve the rail width a second time. */
+  .nb-shell .nb-shell {
+    padding-inline-start: 0;
+  }
 
   @media (prefers-reduced-motion: no-preference) {
     .nb-shell {

@@ -1,22 +1,44 @@
 import { useId, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { GroupMenu, MenuLabel, useRibbonCollapseApi, useRibbonCollapseState, GROUP_STATE } from "@/components/ribbon/RibbonKit";
 import { cn } from "@/lib/utils";
+
+const gridStyle = {
+  display: "grid",
+  gridAutoFlow: "column",
+  gridTemplateRows: "repeat(2, 32px)",
+  gridAutoColumns: "max-content",
+  gap: "4px",
+  alignItems: "center",
+};
+
+const labelClass =
+  "mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55";
+
+/** Fallback when a group has no icon: its first letters, never a bare chevron. */
+function LetterIcon({ label, className }) {
+  return (
+    <span className={cn("font-mono text-[10px] font-semibold uppercase leading-none", className)}>
+      {String(label || "?").slice(0, 2)}
+    </span>
+  );
+}
 
 /**
  * One section of the ribbon; controls flow in columns 2 rows high, name below.
  * `priority` decides the collapse order: a lower number collapses first.
- * Three states:
+ * States (chosen by the provider from the measured widths):
  * - FULL: icon buttons in two rows with the group label under them
- * - ICON: one 32px button with group icon + chevron, opens popover with full content
- * - OVERFLOW: not rendered in main ribbon, appears in "More" popover
- * `collapsedRender` can replace the default ICON form (Home tab uses it to keep the font-size stepper visible).
+ * - ICON: one 32px button (group icon + chevron) that opens the group's buttons
+ * - OVERFLOW: shown inside the "More" popover
+ * `collapsedRender` can replace the ICON form (Home keeps its font-size stepper).
  */
 export default function RibbonGroup({ label, icon, priority = 50, collapsedRender, className, children }) {
   const api = useRibbonCollapseApi();
   const state = useRibbonCollapseState();
   const id = useId();
-  const columnRef = useRef(null);
-  const measureRef = useRef(null);
+  const fullRef = useRef(null);
+  const iconRef = useRef(null);
   const groupState = state.groupState(id);
 
   useLayoutEffect(() => {
@@ -24,49 +46,42 @@ export default function RibbonGroup({ label, icon, priority = 50, collapsedRende
     return () => api?.unregister(id);
   }, [api, id, priority]);
 
-  // Measure the natural (expanded) width from the hidden measuring copy
-  // so groups do not flicker or stay collapsed after the window grows.
+  // Measure the natural width while the group is FULL; the value is kept while collapsed.
   useLayoutEffect(() => {
-    if (!measureRef.current) return undefined;
-    const el = measureRef.current;
-    const measure = () => api?.setWidth(id, el.offsetWidth);
+    if (groupState !== GROUP_STATE.FULL || !fullRef.current) return undefined;
+    const el = fullRef.current;
+    const measure = () => api?.setWidth(id, Math.ceil(el.getBoundingClientRect().width));
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [api, id]);
+  }, [api, id, groupState]);
 
-  const gridStyle = {
-    display: "grid",
-    gridAutoFlow: "column",
-    gridTemplateRows: "repeat(2, 32px)",
-    gridAutoColumns: "max-content",
-    gap: "4px",
-    alignItems: "center",
-  };
+  // Measure the real width of the collapsed form (button + padding, or a custom form).
+  useLayoutEffect(() => {
+    if (groupState !== GROUP_STATE.ICON || !iconRef.current) return undefined;
+    const el = iconRef.current;
+    const measure = () => api?.setIconWidth(id, Math.ceil(el.getBoundingClientRect().width));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [api, id, groupState]);
 
-  // OVERFLOW state: not rendered in main ribbon (handled by More menu)
   if (groupState === GROUP_STATE.OVERFLOW) {
-    return (
-      <div
-        ref={measureRef}
-        style={{ display: 'none' }}
-        aria-hidden="true"
-      >
-        <div style={gridStyle} role="group" aria-label={label}>
-          {children}
-        </div>
-        <span className="mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-          {label}
-        </span>
-      </div>
+    if (!state.moreNode) return null;
+    return createPortal(
+      <section role="group" aria-label={label}>
+        <MenuLabel>{label}</MenuLabel>
+        <div style={gridStyle}>{children}</div>
+      </section>,
+      state.moreNode
     );
   }
 
-  // ICON state: single 32px button with icon + chevron
   if (groupState === GROUP_STATE.ICON) {
     return (
-      <div className="flex shrink-0 items-center" role="group" aria-label={label}>
+      <div ref={iconRef} className="flex shrink-0 items-center px-1.5" role="group" aria-label={label}>
         {collapsedRender ? (
           collapsedRender()
         ) : (
@@ -83,19 +98,12 @@ export default function RibbonGroup({ label, icon, priority = 50, collapsedRende
     );
   }
 
-  // FULL state: two-row grid with label below
   return (
-    <div
-      ref={(el) => { columnRef.current = el; measureRef.current = el; }}
-      className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)}
-      style={{ minWidth: "max-content" }}
-    >
+    <div ref={fullRef} className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)} style={{ minWidth: "max-content" }}>
       <div style={gridStyle} role="group" aria-label={label}>
         {children}
       </div>
-      <span className="mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-        {label}
-      </span>
+      <span className={labelClass}>{label}</span>
     </div>
   );
 }

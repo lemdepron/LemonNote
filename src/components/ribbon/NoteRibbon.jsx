@@ -86,6 +86,7 @@ export default function NoteRibbon({
   body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
   onFindTags,
   wordGoal = 0,
+  wordCount = 0,
   wordGoalPopoverOpen = false,
   setWordGoalPopoverOpen = () => {},
   wordGoalDraft = "",
@@ -224,9 +225,9 @@ export default function NoteRibbon({
   );
 
   // Word goal target button with popover
-  const wordGoalProgress = wordGoal > 0 ? Math.min(100, Math.round((0 / wordGoal) * 100)) : 0; // Will be updated with actual word count from parent
+  const wordGoalProgress = wordGoal > 0 ? Math.min(100, Math.round((wordCount / wordGoal) * 100)) : 0;
 
-  const WordGoalButton = () => (
+  const wordGoalButton = (
     <Popover open={wordGoalPopoverOpen} onOpenChange={setWordGoalPopoverOpen}>
       <PopoverTrigger asChild>
         <button
@@ -235,13 +236,21 @@ export default function NoteRibbon({
           title={tr("ribbon.wordGoal.wordGoal")}
           aria-label={tr("ribbon.wordGoal.wordGoal")}
           className={cn(
-            "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition flex items-center gap-1.5",
+            "relative shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition flex items-center gap-1.5",
             "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
           )}
         >
           <Target className="h-3.5 w-3.5 shrink-0" />
           {wordGoal > 0 && (
-            <span className="text-[10px] font-mono">{wordGoalDraft || wordGoal}</span>
+            <span className="text-[10px] font-mono tabular-nums">{wordCount}/{wordGoal}</span>
+          )}
+          {wordGoal > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-1.5 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-border"
+            >
+              <span className="block h-full bg-primary" style={{ width: `${wordGoalProgress}%` }} />
+            </span>
           )}
         </button>
       </PopoverTrigger>
@@ -311,7 +320,7 @@ export default function NoteRibbon({
         onTab={chooseTab}
         leading={<><QuickAccess />{leading}</>}
         isFirstTabActive={activeTab === "home"}
-        afterTabs={<WordGoalButton />}
+        afterTabs={wordGoalButton}
         trailing={
           (images?.busy || images?.error) && (
             <div

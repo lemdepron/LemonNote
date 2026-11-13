@@ -39,3 +39,6 @@ dist-ssr
 
 # Files moved aside by cleanup.ps1 (safe to delete later)
 _removed/
+
+# UI check screenshots
+ui-check-out/

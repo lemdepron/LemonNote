@@ -63,7 +63,7 @@ test("overflow appears only when ICON still doesn't fit", () => {
 });
 
 test("priority order respected: typography collapses before clipboard", () => {
-  const state = computeIdealStates(groups, 600);
+  const state = computeIdealStates(groups, 700);
   // Typography should be ICON or OVERFLOW
   assert.ok(state.get("typography") !== GROUP_STATE.FULL);
   // Clipboard should be FULL

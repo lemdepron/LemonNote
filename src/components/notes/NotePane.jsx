@@ -15,7 +15,6 @@ import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
 import MacroBar from "@/components/macros/MacroBar";
 import ExtensionPanels from "@/components/extensions/ExtensionPanels";
-import ExtensionBanners from "@/components/extensions/ExtensionBanners";
 import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
 import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
@@ -1180,7 +1179,7 @@ export default function NotePane({
         <main
           className={cn(
             "pb-24 pt-6",
-            !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
+            !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
             isInSplit && "px-2",
             focus && "pr-12 sm:pr-14"
           )}
@@ -1249,6 +1248,7 @@ export default function NotePane({
             noteInk={noteInk}
             onFindTags={() => setFindTagsOpen(true)}
             wordGoal={wordGoal}
+            wordCount={wordCount}
             wordGoalPopoverOpen={wordGoalPopoverOpen}
             setWordGoalPopoverOpen={setWordGoalPopoverOpen}
             wordGoalDraft={wordGoalDraft}
@@ -1263,7 +1263,7 @@ export default function NotePane({
       <main
         className={cn(
           "pb-24 pt-4",
-          !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
+          !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
           isInSplit && "px-2",
           focus && "pr-12 sm:pr-14"
         )}
@@ -1388,7 +1388,7 @@ export default function NotePane({
         {/* Main content area - centered with reading width, side panel only when open */}
         <div className={cn(
           "mt-6 transition-[max-width] duration-300 ease-out",
-          showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[820px]",
+          showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[1480px]",
           "mx-auto"
         )}>
           <article className="min-w-0 relative w-full">
@@ -1407,7 +1407,6 @@ export default function NotePane({
               </div>
             ) : (
               <>
-                <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
 
                 <div className="mt-6">
                   {aiOpen && !focus && (
@@ -1726,7 +1725,7 @@ export default function NotePane({
 
           {/* Bottom status bar */}
           <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5">
-            <div className="mx-auto max-w-[820px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+            <div className="mx-auto max-w-[1480px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
               <div className="flex items-center gap-4">
                 {/* Word count */}
                 <span className="text-muted-foreground">

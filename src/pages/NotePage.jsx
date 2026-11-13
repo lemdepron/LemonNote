@@ -15,7 +15,6 @@ import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
 import MacroBar from "@/components/macros/MacroBar";
 import ExtensionPanels from "@/components/extensions/ExtensionPanels";
-import ExtensionBanners from "@/components/extensions/ExtensionBanners";
 import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
 import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
@@ -1219,7 +1218,7 @@ export default function NotePage() {
       <VaultHeader />
       <main
         className={cn(
-          "mx-auto max-w-[820px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
+          "mx-auto max-w-[1480px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
           focus && "pr-12 sm:pr-14"
         )}
       >
@@ -1517,7 +1516,6 @@ export default function NotePage() {
                   </form>
                 </div>
 
-                <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
 
                 {/* Folder selector */}
                 <div className="mt-4 flex items-center gap-2">

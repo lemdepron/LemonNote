@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
@@ -49,7 +50,7 @@ export default function VaultHeader({ children }) {
   return (
     <>
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-4 sm:px-6 lg:px-8">
+      <div className={cn("mx-auto flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8", children ? "max-w-[1480px]" : "max-w-[1180px]")}>
         <Link to="/" className="group flex shrink-0 items-center gap-2.5">
           <img
             src="/logo-64.png"
@@ -91,7 +92,7 @@ export default function VaultHeader({ children }) {
       </div>
     </header>
     {children && (
-      <div className="mx-auto max-w-[820px] px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1480px] px-4 sm:px-6 lg:px-8">
         {children}
       </div>
     )}

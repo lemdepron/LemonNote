@@ -1,0 +1,1129 @@
+diff --git a/.gitignore b/.gitignore
+index 286ecda..0e72788 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -39,3 +39,6 @@ dist-ssr
+ 
+ # Files moved aside by cleanup.ps1 (safe to delete later)
+ _removed/
++
++# UI check screenshots
++ui-check-out/
+diff --git a/scripts/test-ribbon-collapse.mjs b/scripts/test-ribbon-collapse.mjs
+index 4a5a417..8b6630c 100644
+--- a/scripts/test-ribbon-collapse.mjs
++++ b/scripts/test-ribbon-collapse.mjs
+@@ -63,7 +63,7 @@ test("overflow appears only when ICON still doesn't fit", () => {
+ });
+ 
+ test("priority order respected: typography collapses before clipboard", () => {
+-  const state = computeIdealStates(groups, 600);
++  const state = computeIdealStates(groups, 700);
+   // Typography should be ICON or OVERFLOW
+   assert.ok(state.get("typography") !== GROUP_STATE.FULL);
+   // Clipboard should be FULL
+diff --git a/scripts/ui-check.mjs b/scripts/ui-check.mjs
+new file mode 100644
+index 0000000..d7e4c37
+--- /dev/null
++++ b/scripts/ui-check.mjs
+@@ -0,0 +1,216 @@
++// LemonNote UI check: opens the running app in a real browser and MEASURES the layout.
++// Usage (PowerShell inside the project folder, with `npm run dev` running in another window):
++//   node scripts/ui-check.mjs                 -> layout + ribbon checks at 3 window sizes
++//   node scripts/ui-check.mjs --themes        -> also screenshots every theme (light + dark)
++//   node scripts/ui-check.mjs --url=http://localhost:5173
++// First time only:  npm i -D playwright   and   npx playwright install chromium
++// Output: ui-check-out/ (screenshots + themes.html). Exit code 1 if any check fails.
++import fs from "node:fs";
++import path from "node:path";
++
++const args = Object.fromEntries(process.argv.slice(2).map((a) => {
++  const [k, v] = a.replace(/^--/, "").split("="); return [k, v ?? true];
++}));
++const BASE = args.url || "http://127.0.0.1:5173";
++const OUT = "ui-check-out";
++fs.mkdirSync(OUT, { recursive: true });
++
++let chromium;
++try { ({ chromium } = await import("playwright")); }
++catch { try { ({ chromium } = await import("playwright-core")); }
++catch { console.error("Missing playwright. Run: npm i -D playwright  then  npx playwright install chromium"); process.exit(2); } }
++
++const browser = await chromium.launch({
++  headless: true,
++  ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, args: ["--no-sandbox"] } : {}),
++});
++
++const fails = [];
++const fail = (where, msg) => { fails.push(`${where}: ${msg}`); console.log(`  FAIL  ${where}: ${msg}`); };
++const ok = (where, msg) => console.log(`  ok    ${where}: ${msg}`);
++const wait = (ms) => new Promise((r) => setTimeout(r, ms));
++
++async function openNote(page, prefs = {}) {
++  await page.goto(BASE, { waitUntil: "load" });
++  await page.evaluate((p) => {
++    const cur = JSON.parse(localStorage.getItem("notecraft:prefs") || "{}");
++    localStorage.setItem("notecraft:prefs", JSON.stringify({ ...cur, ...p }));
++  }, prefs);
++  await page.goto(BASE, { waitUntil: "load" });
++  await wait(2500);
++  // click the card of the seeded note "Tags and search" (falls back to the first note card)
++  const clicked = await page.evaluate(() => {
++    const leaf = [...document.querySelectorAll("*")].find((e) => e.children.length === 0 && /Tags and search/.test(e.textContent || ""));
++    const target = leaf || document.querySelector('a[href^="/note/"]');
++    if (target) { target.click(); return true; } return false;
++  });
++  if (!clicked) throw new Error("Could not find a note to open. Open the Vault home first and make sure at least one note exists.");
++  await page.waitForURL(/\/note\//, { timeout: 15000 });
++  await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
++  await wait(2000);
++}
++
++// the ribbon tab list is the one that contains a tab called "Home" (the note tab strip is another tablist)
++const tagRibbon = () => {
++  const list = [...document.querySelectorAll('[role="tablist"]')].find((l) => [...l.querySelectorAll('[role="tab"]')].some((t) => /^\s*home\s*$/i.test(t.textContent || "")));
++  if (list) list.setAttribute("data-uichk", "ribbon");
++  return !!list;
++};
++
++// ---- measuring helpers, run inside the page ----
++const measureRibbon = () => {
++  const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
++    return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
++  const panel = document.querySelector('[role="tabpanel"]');
++  if (!panel) return { error: "no [role=tabpanel] found (ribbon panel)" };
++  const pr = panel.getBoundingClientRect();
++  const out = { clipped: [], noIcon: [], noName: [], big: [], overflowX: panel.scrollWidth - panel.clientWidth, panelH: Math.round(pr.height), buttons: 0 };
++  for (const b of panel.querySelectorAll("button, [role=button], select, input")) {
++    if (!vis(b)) continue;
++    out.buttons++;
++    const r = b.getBoundingClientRect();
++    const name = (b.getAttribute("aria-label") || b.getAttribute("title") || b.innerText || "").trim();
++    const label = (b.innerText || b.value || "").trim();
++    if (r.right > pr.right + 1 || r.left < pr.left - 1) out.clipped.push(name || b.outerHTML.slice(0, 60));
++    if (b.tagName === "BUTTON" && !b.querySelector("svg") && !label) out.noIcon.push(name || b.outerHTML.slice(0, 60));
++    if (!name && b.tagName === "BUTTON") out.noName.push(b.outerHTML.slice(0, 60));
++    if (r.height > 56) out.big.push(`${name || "?"} (${Math.round(r.width)}x${Math.round(r.height)})`);
++    if (r.width > 260) out.big.push(`${name || "?"} (${Math.round(r.width)}px wide)`);
++  }
++  return out;
++};
++
++const measureLayout = () => {
++  const rect = (el) => el && el.getBoundingClientRect();
++  const vw = document.documentElement.clientWidth;
++  // the left rail: the tallest element touching the left edge
++  let railRight = 0;
++  for (const el of document.querySelectorAll("aside, nav, [data-rail]")) {
++    const r = el.getBoundingClientRect();
++    if (r.left <= 2 && r.height > innerHeight * 0.5 && r.width < 400) railRight = Math.max(railRight, r.right);
++  }
++  const tablist = rect(document.querySelector('[data-uichk="ribbon"]'));
++  const ta = [...document.querySelectorAll("textarea")].map(rect).filter((r) => r && r.width > 100)[0];
++  const bodyEls = [...document.querySelectorAll("textarea, .nb-markdown, .nb-reader, article")].map(rect).filter((r) => r && r.width > 100 && r.height > 50);
++  const bodyLeft = bodyEls.length ? Math.min(...bodyEls.map((r) => r.left)) : null;
++  const bodyRight = bodyEls.length ? Math.max(...bodyEls.map((r) => r.right)) : null;
++  const logo = [...document.querySelectorAll("header img, header a")].map(rect).find((r) => r && r.width > 10);
++  const scrollbar = innerWidth - vw;
++  const goalBar = [...document.querySelectorAll("*")].filter((el) => el.children.length < 6 && /word goal/i.test(el.textContent || "") && el.getBoundingClientRect().width > 300);
++  const goalBtn = [...document.querySelectorAll("button, [role=button]")].find((b) => /goal/i.test((b.getAttribute("aria-label") || "") + (b.title || "")) );
++  const tabs = [...document.querySelectorAll('[data-uichk="ribbon"] [role="tab"]')].map(rect);
++  const lastTab = tabs.length ? tabs[tabs.length - 1] : null;
++  const gb = goalBtn ? rect(goalBtn) : null;
++  return {
++    vw, railRight: Math.round(railRight), scrollbar,
++    tablist: tablist && { l: Math.round(tablist.left), r: Math.round(tablist.right) },
++    body: bodyLeft != null ? { l: Math.round(bodyLeft), r: Math.round(bodyRight) } : null,
++    logoLeft: logo ? Math.round(logo.left) : null,
++    goalBarCount: goalBar.length,
++    goalBtn: gb ? { l: Math.round(gb.left), cy: Math.round(gb.top + gb.height / 2) } : null,
++    lastTab: lastTab ? { r: Math.round(lastTab.right), cy: Math.round(lastTab.top + lastTab.height / 2), h: Math.round(lastTab.height) } : null,
++  };
++};
++
++async function checkViewport(w, h) {
++  const where = `${w}x${h}`;
++  console.log(`\n== Window ${where}`);
++  const ctx = await browser.newContext({ viewport: { width: w, height: h } });
++  const page = await ctx.newPage();
++  const errors = [];
++  page.on("pageerror", (e) => errors.push(e.message.slice(0, 160)));
++  await openNote(page);
++  await page.screenshot({ path: path.join(OUT, `note-${where}.png`) });
++
++  if (!(await page.evaluate(tagRibbon))) { fail(where, "ribbon tab list (with a Home tab) not found"); await ctx.close(); return; }
++  // 1. layout
++  const L = await page.evaluate(measureLayout);
++  const availL = (L.tablist?.l ?? 0) - L.railRight;
++  const availR = L.vw - (L.tablist?.r ?? L.vw);
++  if (!L.tablist) fail(where, "no ribbon tab list found");
++  else {
++    const diff = Math.abs(availL - availR);
++    if (diff > 40) fail(where, `empty space differs left ${availL}px vs right ${availR}px (max difference 40px)`);
++    else ok(where, `left space ${availL}px, right space ${availR}px`);
++    const usable = L.vw - L.railRight;
++    const used = L.tablist.r - L.tablist.l;
++    if (used < usable * 0.8) fail(where, `ribbon uses only ${Math.round((used / usable) * 100)}% of the width next to the rail (need at least 80%)`);
++    else ok(where, `ribbon width ${used}px = ${Math.round((used / usable) * 100)}% of usable width`);
++  }
++  if (L.body && L.tablist) {
++    if (Math.abs(L.body.l - L.tablist.l) > 3) fail(where, `note body left edge ${L.body.l}px but ribbon left edge ${L.tablist.l}px (must match within 3px)`);
++    if (Math.abs(L.body.r - L.tablist.r) > 3) fail(where, `note body right edge ${L.body.r}px but ribbon right edge ${L.tablist.r}px (must match within 3px)`);
++  } else fail(where, "could not find the note body to measure");
++  if (L.goalBarCount > 0) fail(where, "the big WORD GOAL bar still exists");
++  if (!L.goalBtn) fail(where, "no goal button found (needs aria-label or title containing 'goal')");
++  else if (L.lastTab) {
++    const inRow = Math.abs(L.goalBtn.cy - L.lastTab.cy) <= L.lastTab.h / 2;
++    const afterShare = L.goalBtn.l >= L.lastTab.r - 4 && L.goalBtn.l - L.lastTab.r < 120;
++    if (!inRow || !afterShare) fail(where, `goal button must sit right after the last tab (SHARE): button x=${L.goalBtn.l}, last tab ends x=${L.lastTab.r}`);
++    else ok(where, "goal button is next to the SHARE tab");
++  }
++
++  // 2. every ribbon tab
++  const ribbonTabs = page.locator('[data-uichk="ribbon"] [role="tab"]');
++  const tabCount = await ribbonTabs.count();
++  if (tabCount < 7) fail(where, `expected 7 ribbon tabs, found ${tabCount}`);
++  const heights = [];
++  for (let i = 0; i < tabCount; i++) {
++    const tab = ribbonTabs.nth(i);
++    const name = ((await tab.innerText()) || `tab${i}`).trim();
++    await tab.click(); await wait(450);
++    const R = await page.evaluate(measureRibbon);
++    const tw = `${where} / ${name}`;
++    if (R.error) { fail(tw, R.error); continue; }
++    heights.push(R.panelH);
++    if (R.overflowX > 1) fail(tw, `ribbon scrolls sideways by ${R.overflowX}px (must be 0)`);
++    if (R.clipped.length) fail(tw, `${R.clipped.length} buttons cut off at the edge: ${R.clipped.slice(0, 4).join(", ")}`);
++    if (R.noIcon.length) fail(tw, `${R.noIcon.length} buttons have no icon and no text: ${R.noIcon.slice(0, 4).join(" | ")}`);
++    if (R.noName.length) fail(tw, `${R.noName.length} buttons have no name (aria-label/title)`);
++    if (R.big.length) fail(tw, `oversized buttons: ${R.big.slice(0, 4).join(", ")}`);
++    if (R.panelH > 140) fail(tw, `ribbon panel is ${R.panelH}px tall (max 140)`);
++    if (!R.overflowX && !R.clipped.length && !R.noIcon.length && !R.big.length) ok(tw, `${R.buttons} controls, panel ${R.panelH}px tall`);
++    await page.screenshot({ path: path.join(OUT, `ribbon-${where}-${name.replace(/\W+/g, "")}.png`), clip: { x: 0, y: 0, width: w, height: Math.min(h, 420) } });
++  }
++  if (heights.length && Math.max(...heights) - Math.min(...heights) > 8) fail(where, `ribbon height jumps between tabs: ${heights.join(", ")}px (all tabs must be the same height, within 8px)`);
++  if (errors.length) fail(where, `page errors: ${errors.slice(0, 3).join(" | ")}`);
++  await ctx.close();
++}
++
++async function themeSheet() {
++  console.log("\n== Themes (1600x900)");
++  const ctx = await browser.newContext({ viewport: { width: 1600, height: 900 } });
++  const page = await ctx.newPage();
++  await page.goto(BASE, { waitUntil: "load" }); await wait(1500);
++  const ids = await page.evaluate(async () => (await import("/src/lib/theme-presets.js")).THEME_PRESETS.map((p) => p.id));
++  const cards = [];
++  const seen = new Map();
++  for (const id of ids) {
++    for (const mode of ["light", "dark"]) {
++      await openNote(page, { "theme:preset": id, theme: mode });
++      const file = `theme-${id}-${mode}.png`;
++      await page.screenshot({ path: path.join(OUT, file) });
++      const info = await page.evaluate(() => {
++        const cs = getComputedStyle(document.body);
++        const card = document.querySelector(".nb-card, [class*=bg-card]");
++        const prim = getComputedStyle(document.documentElement).getPropertyValue("--primary").trim();
++        return { bg: cs.backgroundColor, bgImg: cs.backgroundImage.slice(0, 40), prim, radius: getComputedStyle(document.documentElement).getPropertyValue("--radius").trim() };
++      });
++      const key = `${mode}|${info.bg}|${info.prim}|${info.radius}`;
++      if (seen.has(key)) fail(`theme ${id}/${mode}`, `looks the same as ${seen.get(key)} (same page colour, accent and radius)`);
++      else seen.set(key, `${id}/${mode}`);
++      cards.push({ id, mode, file });
++    }
++  }
++  fs.writeFileSync(path.join(OUT, "themes.html"),
++    `<!doctype html><meta charset=utf-8><title>LemonNote themes</title><body style="font:14px system-ui;background:#222;color:#eee;margin:16px"><h1>${ids.length} themes</h1><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px">` +
++    cards.map((c) => `<figure style="margin:0"><img src="${c.file}" style="width:100%;border:1px solid #555"><figcaption>${c.id} (${c.mode})</figcaption></figure>`).join("") + "</div>");
++  ok("themes", `${cards.length} screenshots, open ${OUT}/themes.html`);
++  await ctx.close();
++}
++
++for (const [w, h] of [[800, 700], [1275, 720], [1920, 1080]]) await checkViewport(w, h);
++if (args.themes) await themeSheet();
++await browser.close();
++console.log(`\n${fails.length ? `FAILED: ${fails.length} problems` : "ALL CHECKS PASSED"}  (screenshots in ${OUT}/)`);
++process.exit(fails.length ? 1 : 0);
+diff --git a/src/components/notes/NotePane.jsx b/src/components/notes/NotePane.jsx
+index 9c6046b..bfdc3c4 100644
+--- a/src/components/notes/NotePane.jsx
++++ b/src/components/notes/NotePane.jsx
+@@ -15,7 +15,6 @@ import AiAssist from "@/components/notes/AiAssist";
+ import LinkRail from "@/components/vault/LinkRail";
+ import MacroBar from "@/components/macros/MacroBar";
+ import ExtensionPanels from "@/components/extensions/ExtensionPanels";
+-import ExtensionBanners from "@/components/extensions/ExtensionBanners";
+ import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
+ import NoteInkSurface from "@/components/ink/NoteInkSurface";
+ import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
+@@ -1180,7 +1179,7 @@ export default function NotePane({
+         <main
+           className={cn(
+             "pb-24 pt-6",
+-            !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
++            !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
+             isInSplit && "px-2",
+             focus && "pr-12 sm:pr-14"
+           )}
+@@ -1249,6 +1248,7 @@ export default function NotePane({
+             noteInk={noteInk}
+             onFindTags={() => setFindTagsOpen(true)}
+             wordGoal={wordGoal}
++            wordCount={wordCount}
+             wordGoalPopoverOpen={wordGoalPopoverOpen}
+             setWordGoalPopoverOpen={setWordGoalPopoverOpen}
+             wordGoalDraft={wordGoalDraft}
+@@ -1263,7 +1263,7 @@ export default function NotePane({
+       <main
+         className={cn(
+           "pb-24 pt-4",
+-          !isInSplit && "mx-auto max-w-[820px] px-5 sm:px-6 lg:px-8",
++          !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
+           isInSplit && "px-2",
+           focus && "pr-12 sm:pr-14"
+         )}
+@@ -1388,7 +1388,7 @@ export default function NotePane({
+         {/* Main content area - centered with reading width, side panel only when open */}
+         <div className={cn(
+           "mt-6 transition-[max-width] duration-300 ease-out",
+-          showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[820px]",
++          showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[1480px]",
+           "mx-auto"
+         )}>
+           <article className="min-w-0 relative w-full">
+@@ -1407,7 +1407,6 @@ export default function NotePane({
+               </div>
+             ) : (
+               <>
+-                <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
+ 
+                 <div className="mt-6">
+                   {aiOpen && !focus && (
+@@ -1726,7 +1725,7 @@ export default function NotePane({
+ 
+           {/* Bottom status bar */}
+           <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5">
+-            <div className="mx-auto max-w-[820px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
++            <div className="mx-auto max-w-[1480px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+               <div className="flex items-center gap-4">
+                 {/* Word count */}
+                 <span className="text-muted-foreground">
+diff --git a/src/components/ribbon/NoteRibbon.jsx b/src/components/ribbon/NoteRibbon.jsx
+index 105d143..a15a110 100644
+--- a/src/components/ribbon/NoteRibbon.jsx
++++ b/src/components/ribbon/NoteRibbon.jsx
+@@ -86,6 +86,7 @@ export default function NoteRibbon({
+   body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
+   onFindTags,
+   wordGoal = 0,
++  wordCount = 0,
+   wordGoalPopoverOpen = false,
+   setWordGoalPopoverOpen = () => {},
+   wordGoalDraft = "",
+@@ -224,9 +225,9 @@ export default function NoteRibbon({
+   );
+ 
+   // Word goal target button with popover
+-  const wordGoalProgress = wordGoal > 0 ? Math.min(100, Math.round((0 / wordGoal) * 100)) : 0; // Will be updated with actual word count from parent
++  const wordGoalProgress = wordGoal > 0 ? Math.min(100, Math.round((wordCount / wordGoal) * 100)) : 0;
+ 
+-  const WordGoalButton = () => (
++  const wordGoalButton = (
+     <Popover open={wordGoalPopoverOpen} onOpenChange={setWordGoalPopoverOpen}>
+       <PopoverTrigger asChild>
+         <button
+@@ -235,13 +236,21 @@ export default function NoteRibbon({
+           title={tr("ribbon.wordGoal.wordGoal")}
+           aria-label={tr("ribbon.wordGoal.wordGoal")}
+           className={cn(
+-            "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition flex items-center gap-1.5",
++            "relative shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition flex items-center gap-1.5",
+             "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+           )}
+         >
+           <Target className="h-3.5 w-3.5 shrink-0" />
+           {wordGoal > 0 && (
+-            <span className="text-[10px] font-mono">{wordGoalDraft || wordGoal}</span>
++            <span className="text-[10px] font-mono tabular-nums">{wordCount}/{wordGoal}</span>
++          )}
++          {wordGoal > 0 && (
++            <span
++              aria-hidden="true"
++              className="absolute inset-x-1.5 bottom-0.5 h-0.5 overflow-hidden rounded-full bg-border"
++            >
++              <span className="block h-full bg-primary" style={{ width: `${wordGoalProgress}%` }} />
++            </span>
+           )}
+         </button>
+       </PopoverTrigger>
+@@ -311,7 +320,7 @@ export default function NoteRibbon({
+         onTab={chooseTab}
+         leading={<><QuickAccess />{leading}</>}
+         isFirstTabActive={activeTab === "home"}
+-        afterTabs={<WordGoalButton />}
++        afterTabs={wordGoalButton}
+         trailing={
+           (images?.busy || images?.error) && (
+             <div
+diff --git a/src/components/ribbon/RibbonGroup.jsx b/src/components/ribbon/RibbonGroup.jsx
+index 2025d96..88e0d6d 100644
+--- a/src/components/ribbon/RibbonGroup.jsx
++++ b/src/components/ribbon/RibbonGroup.jsx
+@@ -1,22 +1,44 @@
+ import { useId, useLayoutEffect, useRef } from "react";
++import { createPortal } from "react-dom";
+ import { GroupMenu, MenuLabel, useRibbonCollapseApi, useRibbonCollapseState, GROUP_STATE } from "@/components/ribbon/RibbonKit";
+ import { cn } from "@/lib/utils";
+ 
++const gridStyle = {
++  display: "grid",
++  gridAutoFlow: "column",
++  gridTemplateRows: "repeat(2, 32px)",
++  gridAutoColumns: "max-content",
++  gap: "4px",
++  alignItems: "center",
++};
++
++const labelClass =
++  "mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55";
++
++/** Fallback when a group has no icon: its first letters, never a bare chevron. */
++function LetterIcon({ label, className }) {
++  return (
++    <span className={cn("font-mono text-[10px] font-semibold uppercase leading-none", className)}>
++      {String(label || "?").slice(0, 2)}
++    </span>
++  );
++}
++
+ /**
+  * One section of the ribbon; controls flow in columns 2 rows high, name below.
+  * `priority` decides the collapse order: a lower number collapses first.
+- * Three states:
++ * States (chosen by the provider from the measured widths):
+  * - FULL: icon buttons in two rows with the group label under them
+- * - ICON: one 32px button with group icon + chevron, opens popover with full content
+- * - OVERFLOW: not rendered in main ribbon, appears in "More" popover
+- * `collapsedRender` can replace the default ICON form (Home tab uses it to keep the font-size stepper visible).
++ * - ICON: one 32px button (group icon + chevron) that opens the group's buttons
++ * - OVERFLOW: shown inside the "More" popover
++ * `collapsedRender` can replace the ICON form (Home keeps its font-size stepper).
+  */
+ export default function RibbonGroup({ label, icon, priority = 50, collapsedRender, className, children }) {
+   const api = useRibbonCollapseApi();
+   const state = useRibbonCollapseState();
+   const id = useId();
+-  const columnRef = useRef(null);
+-  const measureRef = useRef(null);
++  const fullRef = useRef(null);
++  const iconRef = useRef(null);
+   const groupState = state.groupState(id);
+ 
+   useLayoutEffect(() => {
+@@ -24,49 +46,42 @@ export default function RibbonGroup({ label, icon, priority = 50, collapsedRende
+     return () => api?.unregister(id);
+   }, [api, id, priority]);
+ 
+-  // Measure the natural (expanded) width from the hidden measuring copy
+-  // so groups do not flicker or stay collapsed after the window grows.
++  // Measure the natural width while the group is FULL; the value is kept while collapsed.
+   useLayoutEffect(() => {
+-    if (!measureRef.current) return undefined;
+-    const el = measureRef.current;
+-    const measure = () => api?.setWidth(id, el.offsetWidth);
++    if (groupState !== GROUP_STATE.FULL || !fullRef.current) return undefined;
++    const el = fullRef.current;
++    const measure = () => api?.setWidth(id, Math.ceil(el.getBoundingClientRect().width));
+     measure();
+     const ro = new ResizeObserver(measure);
+     ro.observe(el);
+     return () => ro.disconnect();
+-  }, [api, id]);
++  }, [api, id, groupState]);
+ 
+-  const gridStyle = {
+-    display: "grid",
+-    gridAutoFlow: "column",
+-    gridTemplateRows: "repeat(2, 32px)",
+-    gridAutoColumns: "max-content",
+-    gap: "4px",
+-    alignItems: "center",
+-  };
++  // Measure the real width of the collapsed form (button + padding, or a custom form).
++  useLayoutEffect(() => {
++    if (groupState !== GROUP_STATE.ICON || !iconRef.current) return undefined;
++    const el = iconRef.current;
++    const measure = () => api?.setIconWidth(id, Math.ceil(el.getBoundingClientRect().width));
++    measure();
++    const ro = new ResizeObserver(measure);
++    ro.observe(el);
++    return () => ro.disconnect();
++  }, [api, id, groupState]);
+ 
+-  // OVERFLOW state: not rendered in main ribbon (handled by More menu)
+   if (groupState === GROUP_STATE.OVERFLOW) {
+-    return (
+-      <div
+-        ref={measureRef}
+-        style={{ display: 'none' }}
+-        aria-hidden="true"
+-      >
+-        <div style={gridStyle} role="group" aria-label={label}>
+-          {children}
+-        </div>
+-        <span className="mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+-          {label}
+-        </span>
+-      </div>
++    if (!state.moreNode) return null;
++    return createPortal(
++      <section role="group" aria-label={label}>
++        <MenuLabel>{label}</MenuLabel>
++        <div style={gridStyle}>{children}</div>
++      </section>,
++      state.moreNode
+     );
+   }
+ 
+-  // ICON state: single 32px button with icon + chevron
+   if (groupState === GROUP_STATE.ICON) {
+     return (
+-      <div className="flex shrink-0 items-center" role="group" aria-label={label}>
++      <div ref={iconRef} className="flex shrink-0 items-center px-1.5" role="group" aria-label={label}>
+         {collapsedRender ? (
+           collapsedRender()
+         ) : (
+@@ -83,19 +98,12 @@ export default function RibbonGroup({ label, icon, priority = 50, collapsedRende
+     );
+   }
+ 
+-  // FULL state: two-row grid with label below
+   return (
+-    <div
+-      ref={(el) => { columnRef.current = el; measureRef.current = el; }}
+-      className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)}
+-      style={{ minWidth: "max-content" }}
+-    >
++    <div ref={fullRef} className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)} style={{ minWidth: "max-content" }}>
+       <div style={gridStyle} role="group" aria-label={label}>
+         {children}
+       </div>
+-      <span className="mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+-        {label}
+-      </span>
++      <span className={labelClass}>{label}</span>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/components/ribbon/RibbonKit.jsx b/src/components/ribbon/RibbonKit.jsx
+index adb91b7..fd3b21f 100644
+--- a/src/components/ribbon/RibbonKit.jsx
++++ b/src/components/ribbon/RibbonKit.jsx
+@@ -1,4 +1,4 @@
+-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
++import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+ import { ChevronDown, MoreHorizontal } from "lucide-react";
+ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+ import {
+@@ -13,13 +13,7 @@ import {
+ import RibbonButton from "@/components/ribbon/RibbonButton";
+ import { t } from "@/lib/i18n";
+ import { cn } from "@/lib/utils";
+-import {
+-  pickNextToCollapse,
+-  pickNextToExpand,
+-  calculateTotalWidth,
+-  computeIdealStates,
+-  GROUP_STATE,
+-} from "@/lib/ribbon-collapse";
++import { computeIdealStates, GROUP_STATE, ICON_WIDTH } from "@/lib/ribbon-collapse";
+ 
+ export { GROUP_STATE };
+ 
+@@ -185,179 +179,120 @@ export const useRibbonCollapseApi = () => useContext(RibbonCollapseApiContext);
+ export const useRibbonCollapseState = () => useContext(RibbonCollapseStateContext);
+ 
+ /**
+- * Wraps the ribbon panel. It measures the panel width, collects each group's
+- * natural width and priority, and manages three states:
+- * - FULL: shows all buttons in 2-row grid with label below
+- * - ICON: shows single 32px button with icon + chevron, opens popover with full content
+- * - OVERFLOW: not shown in main ribbon, appears in "More" popover
++ * Wraps the ribbon panel and decides, from the measured widths, which groups are
++ * FULL (icons in two rows with the label), ICON (one button that opens the group)
++ * or OVERFLOW (inside the "More" menu). The decision is a pure function of the
++ * widths (see src/lib/ribbon-collapse.js), computed during render: there is no
++ * hidden copy of the groups and no effect loop, so it cannot flicker.
+  */
+-export function RibbonCollapseProvider({ tab, children }) {
+-  const panelRef = useRef(null);
+-  const measureRef = useRef(null); // Hidden element for measuring natural widths
+-  const [entries, setEntries] = useState(() => new Map());
+-  const [groupState, setGroupState] = useState(() => new Map()); // Map<id, GROUP_STATE>
++export function RibbonCollapseProvider({ children }) {
++  const wrapRef = useRef(null);
+   const [available, setAvailable] = useState(0);
++  const [entries, setEntries] = useState(() => new Map());
+   const [moreOpen, setMoreOpen] = useState(false);
++  const [moreNode, setMoreNode] = useState(null);
+ 
+-  // Measure the visible panel width.
+   useLayoutEffect(() => {
+-    const el = panelRef.current;
++    const el = wrapRef.current;
+     if (!el) return undefined;
+-    const update = () => setAvailable(el.clientWidth);
+-    update();
+-    const ro = new ResizeObserver(update);
++    // 2px for the panel border
++    const measure = () => setAvailable(Math.max(0, Math.floor(el.clientWidth) - 2));
++    measure();
++    const ro = new ResizeObserver(measure);
+     ro.observe(el);
+     return () => ro.disconnect();
+-  }, [tab]);
+-
+-  const register = useCallback((id, priority) => {
+-    setEntries((prev) => {
+-      if (prev.has(id)) return prev;
+-      const next = new Map(prev);
+-      next.set(id, { id, priority, width: 0 });
+-      return next;
+-    });
+-  }, []);
+-
+-  const unregister = useCallback((id) => {
+-    setEntries((prev) => {
+-      if (!prev.has(id)) return prev;
+-      const next = new Map(prev);
+-      next.delete(id);
+-      return next;
+-    });
+-    setGroupState((prev) => {
+-      if (!prev.has(id)) return prev;
+-      const next = new Map(prev);
+-      next.delete(id);
+-      return next;
+-    });
+   }, []);
+ 
+-  const setWidth = useCallback((id, width) => {
+-    setEntries((prev) => {
+-      const entry = prev.get(id);
+-      if (!entry || entry.width === width) return prev;
+-      const next = new Map(prev);
+-      next.set(id, { ...entry, width });
+-      return next;
+-    });
++  const api = useMemo(() => {
++    const patch = (id, fn) =>
++      setEntries((prev) => {
++        const old = prev.get(id);
++        if (!old) return prev;
++        const next = fn(old);
++        if (next === old) return prev;
++        const map = new Map(prev);
++        map.set(id, next);
++        return map;
++      });
++    return {
++      register: (id, priority) =>
++        setEntries((prev) => {
++          const old = prev.get(id);
++          if (old && old.priority === priority) return prev;
++          const map = new Map(prev);
++          map.set(id, { id, priority, width: old?.width || 0, iconWidth: old?.iconWidth || ICON_WIDTH });
++          return map;
++        }),
++      unregister: (id) =>
++        setEntries((prev) => {
++          if (!prev.has(id)) return prev;
++          const map = new Map(prev);
++          map.delete(id);
++          return map;
++        }),
++      setWidth: (id, width) => patch(id, (e) => (e.width === width ? e : { ...e, width })),
++      setIconWidth: (id, iconWidth) => patch(id, (e) => (e.iconWidth === iconWidth ? e : { ...e, iconWidth })),
++    };
+   }, []);
+ 
+-  // Compute ideal states whenever available width or entries change
+-  useLayoutEffect(() => {
+-    if (!available) return;
+-    const groupsArray = [...entries.values()];
+-    const idealStates = computeIdealStates(groupsArray, available);
+-    setGroupState(idealStates);
+-  }, [entries, available, tab]);
+-
+-  // Also handle incremental changes for smoother animation
+-  useLayoutEffect(() => {
+-    if (!available) return;
+-    const groupsArray = [...entries.values()];
+-    const totalWidth = calculateTotalWidth(groupsArray, groupState);
+-    if (totalWidth > available + 1) {
+-      const next = pickNextToCollapse(groupsArray, groupState);
+-      if (next) {
+-        const currentState = groupState.get(next.id) || GROUP_STATE.FULL;
+-        const toState = currentState === GROUP_STATE.FULL ? GROUP_STATE.ICON : GROUP_STATE.OVERFLOW;
+-        setGroupState((prev) => {
+-          const copy = new Map(prev);
+-          copy.set(next.id, toState);
+-          return copy;
+-        });
+-      }
+-    } else if (totalWidth < available - 8) {
+-      const next = pickNextToExpand(groupsArray, groupState, available - totalWidth);
+-      if (next) {
+-        const currentState = groupState.get(next.id) || GROUP_STATE.FULL;
+-        const toState = currentState === GROUP_STATE.OVERFLOW ? GROUP_STATE.ICON : GROUP_STATE.FULL;
+-        setGroupState((prev) => {
+-          const copy = new Map(prev);
+-          copy.set(next.id, toState);
+-          return copy;
+-        });
+-      }
+-    }
+-  }, [entries, available, groupState, tab]);
+-
+-  const api = useMemo(() => ({ register, unregister, setWidth }), [register, unregister, setWidth]);
+-  const state = useMemo(() => ({ groupState: (id) => groupState.get(id) || GROUP_STATE.FULL }), [groupState]);
++  const states = useMemo(() => computeIdealStates([...entries.values()], available), [entries, available]);
++  const overflowCount = useMemo(() => [...states.values()].filter((v) => v === GROUP_STATE.OVERFLOW).length, [states]);
+ 
+-  // Get overflow groups for the More menu
+-  const overflowGroups = useMemo(() => {
+-    return [...entries.values()].filter((g) => (groupState.get(g.id) || GROUP_STATE.FULL) === GROUP_STATE.OVERFLOW);
+-  }, [entries, groupState]);
++  const stateValue = useMemo(
++    () => ({
++      groupState: (id) => states.get(id) || GROUP_STATE.FULL,
++      overflowCount,
++      moreOpen,
++      setMoreOpen,
++      moreNode,
++      setMoreNode,
++    }),
++    [states, overflowCount, moreOpen, moreNode]
++  );
+ 
+   return (
+     <RibbonCollapseApiContext.Provider value={api}>
+-      <RibbonCollapseStateContext.Provider value={state}>
+-        <div ref={panelRef} className="overflow-hidden bg-background border-b border-border">
+-          {/* Hidden measuring element - renders all groups in FULL state to get natural widths */}
+-          <div
+-            ref={measureRef}
+-            style={{
+-              position: 'absolute',
+-              visibility: 'hidden',
+-              pointerEvents: 'none',
+-              height: 0,
+-              overflow: 'hidden',
+-              whiteSpace: 'nowrap',
+-            }}
+-            aria-hidden="true"
+-          >
+-            {children}
+-          </div>
+-          {/* Visible ribbon row */}
+-          <div className="flex items-stretch min-h-[44px]" role="group" aria-label={t("ribbon.groupsAria")}>
+-            {children}
+-            {/* More button (overflow menu) */}
+-            {overflowGroups.length > 0 && (
+-              <MoreOverflowMenu
+-                groups={overflowGroups}
+-                open={moreOpen}
+-                onOpenChange={setMoreOpen}
+-              />
+-            )}
+-          </div>
++      <RibbonCollapseStateContext.Provider value={stateValue}>
++        <div ref={wrapRef} className="w-full min-w-0">
++          {children}
+         </div>
+       </RibbonCollapseStateContext.Provider>
+     </RibbonCollapseApiContext.Provider>
+   );
+ }
+ 
+-/** The "More" overflow menu button */
+-function MoreOverflowMenu({ groups, open, onOpenChange }) {
++/**
++ * The "More" button at the end of the ribbon row. It only appears when some
++ * groups did not fit. The groups themselves render into the popover through a
++ * portal (see RibbonGroup), so their buttons keep working normally.
++ */
++export function RibbonMore() {
++  const state = useRibbonCollapseState();
++  if (!state || state.overflowCount === 0) return null;
+   return (
+-    <Popover open={open} onOpenChange={onOpenChange}>
+-      <PopoverTrigger asChild>
+-        <button
+-          type="button"
+-          onMouseDown={(event) => event.preventDefault()}
+-          title={t("ribbon.more")}
+-          aria-label={t("ribbon.more")}
+-          aria-expanded={open}
+-          className="flex h-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card/60 px-2 text-foreground/85 transition hover:bg-accent hover:text-foreground"
++    <div className="flex shrink-0 items-center px-1.5">
++      <Popover open={state.moreOpen} onOpenChange={state.setMoreOpen}>
++        <PopoverTrigger asChild>
++          <button
++            type="button"
++            onMouseDown={(event) => event.preventDefault()}
++            title={t("ribbon.more")}
++            aria-label={t("ribbon.more")}
++            className="flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-card/60 transition hover:bg-accent hover:text-foreground"
++          >
++            <MoreHorizontal className="h-4 w-4" />
++          </button>
++        </PopoverTrigger>
++        <PopoverContent
++          align="end"
++          className="max-h-[70vh] w-[min(92vw,420px)] overflow-auto p-2"
++          onOpenAutoFocus={(event) => event.preventDefault()}
++          onCloseAutoFocus={(event) => event.preventDefault()}
+         >
+-          <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
+-        </button>
+-      </PopoverTrigger>
+-      <PopoverContent
+-        align="end"
+-        style={{ width: 360 }}
+-        className="max-h-[70vh] overflow-auto p-2"
+-        onOpenAutoFocus={(event) => event.preventDefault()}
+-        onCloseAutoFocus={(event) => event.preventDefault()}
+-      >
+-        {groups.map((group) => (
+-          <div key={group.id} className="mb-2 last:mb-0">
+-            <MenuLabel>{group.label}</MenuLabel>
+-            <div style={groupGridStyle}>{group.children}</div>
+-          </div>
+-        ))}
+-      </PopoverContent>
+-    </Popover>
++          <div ref={state.setMoreNode} className="flex flex-col gap-3" />
++        </PopoverContent>
++      </Popover>
++    </div>
+   );
+ }
+ 
+@@ -387,7 +322,7 @@ export function GroupMenu({ icon: Icon, label, width = 320, children }) {
+           aria-expanded={open}
+           className="flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-border/70 bg-card/60 px-2 transition hover:bg-accent hover:text-foreground"
+         >
+-          {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
++          {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : <span className="font-mono text-[10px] font-semibold uppercase leading-none">{String(label || "?").slice(0, 2)}</span>}
+           <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+         </button>
+       </PopoverTrigger>
+@@ -465,12 +400,13 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, cla
+         <div
+           role="tabpanel"
+           className={cn(
+-            "flex w-full min-w-0 items-stretch divide-x divide-border border border-border bg-card",
++            "flex h-[96px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
+             "rounded-xl",
+             isFirstTabActive ? "rounded-ss-none" : ""
+           )}
+         >
+           {children}
++          <RibbonMore />
+           {trailing}
+         </div>
+       </RibbonCollapseProvider>
+diff --git a/src/components/themes/ThemeGallery.jsx b/src/components/themes/ThemeGallery.jsx
+index 95e0c04..2aebdca 100644
+--- a/src/components/themes/ThemeGallery.jsx
++++ b/src/components/themes/ThemeGallery.jsx
+@@ -3,6 +3,7 @@ import { Check, RotateCcw } from "lucide-react";
+ import {
+   DEFAULT_PRESET,
+   THEME_PRESETS,
++  presetPreview,
+   readPresetId,
+   setPreset,
+ } from "@/lib/theme-presets";
+@@ -14,47 +15,65 @@ const GROUPS = [
+   { id: "dark", label: "Dark" },
+ ];
+ 
++const PREVIEW_COLOR_KEYS = [
++  "--background",
++  "--foreground",
++  "--card",
++  "--card-foreground",
++  "--primary",
++  "--primary-foreground",
++  "--secondary",
++  "--secondary-foreground",
++  "--border",
++  "--ring",
++];
++const PREVIEW_STYLE_KEYS = [
++  "--r-control",
++  "--r-card",
++  "--r-pill",
++  "--r-tab",
++  "--border-width",
++  "--shadow-card",
++  "--shadow-pop",
++  "--font-heading",
++  "--font-body",
++];
++
++/**
++ * A small card, tag, tab and button drawn with THIS theme's own tokens and background.
++ * The tokens are plain "H S% L%" triples, exactly as the app's CSS expects them
++ * (the CSS wraps them in hsl(var(--x))). The default theme has no tokens of its own,
++ * so it simply shows the live colours.
++ */
+ function ThemeMiniPreview({ preset, mode }) {
+   const tokens = preset?.tokens?.[mode];
+-  if (!tokens || !tokens["--background"]) return null;
+-
+-  const style = {
+-    // Apply theme tokens as inline styles
+-    '--background': `hsl(${tokens["--background"]})`,
+-    '--foreground': `hsl(${tokens["--foreground"]})`,
+-    '--card': `hsl(${tokens["--card"]})`,
+-    '--card-foreground': `hsl(${tokens["--card-foreground"]})`,
+-    '--primary': `hsl(${tokens["--primary"]})`,
+-    '--primary-foreground': `hsl(${tokens["--primary-foreground"]})`,
+-    '--secondary': `hsl(${tokens["--secondary"]})`,
+-    '--secondary-foreground': `hsl(${tokens["--secondary-foreground"]})`,
+-    '--border': `hsl(${tokens["--border"]})`,
+-    '--ring': `hsl(${tokens["--ring"]})`,
+-    '--r-control': tokens["--r-control"],
+-    '--r-card': tokens["--r-card"],
+-    '--r-pill': tokens["--r-pill"],
+-    '--r-tab': tokens["--r-tab"],
+-    '--border-width': tokens["--border-width"],
+-    '--shadow-card': tokens["--shadow-card"],
+-    '--shadow-pop': tokens["--shadow-pop"],
+-    '--font-heading': tokens["--font-heading"],
+-    '--font-body': tokens["--font-body"],
+-  };
++  const hasTokens = Boolean(tokens && tokens["--background"]);
++  let style = {};
++  if (hasTokens) {
++    for (const key of [...PREVIEW_COLOR_KEYS, ...PREVIEW_STYLE_KEYS]) {
++      if (tokens[key] !== undefined) style[key] = tokens[key];
++    }
++    // Hard-offset shadows use the theme's ink colour, not the app's shadow colour.
++    style["--shadow"] = tokens["--shadow"] || (tokens["--shadow-style"] === "hard-offset" ? tokens["--foreground"] : mode === "dark" ? "0 0% 0%" : "0 0% 18%");
++    style = { ...style, ...presetPreview(preset, mode) };
++  }
+ 
+   return (
+     <div
+       className="nb-theme-preview"
+       style={style}
+-      data-shadow-style={tokens["--shadow-style"]}
+-      data-tab-style={tokens["--tab-style"]}
+-      data-button-style={tokens["--button-style"]}
++      data-shadow-style={hasTokens ? tokens["--shadow-style"] : undefined}
++      data-tab-style={hasTokens ? tokens["--tab-style"] : undefined}
++      data-button-style={hasTokens ? tokens["--button-style"] : undefined}
+     >
+       <div className="nb-preview-card nb-card p-3 space-y-2">
+         <div className="flex items-center gap-2">
+           <span className="nb-preview-chip nb-chip px-2 py-0.5 text-[10px] font-mono">Tag</span>
+           <span className="nb-preview-tab nb-tab px-3 py-1 text-[10px] font-mono">Tab</span>
+         </div>
+-        <button className="nb-preview-btn nb-button nb-btn-base w-full py-1.5 text-[11px] font-medium">Button</button>
++        <button type="button" tabIndex={-1} className="nb-preview-btn nb-button nb-btn-base w-full py-1.5 text-[11px] font-medium">
++          Button
++        </button>
+       </div>
+     </div>
+   );
+diff --git a/src/components/vault/VaultHeader.jsx b/src/components/vault/VaultHeader.jsx
+index 359a00f..8984a66 100644
+--- a/src/components/vault/VaultHeader.jsx
++++ b/src/components/vault/VaultHeader.jsx
+@@ -1,3 +1,4 @@
++import { cn } from "@/lib/utils";
+ import { useEffect, useRef, useState } from "react";
+ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+ import { Plus, Search } from "lucide-react";
+@@ -49,7 +50,7 @@ export default function VaultHeader({ children }) {
+   return (
+     <>
+     <header className="sticky top-0 z-40 border-b border-border bg-background">
+-      <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-4 sm:px-6 lg:px-8">
++      <div className={cn("mx-auto flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8", children ? "max-w-[1480px]" : "max-w-[1180px]")}>
+         <Link to="/" className="group flex shrink-0 items-center gap-2.5">
+           <img
+             src="/logo-64.png"
+@@ -91,7 +92,7 @@ export default function VaultHeader({ children }) {
+       </div>
+     </header>
+     {children && (
+-      <div className="mx-auto max-w-[820px] px-4 sm:px-6 lg:px-8">
++      <div className="mx-auto max-w-[1480px] px-4 sm:px-6 lg:px-8">
+         {children}
+       </div>
+     )}
+diff --git a/src/index.css b/src/index.css
+index e4393c0..456cd9c 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -282,6 +282,11 @@ html[data-rail="collapsed"] {
+     /* The tab rail is fixed, so the page shell reserves exactly its width. */
+     padding-inline-start: var(--rail-w, 0px);
+   }
++  /* A page shell nested inside another page shell (the note page lives inside the tab
++     container) must not reserve the rail width a second time. */
++  .nb-shell .nb-shell {
++    padding-inline-start: 0;
++  }
+ 
+   @media (prefers-reduced-motion: no-preference) {
+     .nb-shell {
+diff --git a/src/lib/i18n.js b/src/lib/i18n.js
+index 38f9471..999f1c6 100644
+--- a/src/lib/i18n.js
++++ b/src/lib/i18n.js
+@@ -86,11 +86,20 @@ function lookup(dict, key) {
+ }
+ 
+ /** Translate a dot key into the current language, falling back to English, then the key. */
+-export function t(key) {
++export function t(key, params) {
+   const value = lookup(LOCALES[getLang()], key);
+-  if (typeof value === "string") return value;
++  if (typeof value === "string") return interpolate(value, params);
+   const fallback = lookup(LOCALES.en, key);
+-  return typeof fallback === "string" ? fallback : key;
++  return typeof fallback === "string" ? interpolate(fallback, params) : key;
++}
++
++/** Fills {name} and {{name}} placeholders from params; unknown placeholders are left as they are. */
++function interpolate(text, params) {
++  if (!params) return text;
++  return text.replace(/\{\{\s*(\w+)\s*\}\}|\{(\w+)\}/g, (match, a, b) => {
++    const name = a || b;
++    return Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match;
++  });
+ }
+ 
+ /** Replaces 0-9 with Arabic-Indic digits (٠-٩) when the setting is on. */
+diff --git a/src/lib/ribbon-collapse.js b/src/lib/ribbon-collapse.js
+index e3bf6dc..939f59e 100644
+--- a/src/lib/ribbon-collapse.js
++++ b/src/lib/ribbon-collapse.js
+@@ -83,40 +83,52 @@ export function allFit(groups, available) {
+   return total <= available;
+ }
+ 
++/** Width of a collapsed (ICON) group button and of the "More" button, in px. */
++export const ICON_WIDTH = 44;
++export const MORE_WIDTH = 44;
++
+ /**
+- * Compute the ideal state for each group given available width.
+- * Returns a Map<groupId, state> with the new states.
++ * Decide the state of every group for a given available width. Pure and
++ * deterministic: the same widths always give the same result, so the ribbon
++ * never flickers or ends up in a different state after a resize.
++ *   1. Collapse groups to ICON, lowest priority first, until everything fits.
++ *   2. If it still does not fit, move ICON groups to OVERFLOW ("More"), lowest
++ *      priority first, reserving room for the More button.
++ * @param {{id:string, priority:number, width:number, iconWidth?:number}[]} groups
++ * @returns {Map<string,string>} id -> GROUP_STATE
+  */
+-export function computeIdealStates(groups, available) {
+-  const state = new Map();
+-  // Start with all FULL
+-  for (const group of groups) {
+-    state.set(group.id, GROUP_STATE.FULL);
++export function computeIdealStates(groups, availableWidth) {
++  const states = new Map(groups.map((g) => [g.id, GROUP_STATE.FULL]));
++  if (!availableWidth || groups.length === 0) return states;
++  const sorted = [...groups].sort((a, b) => a.priority - b.priority);
++  const iconW = (g) => g.iconWidth || ICON_WIDTH;
++  let total = groups.reduce((sum, g) => sum + (g.width || 0), 0) + groups.length;
++  for (const g of sorted) {
++    if (total <= availableWidth) break;
++    if (!g.width || iconW(g) >= g.width) continue;
++    states.set(g.id, GROUP_STATE.ICON);
++    total -= g.width - iconW(g);
+   }
+-
+-  const sorted = [...groups].sort((a, b) => a.priority - b.priority); // lowest priority first
+-
+-  // Collapse to ICON until fits or all are ICON
+-  let totalWidth = calculateTotalWidth(groups, state);
+-  for (const group of sorted) {
+-    if (totalWidth <= available) break;
+-    if (!group.width) continue;
+-    state.set(group.id, GROUP_STATE.ICON);
+-    totalWidth = calculateTotalWidth(groups, state);
++  if (total > availableWidth) {
++    total += MORE_WIDTH;
++    for (const g of sorted) {
++      if (total <= availableWidth) break;
++      if (states.get(g.id) !== GROUP_STATE.ICON) continue;
++      states.set(g.id, GROUP_STATE.OVERFLOW);
++      total -= iconW(g);
++    }
+   }
+-
+-  // If still doesn't fit, move lowest priority to OVERFLOW
+-  if (totalWidth > available) {
+-    for (const group of sorted) {
+-      if (totalWidth <= available) break;
+-      const groupState = state.get(group.id);
+-      if (groupState === GROUP_STATE.OVERFLOW) continue;
+-      state.set(group.id, GROUP_STATE.OVERFLOW);
+-      totalWidth = calculateTotalWidth(groups, state);
++  // Re-expand pass: the greedy collapse can free more room than needed. Give the space back to
++  // the highest-priority collapsed groups that now fit.
++  for (const g of [...sorted].reverse()) {
++    if (states.get(g.id) !== GROUP_STATE.ICON || !g.width) continue;
++    const delta = g.width - iconW(g);
++    if (total + delta <= availableWidth) {
++      states.set(g.id, GROUP_STATE.FULL);
++      total += delta;
+     }
+   }
+-
+-  return state;
++  return states;
+ }
+ 
+ /**
+diff --git a/src/pages/NotePage.jsx b/src/pages/NotePage.jsx
+index b42e07b..225ea57 100644
+--- a/src/pages/NotePage.jsx
++++ b/src/pages/NotePage.jsx
+@@ -15,7 +15,6 @@ import AiAssist from "@/components/notes/AiAssist";
+ import LinkRail from "@/components/vault/LinkRail";
+ import MacroBar from "@/components/macros/MacroBar";
+ import ExtensionPanels from "@/components/extensions/ExtensionPanels";
+-import ExtensionBanners from "@/components/extensions/ExtensionBanners";
+ import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
+ import NoteInkSurface from "@/components/ink/NoteInkSurface";
+ import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
+@@ -1219,7 +1218,7 @@ export default function NotePage() {
+       <VaultHeader />
+       <main
+         className={cn(
+-          "mx-auto max-w-[820px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
++          "mx-auto max-w-[1480px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
+           focus && "pr-12 sm:pr-14"
+         )}
+       >
+@@ -1517,7 +1516,6 @@ export default function NotePage() {
+                   </form>
+                 </div>
+ 
+-                <ExtensionBanners note={extensionHost} onEditBody={changeBody} />
+ 
+                 {/* Folder selector */}
+                 <div className="mt-4 flex items-center gap-2">

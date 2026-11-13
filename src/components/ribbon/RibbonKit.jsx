@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -13,13 +13,7 @@ import {
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import {
-  pickNextToCollapse,
-  pickNextToExpand,
-  calculateTotalWidth,
-  computeIdealStates,
-  GROUP_STATE,
-} from "@/lib/ribbon-collapse";
+import { computeIdealStates, GROUP_STATE, ICON_WIDTH } from "@/lib/ribbon-collapse";
 
 export { GROUP_STATE };
 
@@ -185,179 +179,120 @@ export const useRibbonCollapseApi = () => useContext(RibbonCollapseApiContext);
 export const useRibbonCollapseState = () => useContext(RibbonCollapseStateContext);
 
 /**
- * Wraps the ribbon panel. It measures the panel width, collects each group's
- * natural width and priority, and manages three states:
- * - FULL: shows all buttons in 2-row grid with label below
- * - ICON: shows single 32px button with icon + chevron, opens popover with full content
- * - OVERFLOW: not shown in main ribbon, appears in "More" popover
+ * Wraps the ribbon panel and decides, from the measured widths, which groups are
+ * FULL (icons in two rows with the label), ICON (one button that opens the group)
+ * or OVERFLOW (inside the "More" menu). The decision is a pure function of the
+ * widths (see src/lib/ribbon-collapse.js), computed during render: there is no
+ * hidden copy of the groups and no effect loop, so it cannot flicker.
  */
-export function RibbonCollapseProvider({ tab, children }) {
-  const panelRef = useRef(null);
-  const measureRef = useRef(null); // Hidden element for measuring natural widths
-  const [entries, setEntries] = useState(() => new Map());
-  const [groupState, setGroupState] = useState(() => new Map()); // Map<id, GROUP_STATE>
+export function RibbonCollapseProvider({ children }) {
+  const wrapRef = useRef(null);
   const [available, setAvailable] = useState(0);
+  const [entries, setEntries] = useState(() => new Map());
   const [moreOpen, setMoreOpen] = useState(false);
+  const [moreNode, setMoreNode] = useState(null);
 
-  // Measure the visible panel width.
   useLayoutEffect(() => {
-    const el = panelRef.current;
+    const el = wrapRef.current;
     if (!el) return undefined;
-    const update = () => setAvailable(el.clientWidth);
-    update();
-    const ro = new ResizeObserver(update);
+    // 2px for the panel border
+    const measure = () => setAvailable(Math.max(0, Math.floor(el.clientWidth) - 2));
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [tab]);
-
-  const register = useCallback((id, priority) => {
-    setEntries((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Map(prev);
-      next.set(id, { id, priority, width: 0 });
-      return next;
-    });
   }, []);
 
-  const unregister = useCallback((id) => {
-    setEntries((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    setGroupState((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
+  const api = useMemo(() => {
+    const patch = (id, fn) =>
+      setEntries((prev) => {
+        const old = prev.get(id);
+        if (!old) return prev;
+        const next = fn(old);
+        if (next === old) return prev;
+        const map = new Map(prev);
+        map.set(id, next);
+        return map;
+      });
+    return {
+      register: (id, priority) =>
+        setEntries((prev) => {
+          const old = prev.get(id);
+          if (old && old.priority === priority) return prev;
+          const map = new Map(prev);
+          map.set(id, { id, priority, width: old?.width || 0, iconWidth: old?.iconWidth || ICON_WIDTH });
+          return map;
+        }),
+      unregister: (id) =>
+        setEntries((prev) => {
+          if (!prev.has(id)) return prev;
+          const map = new Map(prev);
+          map.delete(id);
+          return map;
+        }),
+      setWidth: (id, width) => patch(id, (e) => (e.width === width ? e : { ...e, width })),
+      setIconWidth: (id, iconWidth) => patch(id, (e) => (e.iconWidth === iconWidth ? e : { ...e, iconWidth })),
+    };
   }, []);
 
-  const setWidth = useCallback((id, width) => {
-    setEntries((prev) => {
-      const entry = prev.get(id);
-      if (!entry || entry.width === width) return prev;
-      const next = new Map(prev);
-      next.set(id, { ...entry, width });
-      return next;
-    });
-  }, []);
+  const states = useMemo(() => computeIdealStates([...entries.values()], available), [entries, available]);
+  const overflowCount = useMemo(() => [...states.values()].filter((v) => v === GROUP_STATE.OVERFLOW).length, [states]);
 
-  // Compute ideal states whenever available width or entries change
-  useLayoutEffect(() => {
-    if (!available) return;
-    const groupsArray = [...entries.values()];
-    const idealStates = computeIdealStates(groupsArray, available);
-    setGroupState(idealStates);
-  }, [entries, available, tab]);
-
-  // Also handle incremental changes for smoother animation
-  useLayoutEffect(() => {
-    if (!available) return;
-    const groupsArray = [...entries.values()];
-    const totalWidth = calculateTotalWidth(groupsArray, groupState);
-    if (totalWidth > available + 1) {
-      const next = pickNextToCollapse(groupsArray, groupState);
-      if (next) {
-        const currentState = groupState.get(next.id) || GROUP_STATE.FULL;
-        const toState = currentState === GROUP_STATE.FULL ? GROUP_STATE.ICON : GROUP_STATE.OVERFLOW;
-        setGroupState((prev) => {
-          const copy = new Map(prev);
-          copy.set(next.id, toState);
-          return copy;
-        });
-      }
-    } else if (totalWidth < available - 8) {
-      const next = pickNextToExpand(groupsArray, groupState, available - totalWidth);
-      if (next) {
-        const currentState = groupState.get(next.id) || GROUP_STATE.FULL;
-        const toState = currentState === GROUP_STATE.OVERFLOW ? GROUP_STATE.ICON : GROUP_STATE.FULL;
-        setGroupState((prev) => {
-          const copy = new Map(prev);
-          copy.set(next.id, toState);
-          return copy;
-        });
-      }
-    }
-  }, [entries, available, groupState, tab]);
-
-  const api = useMemo(() => ({ register, unregister, setWidth }), [register, unregister, setWidth]);
-  const state = useMemo(() => ({ groupState: (id) => groupState.get(id) || GROUP_STATE.FULL }), [groupState]);
-
-  // Get overflow groups for the More menu
-  const overflowGroups = useMemo(() => {
-    return [...entries.values()].filter((g) => (groupState.get(g.id) || GROUP_STATE.FULL) === GROUP_STATE.OVERFLOW);
-  }, [entries, groupState]);
+  const stateValue = useMemo(
+    () => ({
+      groupState: (id) => states.get(id) || GROUP_STATE.FULL,
+      overflowCount,
+      moreOpen,
+      setMoreOpen,
+      moreNode,
+      setMoreNode,
+    }),
+    [states, overflowCount, moreOpen, moreNode]
+  );
 
   return (
     <RibbonCollapseApiContext.Provider value={api}>
-      <RibbonCollapseStateContext.Provider value={state}>
-        <div ref={panelRef} className="overflow-hidden bg-background border-b border-border">
-          {/* Hidden measuring element - renders all groups in FULL state to get natural widths */}
-          <div
-            ref={measureRef}
-            style={{
-              position: 'absolute',
-              visibility: 'hidden',
-              pointerEvents: 'none',
-              height: 0,
-              overflow: 'hidden',
-              whiteSpace: 'nowrap',
-            }}
-            aria-hidden="true"
-          >
-            {children}
-          </div>
-          {/* Visible ribbon row */}
-          <div className="flex items-stretch min-h-[44px]" role="group" aria-label={t("ribbon.groupsAria")}>
-            {children}
-            {/* More button (overflow menu) */}
-            {overflowGroups.length > 0 && (
-              <MoreOverflowMenu
-                groups={overflowGroups}
-                open={moreOpen}
-                onOpenChange={setMoreOpen}
-              />
-            )}
-          </div>
+      <RibbonCollapseStateContext.Provider value={stateValue}>
+        <div ref={wrapRef} className="w-full min-w-0">
+          {children}
         </div>
       </RibbonCollapseStateContext.Provider>
     </RibbonCollapseApiContext.Provider>
   );
 }
 
-/** The "More" overflow menu button */
-function MoreOverflowMenu({ groups, open, onOpenChange }) {
+/**
+ * The "More" button at the end of the ribbon row. It only appears when some
+ * groups did not fit. The groups themselves render into the popover through a
+ * portal (see RibbonGroup), so their buttons keep working normally.
+ */
+export function RibbonMore() {
+  const state = useRibbonCollapseState();
+  if (!state || state.overflowCount === 0) return null;
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          onMouseDown={(event) => event.preventDefault()}
-          title={t("ribbon.more")}
-          aria-label={t("ribbon.more")}
-          aria-expanded={open}
-          className="flex h-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-card/60 px-2 text-foreground/85 transition hover:bg-accent hover:text-foreground"
+    <div className="flex shrink-0 items-center px-1.5">
+      <Popover open={state.moreOpen} onOpenChange={state.setMoreOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            title={t("ribbon.more")}
+            aria-label={t("ribbon.more")}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-card/60 transition hover:bg-accent hover:text-foreground"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="max-h-[70vh] w-[min(92vw,420px)] overflow-auto p-2"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          <MoreHorizontal className="h-3.5 w-3.5 shrink-0" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        style={{ width: 360 }}
-        className="max-h-[70vh] overflow-auto p-2"
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
-        {groups.map((group) => (
-          <div key={group.id} className="mb-2 last:mb-0">
-            <MenuLabel>{group.label}</MenuLabel>
-            <div style={groupGridStyle}>{group.children}</div>
-          </div>
-        ))}
-      </PopoverContent>
-    </Popover>
+          <div ref={state.setMoreNode} className="flex flex-col gap-3" />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
@@ -387,7 +322,7 @@ export function GroupMenu({ icon: Icon, label, width = 320, children }) {
           aria-expanded={open}
           className="flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-border/70 bg-card/60 px-2 transition hover:bg-accent hover:text-foreground"
         >
-          {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
+          {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : <span className="font-mono text-[10px] font-semibold uppercase leading-none">{String(label || "?").slice(0, 2)}</span>}
           <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
@@ -465,12 +400,13 @@ export function RibbonFrame({ tabs, tab, onTab, children, trailing, leading, cla
         <div
           role="tabpanel"
           className={cn(
-            "flex w-full min-w-0 items-stretch divide-x divide-border border border-border bg-card",
+            "flex h-[96px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
             "rounded-xl",
             isFirstTabActive ? "rounded-ss-none" : ""
           )}
         >
           {children}
+          <RibbonMore />
           {trailing}
         </div>
       </RibbonCollapseProvider>

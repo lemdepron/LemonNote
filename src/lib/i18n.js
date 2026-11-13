@@ -86,11 +86,20 @@ function lookup(dict, key) {
 }
 
 /** Translate a dot key into the current language, falling back to English, then the key. */
-export function t(key) {
+export function t(key, params) {
   const value = lookup(LOCALES[getLang()], key);
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return interpolate(value, params);
   const fallback = lookup(LOCALES.en, key);
-  return typeof fallback === "string" ? fallback : key;
+  return typeof fallback === "string" ? interpolate(fallback, params) : key;
+}
+
+/** Fills {name} and {{name}} placeholders from params; unknown placeholders are left as they are. */
+function interpolate(text, params) {
+  if (!params) return text;
+  return text.replace(/\{\{\s*(\w+)\s*\}\}|\{(\w+)\}/g, (match, a, b) => {
+    const name = a || b;
+    return Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match;
+  });
 }
 
 /** Replaces 0-9 with Arabic-Indic digits (٠-٩) when the setting is on. */

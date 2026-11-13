@@ -83,40 +83,52 @@ export function allFit(groups, available) {
   return total <= available;
 }
 
+/** Width of a collapsed (ICON) group button and of the "More" button, in px. */
+export const ICON_WIDTH = 44;
+export const MORE_WIDTH = 44;
+
 /**
- * Compute the ideal state for each group given available width.
- * Returns a Map<groupId, state> with the new states.
+ * Decide the state of every group for a given available width. Pure and
+ * deterministic: the same widths always give the same result, so the ribbon
+ * never flickers or ends up in a different state after a resize.
+ *   1. Collapse groups to ICON, lowest priority first, until everything fits.
+ *   2. If it still does not fit, move ICON groups to OVERFLOW ("More"), lowest
+ *      priority first, reserving room for the More button.
+ * @param {{id:string, priority:number, width:number, iconWidth?:number}[]} groups
+ * @returns {Map<string,string>} id -> GROUP_STATE
  */
-export function computeIdealStates(groups, available) {
-  const state = new Map();
-  // Start with all FULL
-  for (const group of groups) {
-    state.set(group.id, GROUP_STATE.FULL);
+export function computeIdealStates(groups, availableWidth) {
+  const states = new Map(groups.map((g) => [g.id, GROUP_STATE.FULL]));
+  if (!availableWidth || groups.length === 0) return states;
+  const sorted = [...groups].sort((a, b) => a.priority - b.priority);
+  const iconW = (g) => g.iconWidth || ICON_WIDTH;
+  let total = groups.reduce((sum, g) => sum + (g.width || 0), 0) + groups.length;
+  for (const g of sorted) {
+    if (total <= availableWidth) break;
+    if (!g.width || iconW(g) >= g.width) continue;
+    states.set(g.id, GROUP_STATE.ICON);
+    total -= g.width - iconW(g);
   }
-
-  const sorted = [...groups].sort((a, b) => a.priority - b.priority); // lowest priority first
-
-  // Collapse to ICON until fits or all are ICON
-  let totalWidth = calculateTotalWidth(groups, state);
-  for (const group of sorted) {
-    if (totalWidth <= available) break;
-    if (!group.width) continue;
-    state.set(group.id, GROUP_STATE.ICON);
-    totalWidth = calculateTotalWidth(groups, state);
-  }
-
-  // If still doesn't fit, move lowest priority to OVERFLOW
-  if (totalWidth > available) {
-    for (const group of sorted) {
-      if (totalWidth <= available) break;
-      const groupState = state.get(group.id);
-      if (groupState === GROUP_STATE.OVERFLOW) continue;
-      state.set(group.id, GROUP_STATE.OVERFLOW);
-      totalWidth = calculateTotalWidth(groups, state);
+  if (total > availableWidth) {
+    total += MORE_WIDTH;
+    for (const g of sorted) {
+      if (total <= availableWidth) break;
+      if (states.get(g.id) !== GROUP_STATE.ICON) continue;
+      states.set(g.id, GROUP_STATE.OVERFLOW);
+      total -= iconW(g);
     }
   }
-
-  return state;
+  // Re-expand pass: the greedy collapse can free more room than needed. Give the space back to
+  // the highest-priority collapsed groups that now fit.
+  for (const g of [...sorted].reverse()) {
+    if (states.get(g.id) !== GROUP_STATE.ICON || !g.width) continue;
+    const delta = g.width - iconW(g);
+    if (total + delta <= availableWidth) {
+      states.set(g.id, GROUP_STATE.FULL);
+      total += delta;
+    }
+  }
+  return states;
 }
 
 /**
