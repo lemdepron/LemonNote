@@ -44,6 +44,7 @@
     "groupsAria": "Группы ленты",
     "home": {
       "clipboard": "Буфер обмена",
+      "edit": "Правка",
       "undo": "Отменить",
       "undoHint": "Отменить последнее изменение",
       "redo": "Повторить",
@@ -266,7 +267,10 @@
       "presets": "Предустановки",
       "resetDesignToast": "Сброшено к настройкам приложения",
       "saveAsDefaultToast": "Сохранено как умолчание для новых заметок",
-      "saveFailedToast": "Не удалось сохранить умолчание"
+      "saveFailedToast": "Не удалось сохранить умолчание",
+      "styleSetSelect": "Выбрать набор стилей",
+      "pageColorActive": "Активен пользовательский цвет страницы",
+      "defaultTheme": "По умолчанию (тема)"
     },
     "ink": {
       "audio": {
@@ -1788,5 +1792,48 @@
     "stage": "Этап",
     "table": "Таблица",
     "title": "Резервная копия"
+  },
+  "common": {
+    "clearSearch": "Очистить поиск",
+    "removeTag": "Удалить тег {tag}",
+    "wordGoal": "цель по словам",
+    "setGoal": "установить цель",
+    "editGoal": "редактировать",
+    "wordsToGo": "осталось {count} слов до цели",
+    "goalReached": "цель достигнута",
+    "wordsCount": "{count} слов{plural}",
+    "words": "Слова",
+    "notSynced": "Не синхронизировано",
+    "syncNotAvailable": "Синхронизация пока недоступна",
+    "savedStatus": "сохранено",
+    "savingStatus": "сохранение…",
+    "draftStatus": "черновик",
+    "untitledNote": "Без названия",
+    "clickToRename": "Нажмите для переименования",
+    "addTag": "+ тег",
+    "close": "Закрыть",
+    "cancel": "Отмена",
+    "total": "Всего",
+    "errors": "ошибки",
+    "error": "ошибка",
+    "unknownDate": "неизвестная дата",
+    "clear": "Очистить",
+    "import": "Импорт",
+    "noResults": "Нет результатов"
+  },
+  "tagFilter": {
+    "title": "Фильтр по тегам",
+    "searchPlaceholder": "Фильтровать теги…",
+    "noTags": "В хранилище пока нет тегов",
+    "builtin": "Встроенные",
+    "custom": "Пользовательские",
+    "selected": "{count} выбрано",
+    "done": "Готово"
+  },
+  "searchResults": {
+    "taggedLines": "Помеченные строки",
+    "hideCompleted": "Скрыть выполненные",
+    "createSummary": "Создать заметку-резюме",
+    "noTaggedLines": "Нет помеченных строк, соответствующих фильтру"
   }
 }

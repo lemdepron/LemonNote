@@ -5,6 +5,7 @@ import useNoteTabs from "@/hooks/useNoteTabs";
 import NotePane from "./NotePane";
 import NoteTabs from "./NoteTabs";
 import SplitDivider from "./SplitDivider";
+import { ScrollProvider, ScrollAwareTopArea } from "@/lib/ScrollContext";
 
 /**
  * Internal component that has access to PaneFocusContext.
@@ -161,22 +162,26 @@ function NoteContainerInner() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Tab strip */}
-      <NoteTabs
-        tabs={tabs}
-        activeTabIndex={activeTabIndex}
-        onActivateTab={setActiveTab}
-        onCloseTab={closeTab}
-        onReorderTabs={reorderTabs}
-        onNewTab={handleNewTab}
-        onSplit={handleSplit}
-        splitEnabled={splitConfig.enabled}
-      />
+    <ScrollProvider>
+      <div className="flex flex-col h-full min-h-0">
+        {/* Tab strip - scroll aware */}
+        <ScrollAwareTopArea className="flex-shrink-0" data-testid="note-tabs-area">
+          <NoteTabs
+            tabs={tabs}
+            activeTabIndex={activeTabIndex}
+            onActivateTab={setActiveTab}
+            onCloseTab={closeTab}
+            onReorderTabs={reorderTabs}
+            onNewTab={handleNewTab}
+            onSplit={handleSplit}
+            splitEnabled={splitConfig.enabled}
+          />
+        </ScrollAwareTopArea>
 
-      {/* Pane content */}
-      {splitConfig.enabled ? renderSplitPanes() : renderSinglePane()}
-    </div>
+        {/* Pane content */}
+        {splitConfig.enabled ? renderSplitPanes() : renderSinglePane()}
+      </div>
+    </ScrollProvider>
   );
 }
 

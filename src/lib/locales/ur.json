@@ -44,6 +44,7 @@
     "groupsAria": "رِبن گروپ",
     "home": {
       "clipboard": "کلپ بورڈ",
+      "edit": "ترمیم",
       "undo": "الٹا کریں",
       "undoHint": "آخرین ترمیم کو الٹا کریں",
       "redo": "دوبارہ کریں",
@@ -266,7 +267,10 @@
       "presets": "پری سیٹس",
       "resetDesignToast": "ایپ کے ڈیفالٹ پر واپس سیٹ",
       "saveAsDefaultToast": "نئی نوٹس کے لیے ڈیفالٹ کے طور پر محفوظ",
-      "saveFailedToast": "ڈیفالٹ محفوظ کرنے میں ناکام"
+      "saveFailedToast": "ڈیفالٹ محفوظ کرنے میں ناکام",
+      "styleSetSelect": "اسلوب سیٹ چنیں",
+      "pageColorActive": "کاسٹم صفحہ رنگ فعال",
+      "defaultTheme": "ڈیفالٹ (تھیم)"
     },
     "ink": {
       "audio": {
@@ -1789,5 +1793,48 @@
       "notesTagsLinks": "{notes} · {tags} · {links}"
     },
     "tagged": "ٹےگڈ #{tag}"
+  },
+  "common": {
+    "clearSearch": "تلاش صاف کریں",
+    "removeTag": "ٹےگ {tag} ہٹائیں",
+    "wordGoal": "الفاظ کا ہدف",
+    "setGoal": "ہدف مقرر کریں",
+    "editGoal": "ترمیم کریں",
+    "wordsToGo": "{count} الفاظ ہدف تک",
+    "goalReached": "ہدف حاصل ہوا",
+    "wordsCount": "{count} لفظ{plural}",
+    "words": "الفاظ",
+    "notSynced": "ہمگام نہیں",
+    "syncNotAvailable": "ہمگامی ابھی دستیاب نہیں",
+    "savedStatus": "محفوظ ہو گیا",
+    "savingStatus": "محفوظ ہو رہا ہے…",
+    "draftStatus": "مسودہ",
+    "untitledNote": "بے عنوان نوٹ",
+    "clickToRename": "اسم تبدیل کرنے کے لیے کلک کریں",
+    "addTag": "+ ٹےگ",
+    "close": "بند کریں",
+    "cancel": "منسوخ کریں",
+    "total": "مجموعی",
+    "errors": "خرابیاں",
+    "error": "خرابی",
+    "unknownDate": "نامعلوم تاریخ",
+    "clear": "صاف کریں",
+    "import": "درآمد",
+    "noResults": "کوئی نتیجہ نہیں"
+  },
+  "tagFilter": {
+    "title": "ٹےگز کے ذریعے فلٹر کریں",
+    "searchPlaceholder": "ٹےگز فلٹر کریں…",
+    "noTags": "وولٹ میں ابھی تک کوئی ٹےگ نہیں",
+    "builtin": "درونی",
+    "custom": "مخصوص",
+    "selected": "{count} منتخب",
+    "done": "مکمل"
+  },
+  "searchResults": {
+    "taggedLines": "ٹےگڈ لائنیں",
+    "hideCompleted": "مکمل چھپائیں",
+    "createSummary": "خلاصہ نوٹ بنائیں",
+    "noTaggedLines": "کوئی ٹےگڈ لائن میل نہیں کھاتی"
   }
 }

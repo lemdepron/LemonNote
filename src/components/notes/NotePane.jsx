@@ -31,12 +31,12 @@ import { buildLinkIndex, extractInlineTags, extractWikiLinks, extractHeadings, e
 import { countWords } from "@/lib/note-stats";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import FindTagsPanel from "@/components/tags/FindTagsPanel";
 import { confirm } from "@/components/ui/use-dialog";
 import { usePaneFocus } from "@/context/PaneFocusContext";
 import SplitDivider from "@/components/notes/SplitDivider";
 import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
+import { ScrollAwareTopArea } from "@/lib/ScrollContext";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -84,7 +84,6 @@ export default function NotePane({
   const [loadingNote, setLoadingNote] = useState(!isNew);
   const [inkOverlayMode, setInkOverlayMode] = useState(false);
   const [readContentRect, setReadContentRect] = useState(null);
-  const [findTagsOpen, setFindTagsOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
   // Title editing state
@@ -1017,29 +1016,10 @@ export default function NotePane({
 
   // Consolidated empty state component
   function EmptyState({ noteInk, inkActive, mode }) {
-    if (!noteInk.hasPage || noteInk.markCount === 0) {
-      return (
-        <p className="text-[14px] text-muted-foreground text-center py-8">
-          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
-        </p>
-      );
-    }
     return (
-      <div className="text-center py-8 space-y-2">
-        <p className="text-[14px] text-muted-foreground">
-          Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
-        </p>
-        <div className="flex items-center justify-center gap-2 text-[12px] text-muted-foreground/70">
-          <PenLine className="h-3.5 w-3.5" />
-          <span>Handwriting · {noteInk.markCount} mark{noteInk.markCount !== 1 ? "s" : ""}</span>
-          {!inkActive && (
-            <>
-              <span className="text-muted-foreground/40">·</span>
-              <span>Ink is shown in Read view</span>
-            </>
-          )}
-        </div>
-      </div>
+      <p className="text-[14px] text-muted-foreground text-center py-8">
+        Nothing written yet. Press <span className="font-mono text-[12px]">{mode === "read" ? "Edit" : "Write"}</span> and start.
+      </p>
     );
   }
 
@@ -1228,14 +1208,15 @@ export default function NotePane({
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <main
         className={cn(
-          "pb-24 pt-4",
+          "pb-24 pt-0",
           !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
           isInSplit && "px-2",
           focus && "pr-12 sm:pr-14"
         )}
       >
-        {/* Slim top row (breadcrumb) - FIRST */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+        {/* Slim top row (breadcrumb) - FIRST - scroll aware */}
+        <ScrollAwareTopArea className="flex-shrink-0" data-testid="breadcrumb-area">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
           <Link
             to="/"
             className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
@@ -1341,18 +1322,18 @@ export default function NotePane({
             <button
               type="button"
               onClick={() => setThemeMode(resolved === "dark" ? "light" : "dark")}
-              className="flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 font-mono text-[10.5px] uppercase tracking-[0.12em] transition-[transform,opacity,background-color,border-color,color] duration-200 ease-out transform-gpu active:scale-95 border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              className="flex h-8 items-center justify-center rounded-md border px-2.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition-[transform,opacity,background-color,border-color,color] duration-200 ease-out transform-gpu active:scale-95 border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
               aria-label={resolved === "dark" ? t("settings.appearance.switchToLight") : t("settings.appearance.switchToDark")}
               title={resolved === "dark" ? t("settings.appearance.switchToLight") : t("settings.appearance.switchToDark")}
             >
               {resolved === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{resolved === "dark" ? t("settings.appearance.light") : t("settings.appearance.dark")}</span>
             </button>
 
             {/* Focus button */}
             <FocusToggle />
           </div>
         </div>
+        </ScrollAwareTopArea>
 
         {/* Ribbon tab line + panel - AFTER breadcrumb */}
         {!loadingNote && !isLocked && (
@@ -1391,7 +1372,6 @@ export default function NotePane({
             tab={ribbonTab}
             onTab={setRibbonTab}
             noteInk={noteInk}
-            onFindTags={() => setFindTagsOpen(true)}
             wordGoal={wordGoal}
             wordCount={wordCount}
             wordGoalPopoverOpen={wordGoalPopoverOpen}
@@ -1405,7 +1385,7 @@ export default function NotePane({
 
         {/* Main content area - centered with reading width, side panel only when open */}
         <div className={cn(
-          "mt-6 transition-[max-width] duration-300 ease-out",
+          "mt-0 transition-[max-width] duration-300 ease-out",
           showNavPane ? "max-w-[calc(100%-252px)]" : "max-w-[1480px]",
           "mx-auto"
         )}>
@@ -1426,7 +1406,7 @@ export default function NotePane({
             ) : (
               <>
 
-                <div className="mt-6">
+                <div className="mt-0">
                   {aiOpen && !focus && (
                     <AiAssist
                       title={title}
@@ -1445,35 +1425,16 @@ export default function NotePane({
                 </div>
 
                 {inkActive ? (
-                  <div className="mt-8 border-t border-border/60 pt-8">
+                  <div className="mt-2">
                     <NoteInkSurface noteInk={noteInk} />
                   </div>
                 ) : (
-                <div className="mt-8 border-t border-border/60 pt-8">
-                  {noteInk.hasPage && noteInk.markCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        writePref("ribbonTab", "ink");
-                        setRibbonTab("ink");
-                      }}
-                      className="mb-6 flex items-center gap-2 rounded-lg border border-border/70 bg-card/40 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-                    >
-                      <PenLine className="h-3 w-3 text-primary" />
-                      Handwriting · {noteInk.markCount} marks · open the Ink tab
-                    </button>
-                  )}
+                <div className="mt-2">
                   {mode === "split" ? (
                     // Split mode: editor and preview side by side, scrolling with the page
                     <div className="flex gap-10">
                       {/* Editor pane */}
                       <div className="min-w-0 flex-1" style={{ minWidth: 0 }}>
-                        {noteInk.hasPage && noteInk.markCount > 0 && !inkActive && (
-                          <div className="mb-6 flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5 font-mono text-[10.5px] text-muted-foreground/70">
-                            <PenLine className="h-3 w-3 text-muted-foreground/50" />
-                            Ink is shown in Read view · {noteInk.markCount} marks
-                          </div>
-                        )}
                         {markdown ? (
                           <>
                             <MarkdownEditor
@@ -1723,7 +1684,7 @@ export default function NotePane({
           </article>
 
           {/* Bottom status bar */}
-          <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5">
+          <div className="fixed bottom-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5" style={{ insetInlineStart: 'var(--rail-w, 0px)' }}>
             <div className={cn(
               "mx-auto max-w-[1480px] flex flex-wrap items-center justify-end gap-2 text-[11px] font-mono",
               showNavPane && "pe-[288px]"
@@ -1775,15 +1736,6 @@ export default function NotePane({
         <EdgeDock panels={dockPanels} />
       </main>
       <div id="file-panel-root" />
-      {findTagsOpen && (
-        <FindTagsPanel
-          notes={notes}
-          onOpenNote={(noteId, lineNumber) => {
-            navigate(`/note/${noteId}`);
-          }}
-          onClose={() => setFindTagsOpen(false)}
-        />
-      )}
     </div>
   );
 }

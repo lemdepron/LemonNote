@@ -10,7 +10,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 const ACTIONS = [
   { id: "summarize", label: "ai.summarize" },
@@ -104,7 +104,7 @@ export default function AiAssist({ title, body, onAppend, onReplace, onClose }) 
         <div className="mt-2 flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground">{tr("ai.translate.targetLanguage")}</span>
           <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-            <SelectTrigger className="h-7 rounded border border-border/70 bg-card/60 px-2 font-mono text-[11px] outline-none focus:border-primary/40">
+            <SelectTrigger>
               <SelectValue placeholder="Language" />
             </SelectTrigger>
             <SelectContent position="popper">

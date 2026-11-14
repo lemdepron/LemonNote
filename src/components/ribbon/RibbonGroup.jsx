@@ -1,5 +1,5 @@
 import { useId, useRef } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/compact-popover";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -7,19 +7,19 @@ import { t } from "@/lib/i18n";
 const gridStyle = {
   display: "grid",
   gridAutoFlow: "column",
-  gridTemplateRows: "repeat(2, 32px)",
+  gridTemplateRows: "repeat(2, 26px)",
   gridAutoColumns: "max-content",
-  gap: "4px",
+  gap: "2px",
   alignItems: "center",
 };
 
 const labelClass =
-  "mt-0.5 select-none whitespace-nowrap text-center font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55";
+  "mt-0.5 select-none whitespace-nowrap text-center font-mono text-[10px] tracking-normal leading-[12px] text-muted-foreground/55";
 
 /** Fallback when a group has no icon: its first letters, never a bare chevron. */
 function LetterIcon({ label, className }) {
   return (
-    <span className={cn("font-mono text-[10px] font-semibold uppercase leading-none", className)}>
+    <span className={cn("font-mono text-[10px] font-semibold leading-none", className)}>
       {String(label || "?").slice(0, 2)}
     </span>
   );
@@ -67,12 +67,11 @@ export default function RibbonGroup({ label, icon, priority = 50, className, chi
             </PopoverTrigger>
             <PopoverContent
               align="start"
-              className="max-h-[70vh] w-[min(92vw,360px)] overflow-auto p-2"
               onOpenAutoFocus={(event) => event.preventDefault()}
               onCloseAutoFocus={(event) => event.preventDefault()}
             >
-              <div className="flex flex-col gap-1.5">
-                <div className="px-2 pb-1 pt-2 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+              <div className="flex flex-col gap-1.5 p-0.5">
+                <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
                   {label}
                 </div>
                 {more}

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Download, Loader2, Upload, AlertTriangle, FolderOpen, FileText, X, SkipForward, Copy, RotateCcw, Archive } from "lucide-react";
+import { Download, Loader2, Upload, AlertTriangle, FolderOpen, FileText, SkipForward, Copy, RotateCcw, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -7,10 +7,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogBody,
-  DialogFooter,
   DialogTitle,
   DialogDescription,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { exportBackup, importBackup, previewBackup } from "@/lib/backup";
 import { previewImport, importFilesWithOptions } from "@/lib/import";
@@ -306,13 +304,13 @@ export default function BackupDialog({ open, onClose }) {
   };
 
   const replaceWarn = mode === "replace" ? (
-    <p className="mt-3 text-[12px] text-destructive">
+    <p className="mt-2 text-[11px] text-destructive">
       {t("backup.replaceWarning")}
     </p>
   ) : null;
 
   const sizeWarn = preview?.data?._fileSizeFormatted ? (
-    <div className="mt-3 flex items-center gap-2 text-[12px] text-amber-600 dark:text-amber-400">
+    <div className="mt-2 flex items-center gap-2 text-[11px] text-amber-600 dark:text-amber-400">
       <AlertTriangle className="h-3.5 w-3.5" />
       <span>{t("backup.attachmentsWarning", { size: preview.data._fileSizeFormatted })}</span>
     </div>
@@ -334,11 +332,11 @@ export default function BackupDialog({ open, onClose }) {
     if (importProgress && busy) {
       const progressPercent = importProgress.total > 0 ? Math.round((importProgress.current / importProgress.total) * 100) : 0;
       return (
-        <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-[13px] font-medium tracking-tight">{t("backup.importing")}</h3>
+        <div className="mt-4 rounded-lg border border-border/60 bg-card/40 p-4">
+          <div className="flex items-baseline justify-between mb-2">
+            <h3 className="text-[12px] font-medium tracking-tight">{t("backup.importing")}</h3>
           </div>
-          <div className="grid gap-2 text-[12px] mb-4">
+          <div className="grid gap-1 text-[11px] mb-3">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t("backup.stage")}:</span>
               <span className="font-mono capitalize">{importProgress.stage}</span>
@@ -354,8 +352,8 @@ export default function BackupDialog({ open, onClose }) {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <div className="mt-4 flex gap-2">
-            <Button variant="outline" onClick={() => setCancelImport(true)} disabled={busy}>
+          <div className="mt-3 flex gap-2">
+            <Button variant="outline" onClick={() => setCancelImport(true)} disabled={busy} className="h-8 text-[11px]">
               <X className="h-3.5 w-3.5 mr-1" />
               {t("common.cancel")}
             </Button>
@@ -365,13 +363,13 @@ export default function BackupDialog({ open, onClose }) {
     }
 
     return (
-      <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
-        <div className="flex items-baseline justify-between mb-3">
-          <h3 className="text-[13px] font-medium tracking-tight">
+      <div className="mt-4 rounded-lg border border-border/60 bg-card/40 p-4">
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="text-[12px] font-medium tracking-tight">
             {isFolder ? t("backup.confirmFolderImport") : t("backup.confirmFileImport")}
           </h3>
         </div>
-        <div className="grid gap-2 text-[12px] mb-4">
+        <div className="grid gap-1 text-[11px] mb-3">
           <div className="flex justify-between">
             <span className="text-muted-foreground">{t("backup.filesFound")}:</span>
             <span className="font-mono">{importPreview.totalFiles}</span>
@@ -401,13 +399,13 @@ export default function BackupDialog({ open, onClose }) {
         </div>
 
         {/* Duplicate action selection */}
-        <div className="mb-4 p-3 rounded-lg bg-background/50 border border-border/50">
-          <label className="block text-[12px] font-medium text-muted-foreground mb-2">
+        <div className="mb-3 p-2.5 rounded-lg bg-background/50 border border-border/50">
+          <label className="block text-[11px] font-medium text-muted-foreground mb-1.5">
             {t("backup.duplicateAction")}
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <label className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition cursor-pointer",
               duplicateAction === "skip" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"
             )}>
               <input
@@ -416,13 +414,13 @@ export default function BackupDialog({ open, onClose }) {
                 value="skip"
                 checked={duplicateAction === "skip"}
                 onChange={(e) => setDuplicateAction(e.target.value)}
-                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+                className="h-3 w-3 text-primary focus:ring-2 focus:ring-primary/20"
               />
-              <SkipForward className="h-3.5 w-3.5" />
-              <span>{t("backup.skip")}</span>
+              <SkipForward className="h-3 w-3" />
+              <span className="text-[11px]">{t("backup.skip")}</span>
             </label>
             <label className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition cursor-pointer",
               duplicateAction === "rename" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"
             )}>
               <input
@@ -431,13 +429,13 @@ export default function BackupDialog({ open, onClose }) {
                 value="rename"
                 checked={duplicateAction === "rename"}
                 onChange={(e) => setDuplicateAction(e.target.value)}
-                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+                className="h-3 w-3 text-primary focus:ring-2 focus:ring-primary/20"
               />
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>{t("backup.rename")}</span>
+              <RotateCcw className="h-3 w-3" />
+              <span className="text-[11px]">{t("backup.rename")}</span>
             </label>
             <label className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-md border transition cursor-pointer",
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition cursor-pointer",
               duplicateAction === "overwrite" ? "bg-primary/10 border-primary text-primary" : "bg-background/50 border-border/50 text-foreground hover:bg-accent"
             )}>
               <input
@@ -446,16 +444,16 @@ export default function BackupDialog({ open, onClose }) {
                 value="overwrite"
                 checked={duplicateAction === "overwrite"}
                 onChange={(e) => setDuplicateAction(e.target.value)}
-                className="h-3.5 w-3.5 text-primary focus:ring-2 focus:ring-primary/20"
+                className="h-3 w-3 text-primary focus:ring-2 focus:ring-primary/20"
               />
-              <Copy className="h-3.5 w-3.5" />
-              <span>{t("backup.overwrite")}</span>
+              <Copy className="h-3 w-3" />
+              <span className="text-[11px]">{t("backup.overwrite")}</span>
             </label>
           </div>
         </div>
 
         {importPreview.notes.slice(0, 10).map((note, i) => (
-          <div key={i} className="flex items-center gap-2 text-[11px] px-2 py-1 rounded bg-background/50">
+          <div key={i} className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded bg-background/50">
             {note.error ? (
               <>
                 <span className="text-destructive">✗</span>
@@ -465,7 +463,7 @@ export default function BackupDialog({ open, onClose }) {
               <>
                 <span className="text-muted-foreground">📄</span>
                 <span className="truncate">{note.title}</span>
-                {note.isDuplicate && <span className="text-amber-600 text-[10px] bg-amber-100/50 px-1 rounded">{t("backup.duplicate")}</span>}
+                {note.isDuplicate && <span className="text-amber-600 text-[9px] bg-amber-100/50 px-1 rounded">{t("backup.duplicate")}</span>}
                 {note.folder && <span className="text-muted-foreground">→ {note.folder}</span>}
                 {note.tags.length > 0 && <span className="text-primary">#{note.tags.join(" #")}</span>}
                 {note.embedCount > 0 && <span className="text-amber-600">🖼 {note.embedCount}</span>}
@@ -474,10 +472,10 @@ export default function BackupDialog({ open, onClose }) {
           </div>
         ))}
         {importPreview.notes.length > 10 && (
-          <p className="text-[11px] text-muted-foreground mt-2">{t("backup.andMore", { count: importPreview.notes.length - 10 })}</p>
+          <p className="text-[10px] text-muted-foreground mt-1.5">{t("backup.andMore", { count: importPreview.notes.length - 10 })}</p>
         )}
-        <div className="mt-4 flex flex-col sm:flex-row gap-2">
-          <label className="flex items-center gap-2 text-[12px] cursor-pointer">
+        <div className="mt-3 flex flex-col sm:flex-row gap-2">
+          <label className="flex items-center gap-2 text-[11px] cursor-pointer">
             <input
               type="checkbox"
               checked={importOptions.preserveFolders}
@@ -489,7 +487,7 @@ export default function BackupDialog({ open, onClose }) {
           <button
             type="button"
             onClick={() => { setImportPreview(null); setImportMode("backup"); }}
-            className="flex h-9 items-center gap-1.5 rounded-md border border-border/60 bg-background px-3 font-mono text-[12px] text-muted-foreground transition hover:bg-accent"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-border/60 bg-background px-2.5 font-mono text-[11px] text-muted-foreground transition hover:bg-accent"
             disabled={busy}
           >
             {t("common.cancel")}
@@ -500,7 +498,7 @@ export default function BackupDialog({ open, onClose }) {
             } else {
               importFileInput.current?.click();
             }
-          }} disabled={busy}>
+          }} disabled={busy} className="h-8 text-[11px]">
             {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("common.import")}
           </Button>
         </div>
@@ -512,53 +510,50 @@ export default function BackupDialog({ open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent maxWidth="max-w-[32rem]">
+      <DialogContent maxWidth="max-w-[420px]" className="p-4">
         {/* Header */}
-        <DialogHeader className="border-b border-border pb-3">
+        <DialogHeader className="border-b border-border pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Archive className="h-5 w-5 text-primary" />
-              <DialogTitle className="font-display text-[18px] leading-tight tracking-tight">{t("backup.title")}</DialogTitle>
+              <DialogTitle className="font-display text-[16px] leading-tight tracking-tight">{t("backup.title")}</DialogTitle>
             </div>
-            <DialogClose className="p-1 rounded hover:bg-accent transition" aria-label={t("common.close")}>
-              <X className="h-4 w-4" />
-            </DialogClose>
           </div>
-          <DialogDescription className="text-[12.5px]">{t("backup.desc")}</DialogDescription>
+          <DialogDescription className="text-[12px]">{t("backup.desc")}</DialogDescription>
         </DialogHeader>
 
         {/* Body - scrollable */}
-        <DialogBody className="pt-3 pb-0">
-          <div className="space-y-6">
+        <DialogBody className="pt-2 pb-0">
+          <div className="space-y-4">
             {/* Whole vault section */}
             <section>
-              <p className="nb-label">{t("backup.wholeVault")}</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2" style={{ minWidth: 0 }}>
-                <Button onClick={handleExport} disabled={busy} className="flex items-center gap-2 justify-center w-full">
+              <p className="nb-label text-[11px]">{t("backup.wholeVault")}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2" style={{ minWidth: 0 }}>
+                <Button onClick={handleExport} disabled={busy} className="flex items-center gap-2 justify-center w-full h-8 text-[12px]">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                   {t("backup.exportBackup")}
                 </Button>
-                <Button onClick={handlePick} disabled={busy} className="flex items-center gap-2 justify-center w-full">
+                <Button onClick={handlePick} disabled={busy} className="flex items-center gap-2 justify-center w-full h-8 text-[12px]">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                   {t("backup.importBackup")}
                 </Button>
               </div>
             </section>
 
-            <Separator className="my-4" />
+            <Separator className="my-3" />
 
             {/* Import files section */}
             <section>
-              <p className="nb-label">{t("backup.importFiles")}</p>
-              <h3 className="mt-1 font-display text-[16px] leading-tight tracking-tight">{t("backup.importMarkdown")}</h3>
-              <p className="mt-2 text-[12.5px] text-muted-foreground">{t("backup.importMarkdownDesc")}</p>
+              <p className="nb-label text-[11px]">{t("backup.importFiles")}</p>
+              <h3 className="mt-1 font-display text-[14px] leading-tight tracking-tight">{t("backup.importMarkdown")}</h3>
+              <p className="mt-1 text-[11px] text-muted-foreground">{t("backup.importMarkdownDesc")}</p>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2" style={{ minWidth: 0 }}>
-                <Button onClick={handleImportFilesPick} disabled={busy} className="flex items-center gap-2 justify-center w-full">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2" style={{ minWidth: 0 }}>
+                <Button onClick={handleImportFilesPick} disabled={busy} className="flex items-center gap-2 justify-center w-full h-8 text-[12px]">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                   {t("backup.importFilesBtn")}
                 </Button>
-                <Button onClick={handleImportFolderPick} disabled={busy} className="flex items-center gap-2 justify-center w-full">
+                <Button onClick={handleImportFolderPick} disabled={busy} className="flex items-center gap-2 justify-center w-full h-8 text-[12px]">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderOpen className="h-3.5 w-3.5" />}
                   {t("backup.importFolderBtn")}
                 </Button>
@@ -567,8 +562,8 @@ export default function BackupDialog({ open, onClose }) {
               {/* Import options - only show after file/folder selected */}
               {(importMode === "files" || importMode === "folder") && (
                 <>
-                  <div className="mt-4 flex items-center gap-2">
-                    <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
+                  <div className="mt-3 flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-[11px] cursor-pointer">
                       <input
                         type="checkbox"
                         checked={importOptions.preserveFolders}
@@ -579,8 +574,8 @@ export default function BackupDialog({ open, onClose }) {
                     </label>
                   </div>
 
-                  <div className="mt-4 flex flex-col sm:flex-row items-center gap-2">
-                    <label className="text-[12.5px] text-muted-foreground">{t("backup.onImport")}:</label>
+                  <div className="mt-3 flex flex-col sm:flex-row items-center gap-2">
+                    <label className="text-[11px] text-muted-foreground">{t("backup.onImport")}:</label>
                     <Button
                       variant="outline"
                       size="sm"
@@ -607,25 +602,25 @@ export default function BackupDialog({ open, onClose }) {
 
           {/* Backup import preview (when a .json backup file is selected) */}
           {preview && (
-            <div className="mt-5 rounded-xl border border-border/60 bg-card/40 p-5 sm:p-6">
-              <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-[13px] font-medium tracking-tight">{t("backup.confirmImport")}</h3>
-                <span className="font-mono text-[11px] text-muted-foreground">
+            <div className="mt-4 rounded-lg border border-border/60 bg-card/40 p-4">
+              <div className="flex items-baseline justify-between mb-2">
+                <h3 className="text-[12px] font-medium tracking-tight">{t("backup.confirmImport")}</h3>
+                <span className="font-mono text-[10px] text-muted-foreground">
                   {preview.data.exportedAt ?? t("common.unknownDate")}
                 </span>
               </div>
               {sizeWarn}
               {countsTable()}
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={() => setPreview(null)}
-                  className="flex h-9 items-center gap-1.5 rounded-md border border-border/60 bg-background px-3 font-mono text-[12px] text-muted-foreground transition hover:bg-accent"
+                  className="flex h-8 items-center gap-1.5 rounded-md border border-border/60 bg-background px-2.5 font-mono text-[11px] text-muted-foreground transition hover:bg-accent"
                   disabled={busy}
                 >
                   {t("common.cancel")}
                 </button>
-                <Button onClick={applyImport} disabled={busy} className="flex-1 sm:flex-none">
+                <Button onClick={applyImport} disabled={busy} className="flex-1 sm:flex-none h-8 text-[12px]">
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("common.import")}
                 </Button>
               </div>
@@ -635,17 +630,6 @@ export default function BackupDialog({ open, onClose }) {
           {/* Markdown/Folder import preview */}
           {importPreviewUI()}
         </DialogBody>
-
-        {/* Footer */}
-        <DialogFooter className="border-t border-border pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full sm:w-auto px-3 py-1.5 rounded-md border border-border/70 text-[11px] font-mono hover:bg-accent transition"
-          >
-            {t("common.close")}
-          </button>
-        </DialogFooter>
 
         {/* Hidden file inputs */}
         <input

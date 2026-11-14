@@ -14,7 +14,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 import { COLUMN_TYPES, makeColumn, uid } from "@/lib/table";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -210,7 +210,7 @@ export default function TablePage() {
             <label className="basis-[130px]">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">type</span>
               <Select value={draft.type} onValueChange={(type) => setDraft({ ...draft, type })}>
-                <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+                <SelectTrigger className="mt-1 w-full">
                   <SelectValue placeholder={t("vault.tables.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -237,7 +237,7 @@ export default function TablePage() {
               <label className="flex-1 basis-[180px]">
                 <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">links to</span>
                 <Select value={draft.targetTableId} onValueChange={(targetTableId) => setDraft({ ...draft, targetTableId })}>
-                  <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+                  <SelectTrigger className="mt-1 w-full">
                     <SelectValue placeholder={t("vault.tables.tablePickerPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent position="popper">

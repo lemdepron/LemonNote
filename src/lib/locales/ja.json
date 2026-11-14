@@ -44,6 +44,7 @@
     "groupsAria": "リボングループ",
     "home": {
       "clipboard": "クリップボード",
+      "edit": "編集",
       "undo": "元に戻す",
       "undoHint": "最後の編集を元に戻す",
       "redo": "やり直す",
@@ -266,7 +267,10 @@
       "presets": "プリセット",
       "resetDesignToast": "アプリのデフォルトにリセットしました",
       "saveAsDefaultToast": "新規ノートのデフォルトとして保存しました",
-      "saveFailedToast": "デフォルトの保存に失敗しました"
+      "saveFailedToast": "デフォルトの保存に失敗しました",
+      "styleSetSelect": "スタイルセットを選択",
+      "pageColorActive": "カスタムページカラーが有効",
+      "defaultTheme": "デフォルト (テーマ)"
     },
     "ink": {
       "audio": {
@@ -1787,5 +1791,48 @@
     "stage": "ステージ",
     "table": "テーブル",
     "title": "バックアップ"
+  },
+  "common": {
+    "clearSearch": "検索をクリア",
+    "removeTag": "タグ {tag} を削除",
+    "wordGoal": "単語目標",
+    "setGoal": "目標を設定",
+    "editGoal": "編集",
+    "wordsToGo": "目標まで {count} 語",
+    "goalReached": "目標達成",
+    "wordsCount": "{count} 語{plural}",
+    "words": "単語",
+    "notSynced": "未同期",
+    "syncNotAvailable": "同期はまだ利用できません",
+    "savedStatus": "保存済み",
+    "savingStatus": "保存中…",
+    "draftStatus": "下書き",
+    "untitledNote": "無題のノート",
+    "clickToRename": "クリックして名前変更",
+    "addTag": "+ タグ",
+    "close": "閉じる",
+    "cancel": "キャンセル",
+    "total": "合計",
+    "errors": "エラー",
+    "error": "エラー",
+    "unknownDate": "不明な日付",
+    "clear": "クリア",
+    "import": "インポート",
+    "noResults": "結果なし"
+  },
+  "tagFilter": {
+    "title": "タグで絞り込み",
+    "searchPlaceholder": "タグを絞り込む…",
+    "noTags": "ボルトにまだタグがありません",
+    "builtin": "組み込み",
+    "custom": "カスタム",
+    "selected": "{count} 件選択",
+    "done": "完了"
+  },
+  "searchResults": {
+    "taggedLines": "タグ付き行",
+    "hideCompleted": "完了を非表示",
+    "createSummary": "概要ノートを作成",
+    "noTaggedLines": "一致するタグ付き行がありません"
   }
 }

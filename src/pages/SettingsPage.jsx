@@ -10,7 +10,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,7 +64,7 @@ function FieldLabel({ children, htmlFor }) {
 function Select({ id, value, onChange, options, className }) {
   return (
     <SelectComponent value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className={cn("h-9 w-full", className)}>
+      <SelectTrigger id={id} className={cn("w-full", className)}>
         <SelectValue placeholder="" />
       </SelectTrigger>
       <SelectContent position="popper">

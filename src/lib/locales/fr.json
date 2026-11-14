@@ -44,6 +44,7 @@
     "groupsAria": "Groupes du ruban",
     "home": {
       "clipboard": "Presse-papiers",
+      "edit": "Éditer",
       "undo": "Annuler",
       "undoHint": "Annuler la dernière modification",
       "redo": "Rétablir",
@@ -266,7 +267,10 @@
       "presets": "Préréglages",
       "resetDesignToast": "Réinitialisé aux valeurs par défaut de l'app",
       "saveAsDefaultToast": "Enregistré comme défaut pour les nouvelles notes",
-      "saveFailedToast": "Échec de l'enregistrement du défaut"
+      "saveFailedToast": "Échec de l'enregistrement du défaut",
+      "styleSetSelect": "Choisir un ensemble de styles",
+      "pageColorActive": "Couleur de page personnalisée active",
+      "defaultTheme": "Par défaut (thème)"
     },
     "ink": {
       "audio": {
@@ -1787,5 +1791,48 @@
     "stage": "Étape",
     "table": "Tableau",
     "title": "Sauvegarde"
+  },
+  "common": {
+    "clearSearch": "Effacer la recherche",
+    "removeTag": "Supprimer l'étiquette {tag}",
+    "wordGoal": "objectif de mots",
+    "setGoal": "définir l'objectif",
+    "editGoal": "modifier",
+    "wordsToGo": "{count} mots pour atteindre l'objectif",
+    "goalReached": "objectif atteint",
+    "wordsCount": "{count} mot{plural}",
+    "words": "Mots",
+    "notSynced": "Non synchronisé",
+    "syncNotAvailable": "Synchronisation pas encore disponible",
+    "savedStatus": "enregistré",
+    "savingStatus": "enregistrement…",
+    "draftStatus": "brouillon",
+    "untitledNote": "Note sans titre",
+    "clickToRename": "Cliquer pour renommer",
+    "addTag": "+ étiquette",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "total": "Total",
+    "errors": "erreurs",
+    "error": "erreur",
+    "unknownDate": "date inconnue",
+    "clear": "Effacer",
+    "import": "Importer",
+    "noResults": "Aucun résultat"
+  },
+  "tagFilter": {
+    "title": "Filtrer par étiquettes",
+    "searchPlaceholder": "Filtrer les étiquettes…",
+    "noTags": "Aucune étiquette dans le coffre pour l'instant",
+    "builtin": "Intégrées",
+    "custom": "Personnalisées",
+    "selected": "{count} sélectionnées",
+    "done": "Terminé"
+  },
+  "searchResults": {
+    "taggedLines": "Lignes étiquetées",
+    "hideCompleted": "Masquer les terminées",
+    "createSummary": "Créer une note de synthèse",
+    "noTaggedLines": "Aucune ligne étiquetée ne correspond"
   }
 }

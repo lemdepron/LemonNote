@@ -44,6 +44,7 @@
     "groupsAria": "مجموعات الشريط",
     "home": {
       "clipboard": "الحافظة",
+      "edit": "تحرير",
       "undo": "تراجع",
       "undoHint": "تراجع عن آخر تعديل",
       "redo": "إعادة",
@@ -234,7 +235,10 @@
       "presets": "إعدادات مسبقة",
       "resetDesignToast": "إعادة تعيين إلى إعدادات التطبيق الافتراضية",
       "saveAsDefaultToast": "تم الحفظ كافتراضي للملاحظات الجديدة",
-      "saveFailedToast": "فشل في حفظ الإعداد الافتراضي"
+      "saveFailedToast": "فشل في حفظ الإعداد الافتراضي",
+      "styleSetSelect": "اختر مجموعة نمط",
+      "pageColorActive": "لون صفحة مخصص نشط",
+      "defaultTheme": "افتراضي (ثيم)"
     },
     "layout": {
       "pageSetup": "إعداد الصفحة",
@@ -1643,5 +1647,48 @@
     "stage": "مرحلة",
     "table": "جدول",
     "title": "نسخة احتياطية"
+  },
+  "common": {
+    "clearSearch": "مسح البحث",
+    "removeTag": "إزالة الوسم {tag}",
+    "wordGoal": "هدف الكلمات",
+    "setGoal": "تعيين الهدف",
+    "editGoal": "تعديل",
+    "wordsToGo": "{count} كلمات متبقية",
+    "goalReached": "تم تحقيق الهدف",
+    "wordsCount": "{count} كلمة{plural}",
+    "words": "كلمات",
+    "notSynced": "غير متزامن",
+    "syncNotAvailable": "المزامنة غير متاحة بعد",
+    "savedStatus": "تم الحفظ",
+    "savingStatus": "جاري الحفظ…",
+    "draftStatus": "مسودة",
+    "untitledNote": "ملاحظة بدون عنوان",
+    "clickToRename": "انقر لإعادة التسمية",
+    "addTag": "+ وسم",
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "total": "الإجمالي",
+    "errors": "أخطاء",
+    "error": "خطأ",
+    "unknownDate": "تاريخ غير معروف",
+    "clear": "مسح",
+    "import": "استيراد",
+    "noResults": "لا توجد نتائج"
+  },
+  "tagFilter": {
+    "title": "تصفية حسب الوسوم",
+    "searchPlaceholder": "تصفية الوسوم…",
+    "noTags": "لا توجد وسوم في الخزنة بعد",
+    "builtin": "مدمج",
+    "custom": "مخصص",
+    "selected": "{count} مختار",
+    "done": "تم"
+  },
+  "searchResults": {
+    "taggedLines": "الأسطر الموسومة",
+    "hideCompleted": "إخفاء المكتملة",
+    "createSummary": "إنشاء ملاحظة ملخصة",
+    "noTaggedLines": "لا توجد أسطر موسومة مطابقة"
   }
 }

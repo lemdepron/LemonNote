@@ -3,7 +3,7 @@ import {
   FlipHorizontal2, Hash, Highlighter, IndentDecrease, IndentIncrease, Italic, List, ListChecks, ListOrdered, ListX, Minus,
   Quote, Redo2, Scissors, SquareDashedMousePointer, Strikethrough, RotateCcw,
   Underline, Undo2, Pilcrow,
-  Circle, CircleCheck, Timer, ListRestart, CircleDashed, Search,
+  Circle, CircleCheck, Timer, ListRestart, CircleDashed,
   Globe, Languages, Wand2,
   Type, FileText,
 } from "lucide-react";
@@ -33,7 +33,7 @@ import {
   SelectItem,
   SelectGroup,
   SelectLabel,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 const CYCLE = { TODO: "DOING", DOING: "DONE", DONE: "TODO" };
 
@@ -55,6 +55,10 @@ const STATUS = [
   ["DONE", CircleCheck, "ribbon.home.doneHint", "Ctrl+Alt+3", "home.done"],
 ];
 
+function taskHint(tr, baseHintKey, shortcut, label) {
+  return `${tr(baseHintKey)} · ${shortcut} · ${label}`;
+}
+
 const FORMAT_PAINTER_KEY = "formatPainterMarks";
 
 function readFormatPainter() {
@@ -70,7 +74,7 @@ function writeFormatPainter(marks) {
   writePref(FORMAT_PAINTER_KEY, JSON.stringify(marks));
 }
 
-export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags }) {
+export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
   const { t: tr } = useI18n();
   const ctx = useRibbon();
   const { selection, markdown, run, typography: typo, setTypography } = ctx;
@@ -211,7 +215,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
   return (
     <>
       <RibbonGroup
-        label={tr("ribbon.home.clipboard")}
+        label={tr("ribbon.home.edit")}
         icon={Copy}
         priority={90}
         more={
@@ -225,6 +229,8 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
               onClick={handleFormatPainter}
               onDoubleClick={handleFormatPainterLock}
             />
+            <Btn id="home.inlineCode" icon={Code} hint={tr("ribbon.home.inlineCode")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
+            <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
           </>
         }
       >
@@ -233,19 +239,6 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         <Btn id="home.cut" icon={Scissors} label={tr("ribbon.home.cut")} hint={tr("ribbon.home.cutHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={cut} />
         <Btn id="home.copy" icon={Copy} label={tr("ribbon.home.copy")} hint={tr("ribbon.home.copyHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={() => copyText(selected)} />
         <Btn id="home.selectAll" icon={SquareDashedMousePointer} label={tr("ribbon.home.selectAll")} hint={tr("ribbon.home.selectAllHint")} onClick={() => execEditor("selectAll")} />
-      </RibbonGroup>
-
-      <RibbonGroup
-        label={tr("ribbon.home.font")}
-        icon={Bold}
-        priority={80}
-        more={
-          <>
-            <Btn id="home.inlineCode" icon={Code} hint={tr("ribbon.home.inlineCode")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
-            <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
-          </>
-        }
-      >
         <Btn id="home.bold" icon={Bold} hint={tr("ribbon.home.bold")} shortcut="Ctrl+B" edit={(s) => toggleWrap(s, "**")} />
         <Btn id="home.italic" icon={Italic} hint={tr("ribbon.home.italic")} shortcut="Ctrl+I" edit={toggleItalic} />
         <Btn id="home.underline" icon={Underline} hint={tr("ribbon.home.underline")} shortcut="Ctrl+U" edit={(s) => toggleWrap(s, "<u>", "</u>")} />
@@ -339,13 +332,27 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           </>
         }
       >
-        <RibbonSelect
-          title={tr("ribbon.home.noteFont")}
-          placeholder={tr("ribbon.home.noteFontPlaceholder")}
-          groups={fontGroups}
+        <Select
           value={typo.font || ""}
-          onChange={(value) => (value ? patch({ font: value }) : drop("font"))}
-        />
+          onValueChange={(value) => (value ? patch({ font: value }) : drop("font"))}
+        >
+          <SelectTrigger aria-label={tr("ribbon.home.noteFont")} className="min-w-[140px]">
+            <SelectValue placeholder={tr("ribbon.home.noteFontPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="">{tr("ribbon.home.noteFontPlaceholder")}</SelectItem>
+            {fontGroups.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.options.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
         <Stepper
           title={tr("ribbon.home.noteSize")}
           value={typo.size || 16}
@@ -355,39 +362,65 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           format={(n) => `${n}px`}
           style={{ gridRow: "span 2" }}
         />
-        <RibbonSelect
-          title={tr("ribbon.home.tracking")}
-          placeholder={tr("ribbon.home.trackingPlaceholder")}
-          options={LETTER_SPACING.map((item) => ({ value: item.id, label: item.label }))}
+        <Select
           value={typo.spacing || ""}
-          onChange={(value) => (value ? patch({ spacing: value }) : drop("spacing"))}
-        />
-        <RibbonSelect
-          title={tr("ribbon.home.headingFont")}
-          placeholder={tr("ribbon.home.headingFontPlaceholder")}
-          groups={fontGroups}
+          onValueChange={(value) => (value ? patch({ spacing: value }) : drop("spacing"))}
+        >
+          <SelectTrigger aria-label={tr("ribbon.home.tracking")} className="min-w-[100px]">
+            <SelectValue placeholder={tr("ribbon.home.trackingPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="">{tr("ribbon.home.trackingPlaceholder")}</SelectItem>
+            {LETTER_SPACING.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={typo.headingFont || ""}
-          onChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
-        />
-        <RibbonSelect
-          title={tr("ribbon.home.noteDirection")}
-          placeholder={tr("ribbon.home.noteDirectionDefault")}
-          options={[
-            { value: "ltr", label: tr("dir.ltr") },
-            { value: "rtl", label: tr("dir.rtl") },
-            { value: "auto", label: tr("dir.auto") },
-          ]}
+          onValueChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
+        >
+          <SelectTrigger aria-label={tr("ribbon.home.headingFont")} className="min-w-[140px]">
+            <SelectValue placeholder={tr("ribbon.home.headingFontPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="">{tr("ribbon.home.headingFontPlaceholder")}</SelectItem>
+            {fontGroups.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.options.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={typo.dir || ""}
-          onChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
-        />
+          onValueChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
+        >
+          <SelectTrigger aria-label={tr("ribbon.home.noteDirection")} className="min-w-[100px]">
+            <SelectValue placeholder={tr("ribbon.home.noteDirectionDefault")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="">{tr("ribbon.home.noteDirectionDefault")}</SelectItem>
+            <SelectItem value="ltr">{tr("dir.ltr")}</SelectItem>
+            <SelectItem value="rtl">{tr("dir.rtl")}</SelectItem>
+            <SelectItem value="auto">{tr("dir.auto")}</SelectItem>
+          </SelectContent>
+        </Select>
       </RibbonGroup>
 
       <RibbonGroup label={tr("ribbon.home.tasks")} icon={CircleCheck} priority={30}>
         {STATUS.map(([id, icon, hintKey, key, qa]) => (
-          <Btn key={id} id={qa} icon={icon} label={id} hint={tr(hintKey)} shortcut={key} active={status === id} edit={(s) => toggleTask(s, id)} />
+          <Btn key={id} id={qa} icon={icon} hint={taskHint(tr, hintKey, key, id)} shortcut={key} active={status === id} edit={(s) => toggleTask(s, id)} />
         ))}
-        <Btn id="home.nextStatus" icon={ListRestart} label={tr("ribbon.home.nextStatus")} hint={tr("ribbon.home.nextStatusHint")} edit={(s) => toggleTask(s, CYCLE[taskStatusAt(body, selection.start)] || "TODO")} />
-        <Btn id="home.clearStatus" icon={CircleDashed} label={tr("ribbon.home.clear")} hint={tr("ribbon.home.clearStatusHint")} edit={tasks("clear")} />
+        <Btn id="home.nextStatus" icon={ListRestart} hint={tr("ribbon.home.nextStatusHint")} edit={(s) => toggleTask(s, CYCLE[taskStatusAt(body, selection.start)] || "TODO")} />
+        <Btn id="home.clearStatus" icon={CircleDashed} hint={tr("ribbon.home.clearStatusHint")} edit={tasks("clear")} />
       </RibbonGroup>
 
       {/* AI Actions - only shown when AI is enabled and note is markdown */}
@@ -438,19 +471,9 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
       <TagGroup format={format} />
 
-      <RibbonGroup label={tr("ribbon.home.search")} icon={Search} priority={15}>
-        <Btn
-          id="home.findTags"
-          icon={Search}
-          label={tr("ribbon.home.findTags")}
-          hint={tr("ribbon.home.findTagsHint")}
-          onClick={onFindTags}
-        />
-      </RibbonGroup>
-
       <RibbonGroup label={tr("ribbon.home.noteType")} icon={FileText} priority={10}>
         <Select value={format} onValueChange={onFormat}>
-          <SelectTrigger aria-label={tr("ribbon.home.noteFormatAria")} className="h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 min-w-[72px]">
+          <SelectTrigger aria-label={tr("ribbon.home.noteFormatAria")} className="min-w-[72px]">
             <SelectValue placeholder={tr("ribbon.home.noteFormatTitle")} />
           </SelectTrigger>
           <SelectContent position="popper">

@@ -29,10 +29,17 @@ Goal in the owner's words: clear, lots of free space, arranged and compacted as 
 3. **Breadcrumb row**: `<- Vault / Title`. Clicking the title renames the note. On the right: the Write / Split / Read switch, then a moon button. The moon switches between dark and light.
 4. **Tab line** (one bordered box with the ribbon): Undo, Redo, Star (Quick Access, as in the current build), the File button (the page icon, same menu as the current build), the tabs Home, Ink, Insert, Design, Layout, View, Share (contextual Table and Code tabs still appear only in a table or code block), then the word-goal target button, then Macros (records edits, as in the current build, moved here from under the note).
 5. **Panel pattern**: every group is up to six icon buttons in two rows (three columns), the group name under it, and thin vertical dividers between groups. If a group has more than six actions it shows five plus one `...` box; the box opens a small popover with the rest. A group may also hold one tall box (for example the Paragraph style picker with a scrolling list). **No group turns into a dropdown.** Only in a narrow window the panel scrolls sideways.
-6. **Scroll**: scrolling down hides the panel and leaves the tab line sticky at the top. Scrolling up brings the panel back. The note tabs row and the breadcrumb row scroll away normally.
+6. **Scroll** (the owner's drawing of 14 Nov 2026): scrolling DOWN leaves ONLY the tab line sticky at the top; the note tabs row, the breadcrumb row and the panel go away. The next scroll UP, even by a few pixels and anywhere in the page, brings ALL of it back: note tabs row, breadcrumb row, tab line and panel. At the very top of the page everything is shown.
 7. **Writing area**: wide, no inner box, no limit downward, one scroll for the whole page.
 8. **Status bar**: `Words: N`, `Not synced` with a crossed-cloud icon, `Saved` with a check. The number is the words written now.
 9. **Icons**: lucide-react outline icons, but each icon must match its function and be easy to tell apart. Colour may be added through theme tokens (decided later, on the icons page).
+
+10. **Compact controls** (owner's drawing of 14 Nov 2026): every select and dropdown, in the ribbon and in Settings, is as small as possible: the box is only as wide as its content, the open list is only as wide as its longest item, rows are about 26 px high, the selected item has a check mark, a small arrow shows when the list scrolls. The `...` popover of a group is a small grid of icon buttons (3 or 4 per row), each with a tooltip, not wide rows.
+11. **Group names and panel size**: group names are small (about 10 px, no wide letter spacing); the panel is about 72 px high; no scrollbar may cover the group names; no vertical scrollbar in the panel. At a 1366 px wide window every tab must fit without sideways scrolling.
+12. **Space**: the writing area starts right under the ribbon (gap 8 px or less, no divider line). The note tabs row is about 32 px high, the breadcrumb row about 36 px, the tab line about 32 px.
+13. **Icon-only buttons**: the light/dark button shows only the sun or the moon, no word.
+14. **Rail**: about 44 to 48 px wide, buttons 32 px, icons 18 to 20 px, small gaps.
+15. **No ink status pills** ("Handwriting, N marks, open the Ink tab" and "Ink is shown in Read view") in the writing area, in any mode.
 
 ## 3. Sketch details I read, to confirm on screenshots
 

@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { ChevronRight, ChevronDown, Folder, FolderPlus, FolderOpen, Trash2, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent, CompactPopoverGrid, CompactPopoverIconButton } from "@/components/ui/compact-popover";
 import { toast } from "@/lib/toast";
 import { buildFolderTree, flattenFolderTree, RECENT_FILTERS } from "@/lib/vault";
 
@@ -222,8 +215,8 @@ export default function VaultSidebar({
                     <span className="truncate">{displayName}</span>
                     <span className="ml-auto text-[10px] text-muted-foreground/60">{folder.count}</span>
                   </button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                  <Popover>
+                    <PopoverTrigger asChild>
                       <button
                         type="button"
                         className="p-1 rounded hover:bg-accent transition text-muted-foreground"
@@ -231,25 +224,28 @@ export default function VaultSidebar({
                       >
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuLabel className="font-mono text-[10px] truncate">{folder.folder}</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleCreateFolder(folder.folder)}>
-                        <FolderPlus className="h-3 w-3 mr-2" /> New subfolder
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleRenameFolder(folder.folder)}>
-                        <Folder className="h-3 w-3 mr-2" /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteFolder(folder.folder)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3 mr-2" /> Delete folder
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </PopoverTrigger>
+                    <PopoverContent align="end">
+                      <CompactPopoverGrid columns={1}>
+                        <CompactPopoverIconButton
+                          icon={FolderPlus}
+                          label="New subfolder"
+                          onClick={() => handleCreateFolder(folder.folder)}
+                        />
+                        <CompactPopoverIconButton
+                          icon={Folder}
+                          label="Rename"
+                          onClick={() => handleRenameFolder(folder.folder)}
+                        />
+                        <CompactPopoverIconButton
+                          icon={Trash2}
+                          label="Delete folder"
+                          onClick={() => handleDeleteFolder(folder.folder)}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        />
+                      </CompactPopoverGrid>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             );

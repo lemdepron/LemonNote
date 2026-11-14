@@ -14,6 +14,7 @@ import {
   Globe,
   PaintBucket,
   Stamp,
+  Check,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, RibbonMenu, MenuItem, MenuLabel, Swatches, TextGrid, useRibbon } from "@/components/ribbon/RibbonKit";
@@ -35,7 +36,6 @@ import {
 import { AI_LANGUAGES } from "@/lib/ai";
 
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 const fontGroups = FONT_GROUPS.map((label) => ({
   label,
@@ -43,15 +43,6 @@ const fontGroups = FONT_GROUPS.map((label) => ({
 }));
 
 const colorSwatches = COLORS.map((c) => ({ id: c.id, label: c.label, value: c.value }));
-
-const pageColorPresets = [
-  { id: "white", label: "White", value: "#ffffff" },
-  { id: "cream", label: "Cream", value: "#fdf8f0" },
-  { id: "light-gray", label: "Light Gray", value: "#f3f4f6" },
-  { id: "sepia", label: "Sepia", value: "#f4ecd8" },
-  { id: "dark", label: "Dark", value: "#1e1e1e" },
-  { id: "midnight", label: "Midnight", value: "#0f172a" },
-];
 
 const watermarkPresets = ["DRAFT", "CONFIDENTIAL", "INTERNAL", "PRIVATE", "COPY", "SAMPLE", "VOID", "PREVIEW"];
 
@@ -78,6 +69,17 @@ function setDefaultStyle(style) {
 export function DesignTab() {
   const { t } = useI18n();
   const { typography: typo, setTypography } = useRibbon();
+
+  // Page color presets with translated "Default (theme)" label
+  const pageColorPresetsTranslated = [
+    { id: "default", label: t("ribbon.design.defaultTheme"), value: null },
+    { id: "white", label: "White", value: "#ffffff" },
+    { id: "cream", label: "Cream", value: "#fdf8f0" },
+    { id: "light-gray", label: "Light Gray", value: "#f3f4f6" },
+    { id: "sepia", label: "Sepia", value: "#f4ecd8" },
+    { id: "dark", label: "Dark", value: "#1e1e1e" },
+    { id: "midnight", label: "Midnight", value: "#0f172a" },
+  ];
   const patch = (next) => setTypography({ ...typo, ...next });
   const drop = (key) => {
     const next = { ...typo };
@@ -221,32 +223,25 @@ export function DesignTab() {
 
       {/* 2. Style Sets */}
       <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={60}>
-        <MenuLabel>{t("ribbon.design.documentFormatting")}</MenuLabel>
-        <TextGrid
-          items={STYLE_SETS.map((s) => s.id)}
-          onPick={applyStyleSet}
-          columns={6}
+        <RibbonSelect
+          title={t("ribbon.design.styleSets")}
+          placeholder={t("ribbon.design.styleSetSelect")}
+          options={STYLE_SETS.map((set) => ({
+            value: set.id,
+            label: (
+              <span className="flex items-center gap-2">
+                {typo.styleSet === set.id && <Check className="h-3 w-3 text-primary flex-shrink-0" />}
+                <span className="truncate">{set.label}</span>
+                <span className="font-mono text-[10px] text-muted-foreground/70 whitespace-nowrap">
+                  {FONTS.find(f => f.id === set.font)?.label || set.font} · {set.size}px
+                </span>
+              </span>
+            ),
+          }))}
+          value={typo.styleSet || ""}
+          onChange={(value) => (value ? applyStyleSet(value) : drop("styleSet"))}
+          style={{ gridRow: "span 2" }}
         />
-        <div className="px-1 pt-1 grid gap-1" style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}>
-          {STYLE_SETS.map((set) => (
-            <button
-              key={set.id}
-              type="button"
-              title={`${set.label}: ${set.description}`}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => applyStyleSet(set.id)}
-              className={cn(
-                "h-16 rounded-md border border-border/70 bg-card/60 p-2 text-left transition hover:scale-[1.02] hover:border-primary/40",
-                typo.styleSet === set.id && "ring-2 ring-primary border-primary/50"
-              )}
-            >
-              <div className="font-medium text-[11px] truncate">{set.label}</div>
-              <div className="font-mono text-[9px] text-muted-foreground/70 truncate">{set.font}</div>
-              <div className="font-mono text-[9px] text-muted-foreground/70 truncate">H: {set.headingFont}</div>
-              <div className="font-mono text-[9px] text-muted-foreground/70">Size: {set.size}px · Line: {set.lineHeight}</div>
-            </button>
-          ))}
-        </div>
       </RibbonGroup>
 
       {/* 3. Themes */}
@@ -527,8 +522,9 @@ export function DesignTab() {
           id="design.pageColor"
           icon={PaintBucket}
           label={t("ribbon.design.pageColor")}
-          hint={t("ribbon.design.pageColorHint")}
+          hint={typo.pageColor ? t("ribbon.design.pageColorActive") : t("ribbon.design.pageColorHint")}
           width={280}
+          indicator={typo.pageColor}
           children={(close) => (
             <div className="p-2">
               <div className="flex gap-2 mb-2">
@@ -554,9 +550,19 @@ export function DesignTab() {
               </div>
               <MenuLabel>{t("ribbon.design.presets")}</MenuLabel>
               <Swatches
-                items={pageColorPresets}
-                onPick={(id) => { const c = pageColorPresets.find((x) => x.id === id); if (c) { patch({ pageColor: c.value }); close(); } }}
-                current={typo.pageColor ? pageColorPresets.find((c) => c.value === typo.pageColor)?.id : null}
+                items={pageColorPresetsTranslated}
+                onPick={(id) => {
+                  const c = pageColorPresetsTranslated.find((x) => x.id === id);
+                  if (c) {
+                    if (c.value === null) {
+                      drop("pageColor");
+                    } else {
+                      patch({ pageColor: c.value });
+                    }
+                    close();
+                  }
+                }}
+                current={typo.pageColor ? pageColorPresetsTranslated.find((c) => c.value === typo.pageColor)?.id : "default"}
                 columns={6}
               />
             </div>

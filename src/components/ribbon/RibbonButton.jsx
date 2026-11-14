@@ -65,7 +65,7 @@ function PinMenu({ id, position, onDone }) {
  * on right-click / long-press to pin or unpin the button in Quick Access.
  */
 const RibbonButton = forwardRef(function RibbonButton(
-  { icon: Icon, label, hint, shortcut, onClick, spinning, active, disabled, disabledReason, keepFocus = true, className, showLabel = false, id, ...rest },
+  { icon: Icon, label, hint, shortcut, onClick, spinning, active, disabled, disabledReason, keepFocus = true, className, showLabel = false, id, indicator, ...rest },
   ref
 ) {
   const canPin = Boolean(id && getRibbonAction(id));
@@ -122,7 +122,7 @@ const RibbonButton = forwardRef(function RibbonButton(
         aria-pressed={active || undefined}
         aria-disabled={disabled || undefined}
         className={cn(
-          "flex h-8 shrink-0 items-center justify-center rounded-md border border-transparent px-2 transition",
+          "flex h-[26px] shrink-0 items-center justify-center rounded-md border border-transparent px-2 transition relative",
           active
             ? "border-primary/40 bg-primary/15 text-primary"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -130,8 +130,11 @@ const RibbonButton = forwardRef(function RibbonButton(
           className
         )}
       >
-        {Icon && <Icon className={cn("h-3.5 w-3.5 shrink-0", spinning && "animate-spin")} />}
+        {Icon && <Icon className={cn("h-4 w-4 shrink-0", spinning && "animate-spin")} />}
         {showLabel && label && <span className="whitespace-nowrap font-mono text-[10.5px]">{label}</span>}
+        {indicator && (
+          <span className="absolute top-1 end-1 h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+        )}
       </button>
       {pinMenu && <PinMenu id={id} position={pinMenu} onDone={() => setPinMenu(null)} />}
     </>

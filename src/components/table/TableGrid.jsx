@@ -1,13 +1,12 @@
 import { Trash2, X } from "lucide-react";
 import { findTable, rowLabel } from "@/lib/table";
-import { cn } from "@/lib/utils";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 const TYPE_BADGE = {
   text: "txt",
@@ -38,7 +37,7 @@ function CellInput({ column, value, tables, onChange, t }) {
   if (column.type === "select") {
     return (
       <Select value={value ?? ""} onValueChange={onChange}>
-        <SelectTrigger className={cn(base, "cursor-pointer")}>
+        <SelectTrigger className="cursor-pointer w-full">
           <SelectValue placeholder={t("vault.tables.tableGrid.placeholder")} />
         </SelectTrigger>
         <SelectContent position="popper">
@@ -58,7 +57,7 @@ function CellInput({ column, value, tables, onChange, t }) {
     const rows = target?.rows ?? [];
     return (
       <Select value={value ?? ""} onValueChange={onChange}>
-        <SelectTrigger className={cn(base, "cursor-pointer")}>
+        <SelectTrigger className="cursor-pointer w-full">
           <SelectValue placeholder={t("vault.tables.tableGrid.placeholder")} />
         </SelectTrigger>
         <SelectContent position="popper">

@@ -5,7 +5,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 export default function CardForm({ notes, onCreate, onCancel }) {
   const [front, setFront] = useState("");
@@ -50,7 +50,7 @@ export default function CardForm({ notes, onCreate, onCancel }) {
         <label className="min-w-0 flex-1 basis-[200px]">
           <span className="nb-label">source note (optional)</span>
           <Select value={noteId} onValueChange={setNoteId}>
-            <SelectTrigger className="mt-1 h-9 w-full rounded-lg border border-border/80 bg-background/60 px-2 text-[13px] text-foreground outline-none focus:border-primary/40">
+            <SelectTrigger className="mt-1 w-full">
               <SelectValue placeholder="No note" />
             </SelectTrigger>
             <SelectContent position="popper">

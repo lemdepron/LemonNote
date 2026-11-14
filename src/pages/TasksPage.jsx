@@ -13,7 +13,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 export default function TasksPage() {
   const { t } = useI18n();
@@ -92,7 +92,7 @@ export default function TasksPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="font-mono text-[10px] text-muted-foreground">{t("vault.tasks.sort")}</span>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="rounded-md border border-border/70 bg-background px-2 py-1 font-mono text-[10px] text-foreground outline-none focus:border-primary/40">
+            <SelectTrigger>
               <SelectValue placeholder={t("vault.tasks.sortPlaceholder")} />
             </SelectTrigger>
             <SelectContent position="popper">

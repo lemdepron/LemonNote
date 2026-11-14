@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useRef, useState, useCallback } from "react";
 import { ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -9,10 +9,11 @@ import {
   SelectItem,
   SelectGroup,
   SelectLabel,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useScrollVisibility } from "@/lib/ScrollContext";
 
 /**
  * Shared state for every ribbon tab: the live selection, a `run` that applies an
@@ -38,7 +39,7 @@ export function Btn({ edit, onClick, ...props }) {
 export function RibbonSelect({ value, onChange, options, groups, title, placeholder, disabled }) {
   return (
     <Select value={value ?? ""} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger className={cn("h-8 rounded-md border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] text-foreground outline-none focus:border-primary/40 disabled:cursor-not-allowed disabled:opacity-40 min-w-[72px]")} aria-label={title}>
+      <SelectTrigger className={cn("min-w-[72px]")} aria-label={title}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent position="popper">
@@ -67,7 +68,7 @@ export function RibbonSelect({ value, onChange, options, groups, title, placehol
 }
 
 /** A button that opens a popover. `children` is a function that receives `close`. */
-export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabledReason, width = 260, children, active, onOpenChange }) {
+export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabledReason, width = 260, children, active, onOpenChange, indicator }) {
   const [open, setOpen] = useState(false);
   const ctx = useRibbon();
   const { register, unregister } = useRibbonPanelPopover();
@@ -87,7 +88,7 @@ export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabled
       }}
     >
       <PopoverTrigger asChild>
-        <RibbonButton id={id} icon={icon} label={label} hint={hint} shortcut={shortcut} active={active || open} />
+        <RibbonButton id={id} icon={icon} label={label} hint={hint} shortcut={shortcut} active={active || open} indicator={indicator} />
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -201,12 +202,14 @@ export function Stepper({ value, onChange, min, max, step = 1, title, format = S
 /**
  * Context for tracking popover open state in the ribbon panel.
  * Used to prevent panel from hiding while a popover is open.
+ * Now integrates with ScrollContext for global popover tracking.
  */
 export const RibbonPanelPopoverContext = createContext({ openCount: 0, register: () => {}, unregister: () => {} });
 export const useRibbonPanelPopover = () => useContext(RibbonPanelPopoverContext);
 
 /**
  * Provider for tracking popover open state in the ribbon panel.
+ * @deprecated Use ScrollProvider at app level. Kept for backward compatibility.
  */
 export function RibbonPanelPopoverProvider({ children }) {
   const [openCount, setOpenCount] = useState(0);
@@ -217,142 +220,6 @@ export function RibbonPanelPopoverProvider({ children }) {
       {children}
     </RibbonPanelPopoverContext.Provider>
   );
-}
-
-/**
- * Hook for detecting scroll direction with asymmetric thresholds.
- * Returns { visible: boolean, showPanel: () => void, hidePanel: () => void }
- * 
- * Rules:
- * - Hide when scrolled DOWN at least 40px since last direction change
- * - Show when scrolled UP at least 16px since last direction change, or scrollY < 8px
- * - After ribbon tab click or focus in ribbon: grace mode (hide only after 80px down)
- * - Popover open keeps panel visible
- * - Listens to window scroll
- */
-export function useRibbonPanelScroll({ deadZone = 8, hideThreshold = 40, showThreshold = 16, graceThreshold = 80 } = {}) {
-  const [visible, setVisible] = useState(true);
-  const { openCount } = useRibbonPanelPopover();
-
-  // Refs to avoid stale closures in scroll handler
-  const lastScrollYRef = useRef(0);
-  const accumulatedRef = useRef(0);
-  const directionRef = useRef(0); // 1 = down, -1 = up, 0 = none
-  const graceModeRef = useRef(false);
-  const atTopRef = useRef(true);
-
-  const showPanel = useCallback(() => {
-    setVisible(true);
-    accumulatedRef.current = -showThreshold;
-    directionRef.current = -1;
-  }, []);
-
-  const hidePanel = useCallback(() => {
-    setVisible(false);
-    accumulatedRef.current = hideThreshold;
-    directionRef.current = 1;
-  }, []);
-
-  const enterGraceMode = useCallback(() => {
-    graceModeRef.current = true;
-    setVisible(true);
-    accumulatedRef.current = -graceThreshold;
-    directionRef.current = -1;
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => {
-      const scrollY = window.scrollY;
-      const atTop = scrollY <= deadZone;
-
-      // Always show panel at very top of page (scrollY < 8px)
-      if (atTop) {
-        atTopRef.current = true;
-        if (!visible) setVisible(true);
-        accumulatedRef.current = -showThreshold;
-        directionRef.current = -1;
-        graceModeRef.current = false;
-        lastScrollYRef.current = scrollY;
-        return;
-      }
-
-      atTopRef.current = false;
-
-      // Don't hide if popover is open
-      if (openCount > 0) {
-        if (!visible) setVisible(true);
-        lastScrollYRef.current = scrollY;
-        return;
-      }
-
-      const delta = scrollY - lastScrollYRef.current;
-      const absDelta = Math.abs(delta);
-
-      // Ignore tiny movements (dead zone)
-      if (absDelta < deadZone) {
-        return;
-      }
-
-      const currentDirection = delta > 0 ? 1 : -1;
-      const threshold = graceModeRef.current ? graceThreshold : (currentDirection > 0 ? hideThreshold : showThreshold);
-
-      // Direction changed
-      if (currentDirection !== directionRef.current && directionRef.current !== 0) {
-        accumulatedRef.current = delta;
-      } else {
-        accumulatedRef.current += delta;
-      }
-      directionRef.current = currentDirection;
-
-      // Exit grace mode once we scroll down past graceThreshold
-      if (graceModeRef.current && directionRef.current === 1 && accumulatedRef.current >= graceThreshold) {
-        graceModeRef.current = false;
-      }
-
-      // Hide logic
-      if (directionRef.current === 1 && accumulatedRef.current >= threshold) {
-        if (visible) setVisible(false);
-        accumulatedRef.current = threshold;
-      }
-      // Show logic (scroll up)
-      else if (directionRef.current === -1 && accumulatedRef.current <= -threshold) {
-        if (!visible) setVisible(true);
-        accumulatedRef.current = -threshold;
-      }
-
-      lastScrollYRef.current = scrollY;
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [deadZone, hideThreshold, showThreshold, graceThreshold, openCount, visible]);
-
-  // Enter grace mode on focus/click in ribbon (tab click or focus inside ribbon)
-  useEffect(() => {
-    const onFocusIn = (event) => {
-      const ribbon = document.querySelector('[data-ribbon-panel]');
-      const tabLine = document.querySelector('[data-ribbon-tab-line]');
-      if ((ribbon && ribbon.contains(event.target)) || (tabLine && tabLine.contains(event.target))) {
-        enterGraceMode();
-      }
-    };
-    
-    const onClick = (event) => {
-      const tabLine = document.querySelector('[data-ribbon-tab-line]');
-      if (tabLine && tabLine.contains(event.target)) {
-        enterGraceMode();
-      }
-    };
-    
-    document.addEventListener("focusin", onFocusIn);
-    document.addEventListener("click", onClick);
-    return () => {
-      document.removeEventListener("focusin", onFocusIn);
-      document.removeEventListener("click", onClick);
-    };
-  }, [enterGraceMode]);
-
-  return { visible, showPanel, hidePanel, enterGraceMode };
 }
 
 /**
@@ -394,36 +261,44 @@ export function RibbonTabLine({ tabs, tab, onTab, leading, trailing, afterTabs, 
 }
 
 /**
- * The panel (auto-hide): the 96px row of groups.
+ * The panel (auto-hide): the 72px row of groups.
  * Hides on scroll down, shows on scroll up.
- * Wrapper always maintains 96px height to prevent content jump.
+ * Wrapper always maintains 72px height to prevent content jump.
+ * Now uses ScrollContext for synchronized visibility with NoteTabs and Breadcrumb.
  */
 export function RibbonPanel({ children, trailing, className, isFirstTabActive }) {
-  const { visible } = useRibbonPanelScroll();
-  const prefersReducedMotion = useRef(false);
+  const { visible, prefersReducedMotion, registerPopover, unregisterPopover } = useScrollVisibility();
+  const panelRef = useRef(null);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    prefersReducedMotion.current = mediaQuery.matches;
-    const handler = (e) => { prefersReducedMotion.current = e.matches; };
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
-  }, []);
+  // Register popover open/close with ScrollContext
+  const { register, unregister } = useRibbonPanelPopover();
+  const wrappedRegister = useCallback(() => {
+    register();
+    registerPopover();
+  }, [register, registerPopover]);
+  const wrappedUnregister = useCallback(() => {
+    unregister();
+    unregisterPopover();
+  }, [unregister, unregisterPopover]);
+
+  // Provide wrapped register/unregister to children via context
+  const popoverContextValue = { openCount: 0, register: wrappedRegister, unregister: wrappedUnregister };
 
   const panelStyle = {
     transform: visible ? "translateY(0)" : "translateY(-100%)",
     opacity: visible ? 1 : 0,
-    transition: prefersReducedMotion.current
+    transition: prefersReducedMotion
       ? "none"
       : "transform 180ms ease-out, opacity 120ms ease-out",
   };
 
   return (
-    <>
-      {/* Wrapper that ALWAYS maintains 96px height in layout flow */}
+    <RibbonPanelPopoverContext.Provider value={popoverContextValue}>
+      {/* Wrapper that ALWAYS maintains 72px height in layout flow */}
       <div
+        ref={panelRef}
         className={cn(
-          "flex h-[96px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
+          "flex h-[72px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
           "rounded-xl",
           isFirstTabActive ? "rounded-ss-none" : "",
           className
@@ -433,13 +308,13 @@ export function RibbonPanel({ children, trailing, className, isFirstTabActive })
       >
         {/* Inner panel that slides */}
         <div style={panelStyle} className="w-full" role="tabpanel">
-          <div className="flex h-full w-full min-w-0 items-stretch overflow-x-auto scrollbar-thin" style={{ flexWrap: "nowrap" }}>
+          <div className="flex h-full w-full min-w-0 items-stretch overflow-x-auto overflow-y-hidden ribbon-panel-scrollbar" style={{ flexWrap: "nowrap" }}>
             {children}
             {trailing}
           </div>
         </div>
       </div>
-    </>
+    </RibbonPanelPopoverContext.Provider>
   );
 }
 

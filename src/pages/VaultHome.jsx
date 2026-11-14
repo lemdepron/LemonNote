@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Archive, ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, Search, Share2, Star, Table2, X } from "lucide-react";
+import { Archive, ArrowUpRight, CalendarDays, Code2, Layers, LayoutGrid, ListChecks, Search, Share2, Star, Table2, X, Hash } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
 import VaultHeader from "@/components/vault/VaultHeader";
@@ -10,7 +10,6 @@ import TagRail from "@/components/vault/TagRail";
 import VaultSidebar from "@/components/vault/VaultSidebar";
 import BackupDialog from "@/components/vault/Backup";
 import { collectTags, escapeRegExp, noteLinks, noteTags, relativeTime } from "@/lib/vault";
-import FindTagsDialog from "@/components/tags/FindTagsPanel";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -51,9 +50,11 @@ export default function VaultHome() {
   const activeTag = params.get("tag") || "";
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
-  const [findTagsOpen, setFindTagsOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
+  const [tagSuggestionsOpen, setTagSuggestionsOpen] = useState(false);
+  const [tagSuggestionQuery, setTagSuggestionQuery] = useState("");
   const searchRef = useRef(null);
+  const searchContainerRef = useRef(null);
 
   // Filter chips state (synced with URL and VaultSidebar)
   const [chipFavourites, setChipFavourites] = useState(showFavourites);
@@ -140,6 +141,29 @@ export default function VaultHome() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Close tag suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setTagSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Extract tag filters from query (e.g., "#work #personal" -> ["work", "personal"])
+  const extractTagFilters = (text) => {
+    const matches = text.match(/#([A-Za-z0-9_][A-Za-z0-9_/-]*)/g);
+    if (!matches) return [];
+    return matches.map((m) => m.slice(1).toLowerCase());
+  };
+
+  // Remove tag filters from query for text search
+  const removeTagFilters = (text) => {
+    return text.replace(/#([A-Za-z0-9_][A-Za-z0-9_/-]*)/g, "").trim();
+  };
+
   useEffect(() => {
     const term = query.trim();
     if (term.length < 2) {
@@ -149,24 +173,41 @@ export default function VaultHome() {
     }
     setSearching(true);
     const timer = setTimeout(async () => {
-      const pattern = escapeRegExp(term);
-      const page = await db.entities.Note.filter(
-        chipIncludeDeleted
-          ? {
+      const tagFilters = extractTagFilters(term);
+      const textQuery = removeTagFilters(term);
+      const pattern = textQuery ? escapeRegExp(textQuery) : ".*";
+
+      let filterQuery = chipIncludeDeleted
+        ? {
+            $or: [
+              { title: { $regex: pattern, $options: "i" } },
+              { body: { $regex: pattern, $options: "i" } },
+            ],
+          }
+        : {
+            trashed: { $ne: true },
+            $or: [
+              { title: { $regex: pattern, $options: "i" } },
+              { body: { $regex: pattern, $options: "i" } },
+            ],
+          };
+
+      // Add tag filters if any
+      if (tagFilters.length > 0) {
+        filterQuery = {
+          $and: [
+            filterQuery,
+            ...tagFilters.map((tag) => ({
               $or: [
-                { title: { $regex: pattern, $options: "i" } },
-                { body: { $regex: pattern, $options: "i" } },
+                { tags: { $in: [tag] } },
+                { body: { $regex: `#${tag}(\\b|/)`, $options: "i" } },
               ],
-            }
-          : {
-              trashed: { $ne: true },
-              $or: [
-                { title: { $regex: pattern, $options: "i" } },
-                { body: { $regex: pattern, $options: "i" } },
-              ],
-            },
-        { sort: "-updated_date", limit: 40 }
-      );
+            })),
+          ],
+        };
+      }
+
+      const page = await db.entities.Note.filter(filterQuery, { sort: "-updated_date", limit: 40 });
       setResults(page?.items ?? []);
       setSearching(false);
     }, 220);
@@ -175,10 +216,21 @@ export default function VaultHome() {
 
   const tags = useMemo(() => collectTags(notes), [notes]);
   const linkCount = useMemo(() => notes.reduce((total, note) => total + noteLinks(note).length, 0), [notes]);
-  const visibleNotes = useMemo(
-    () => (activeTag ? filteredNotes.filter((note) => noteTags(note).includes(activeTag)) : filteredNotes),
-    [filteredNotes, activeTag]
-  );
+  const visibleNotes = useMemo(() => {
+    let result = filteredNotes;
+    // Filter by activeTag from URL (single tag from TagRail click)
+    if (activeTag) {
+      result = result.filter((note) => noteTags(note).includes(activeTag));
+    }
+    // Filter by chipTags (multi-select from tag filter popover) - AND logic
+    if (chipTags.length > 0) {
+      result = result.filter((note) => {
+        const noteTagList = noteTags(note);
+        return chipTags.every((tag) => noteTagList.includes(tag));
+      });
+    }
+    return result;
+  }, [filteredNotes, activeTag, chipTags]);
   const isSearching = query.trim().length >= 2;
 
   const handleCreateFolder = async (folderPath) => {
@@ -187,6 +239,56 @@ export default function VaultHome() {
 
   const handleRefresh = async () => {
     await reload();
+  };
+
+  // Tag suggestions for inline #tag search
+  const allTags = useMemo(() => collectTags(notes).map((t) => t.tag), [notes]);
+  const filteredTagSuggestions = useMemo(() => {
+    if (!tagSuggestionQuery) return allTags;
+    return allTags.filter((tag) => tag.toLowerCase().includes(tagSuggestionQuery.toLowerCase()));
+  }, [allTags, tagSuggestionQuery]);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "ArrowDown" && tagSuggestionsOpen && filteredTagSuggestions.length > 0) {
+      e.preventDefault();
+      // Focus first suggestion (handled by popover)
+    }
+    if (e.key === "Escape") {
+      setTagSuggestionsOpen(false);
+    }
+  };
+
+  const handleSearchInput = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    // Detect # trigger for tag suggestions
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const match = textBeforeCursor.match(/#([A-Za-z0-9_/-]*)$/);
+    if (match) {
+      setTagSuggestionQuery(match[1]);
+      setTagSuggestionsOpen(true);
+    } else {
+      setTagSuggestionsOpen(false);
+    }
+  };
+
+  const insertTagSuggestion = (tag) => {
+    const cursorPos = searchRef.current?.selectionStart ?? query.length;
+    const textBeforeCursor = query.slice(0, cursorPos);
+    const match = textBeforeCursor.match(/#([A-Za-z0-9_/-]*)$/);
+    if (match) {
+      const newQuery = query.slice(0, cursorPos - match[0].length) + `#${tag} ` + query.slice(cursorPos);
+      setQuery(newQuery);
+      // Move cursor after inserted tag
+      setTimeout(() => {
+        if (searchRef.current) {
+          searchRef.current.selectionStart = searchRef.current.selectionEnd = cursorPos - match[0].length + tag.length + 2;
+        }
+      }, 0);
+    }
+    setTagSuggestionsOpen(false);
   };
 
   return (
@@ -200,16 +302,36 @@ export default function VaultHome() {
             <span className="block italic text-primary/90">{t("vault.heroSubtitle")}</span>
           </h1>
 
-          <div className="relative mt-8 max-w-2xl">
+          <div className="relative mt-8 max-w-2xl" ref={searchContainerRef}>
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={searchRef}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={handleSearchInput}
+              onKeyDown={handleSearchKeyDown}
               placeholder={t("vault.searchPlaceholder")}
               aria-label={t("header.searchVault")}
               className="h-14 w-full rounded-xl border border-border bg-card/50 pl-12 pr-20 text-[15px] text-foreground outline-none transition focus:border-primary/40 focus:bg-card focus:ring-4 focus:ring-primary/5"
             />
+            {tagSuggestionsOpen && filteredTagSuggestions.length > 0 && (
+              <div
+                className="absolute top-full left-0 right-0 mt-1 max-h-60 w-full max-w-[360px] rounded-md border bg-popover shadow-md overflow-hidden z-50 custom-scrollbar"
+                role="listbox"
+              >
+                {filteredTagSuggestions.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => insertTagSuggestion(tag)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-accent transition"
+                    role="option"
+                  >
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-mono">#{tag}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
               {query ? (
                 <button
@@ -259,28 +381,7 @@ export default function VaultHome() {
               {t("vault.favourites")}
             </button>
 
-            {/* Tags chip - opens FindTagsDialog */}
-            <button
-              type="button"
-              onClick={() => setFindTagsOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-mono transition",
-                chipTags.length > 0
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "bg-card border border-border/70 text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              aria-pressed={chipTags.length > 0}
-            >
-              <span className="h-3.5 w-3.5 flex-shrink-0" />
-              {t("vault.tags")}
-              {chipTags.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono">
-                  {chipTags.length}
-                </span>
-              )}
-            </button>
-
-            {/* Selected tags as removable chips */}
+            {/* Selected tags as removable chips (from inline #tag search) */}
             {chipTags.map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-1 text-[11px] font-mono">
                 #{tag}
@@ -375,7 +476,13 @@ export default function VaultHome() {
                   )}
                 </div>
                 <div className="mt-3">
-                  <SearchResults query={query.trim()} results={results} loading={searching || loading} onRestore={reload} />
+                  <SearchResults
+                    query={query.trim()}
+                    results={results}
+                    loading={searching || loading}
+                    onRestore={reload}
+                    filterTags={chipTags}
+                  />
                 </div>
               </section>
             ) : (
@@ -516,16 +623,6 @@ export default function VaultHome() {
           />
         </div>
       </main>
-      {findTagsOpen && (
-        <FindTagsDialog
-          notes={notes}
-          onOpenNote={(noteId, lineNumber) => {
-            navigate(`/note/${noteId}`);
-          }}
-          open={findTagsOpen}
-          onClose={() => setFindTagsOpen(false)}
-        />
-      )}
       <BackupDialog open={backupOpen} onClose={() => setBackupOpen(false)} />
     </div>
   );

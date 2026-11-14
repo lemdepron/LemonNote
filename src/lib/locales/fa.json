@@ -44,6 +44,7 @@
     "groupsAria": "گروه‌های نوار ابزار",
     "home": {
       "clipboard": "کلیپ‌بورد",
+      "edit": "ویرایش",
       "undo": "انجام‌نکردن",
       "undoHint": "انجام‌نکردن آخرین ویرایش",
       "redo": "انجام‌ مجدد",
@@ -266,7 +267,10 @@
       "presets": "پیش‌تنظیم‌ها",
       "resetDesignToast": "بازنشانی به پیش‌فرض‌های برنامه",
       "saveAsDefaultToast": "به‌عنوان پیش‌فرض برای یادداشت‌های جدید ذخیره شد",
-      "saveFailedToast": "ذخیره پیش‌فرض ناموفق بود"
+      "saveFailedToast": "ذخیره پیش‌فرض ناموفق بود",
+      "styleSetSelect": "انتخاب مجموعه سبک",
+      "pageColorActive": "رنگ سفارشی صفحه فعال",
+      "defaultTheme": "پیش‌فرض (تم)"
     },
     "ink": {
       "audio": {
@@ -1789,5 +1793,48 @@
     "stage": "مرحله",
     "table": "جدول",
     "title": "پشتیبان‌گیری"
+  },
+  "common": {
+    "clearSearch": "پاک کردن جستجو",
+    "removeTag": "حذف برچسب {tag}",
+    "wordGoal": "هدف کلمه",
+    "setGoal": "تنظیم هدف",
+    "editGoal": "ویرایش",
+    "wordsToGo": "{count} کلمه تا رسیدن به هدف",
+    "goalReached": "هدف رسید",
+    "wordsCount": "{count} کلمه{plural}",
+    "words": "کلمات",
+    "notSynced": "همگام‌سازی نشده",
+    "syncNotAvailable": "همگام‌سازی هنوز در دسترس نیست",
+    "savedStatus": "ذخیره شد",
+    "savingStatus": "در حال ذخیره…",
+    "draftStatus": "پیش‌نویس",
+    "untitledNote": "یادداشت بدون عنوان",
+    "clickToRename": "برای تغییر نام کلیک کنید",
+    "addTag": "+ برچسب",
+    "close": "بستن",
+    "cancel": "انصراف",
+    "total": "کل",
+    "errors": "خطاها",
+    "error": "خطا",
+    "unknownDate": "تاریخ ناشناخته",
+    "clear": "پاک کردن",
+    "import": "وارد کردن",
+    "noResults": "نتیجه‌ای یافت نشد"
+  },
+  "tagFilter": {
+    "title": "فیلتر بر اساس برچسب‌ها",
+    "searchPlaceholder": "فیلتر برچسب‌ها…",
+    "noTags": "هنوز برچسبی در ذخیره‌نامه وجود ندارد",
+    "builtin": "پیش‌فرض",
+    "custom": "سفارشی",
+    "selected": "{count} انتخاب شده",
+    "done": "انجام"
+  },
+  "searchResults": {
+    "taggedLines": "خطوط برچسب‌دار",
+    "hideCompleted": "پنهان کردن تکمیل‌شده‌ها",
+    "createSummary": "ایجاد یادداشت خلاصه",
+    "noTaggedLines": "هیچ خط برچسب‌دار مطابقتی یافت نشد"
   }
 }

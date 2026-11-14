@@ -44,6 +44,7 @@
     "groupsAria": "Multifunktionsleisten-Gruppen",
     "home": {
       "clipboard": "Zwischenablage",
+      "edit": "Bearbeiten",
       "undo": "Rückgängig",
       "undoHint": "Letzte Bearbeitung rückgängig machen",
       "redo": "Wiederholen",
@@ -266,7 +267,10 @@
       "presets": "Vorgaben",
       "resetDesignToast": "Auf App-Standard zurückgesetzt",
       "saveAsDefaultToast": "Als Standard für neue Notizen gespeichert",
-      "saveFailedToast": "Speichern des Standards fehlgeschlagen"
+      "saveFailedToast": "Speichern des Standards fehlgeschlagen",
+      "styleSetSelect": "Stilgruppe wählen",
+      "pageColorActive": "Benutzerdefinierte Seitenfarbe aktiv",
+      "defaultTheme": "Standard (Theme)"
     },
     "ink": {
       "audio": {
@@ -1789,5 +1793,48 @@
     "stage": "Phase",
     "table": "Tabelle",
     "title": "Backup"
+  },
+  "common": {
+    "clearSearch": "Suche löschen",
+    "removeTag": "Tag {tag} entfernen",
+    "wordGoal": "Wortziel",
+    "setGoal": "Ziel setzen",
+    "editGoal": "bearbeiten",
+    "wordsToGo": "{count} Wörter fehlen",
+    "goalReached": "Ziel erreicht",
+    "wordsCount": "{count} Wort{plural}",
+    "words": "Wörter",
+    "notSynced": "Nicht synchronisiert",
+    "syncNotAvailable": "Synchronisierung noch nicht verfügbar",
+    "savedStatus": "gespeichert",
+    "savingStatus": "wird gespeichert…",
+    "draftStatus": "Entwurf",
+    "untitledNote": "Unbenannte Notiz",
+    "clickToRename": "Klicken zum Umbenennen",
+    "addTag": "+ Tag",
+    "close": "Schließen",
+    "cancel": "Abbrechen",
+    "total": "Gesamt",
+    "errors": "Fehler",
+    "error": "Fehler",
+    "unknownDate": "unbekanntes Datum",
+    "clear": "Löschen",
+    "import": "Importieren",
+    "noResults": "Keine Ergebnisse"
+  },
+  "tagFilter": {
+    "title": "Nach Tags filtern",
+    "searchPlaceholder": "Tags filtern…",
+    "noTags": "Noch keine Tags im Tresor",
+    "builtin": "Integriert",
+    "custom": "Benutzerdefiniert",
+    "selected": "{count} ausgewählt",
+    "done": "Fertig"
+  },
+  "searchResults": {
+    "taggedLines": "Getaggte Zeilen",
+    "hideCompleted": "Erledigte ausblenden",
+    "createSummary": "Zusammenfassende Notiz erstellen",
+    "noTaggedLines": "Keine getaggten Zeilen gefunden"
   }
 }

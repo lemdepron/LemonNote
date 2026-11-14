@@ -44,6 +44,7 @@
     "groupsAria": "Grupos de la cinta",
     "home": {
       "clipboard": "Portapapeles",
+      "edit": "Editar",
       "undo": "Deshacer",
       "undoHint": "Deshacer la última edición",
       "redo": "Rehacer",
@@ -266,7 +267,10 @@
       "presets": "Preajustes",
       "resetDesignToast": "Restablecido a valores predeterminados de la app",
       "saveAsDefaultToast": "Guardado como predeterminado para nuevas notas",
-      "saveFailedToast": "Error al guardar el predeterminado"
+      "saveFailedToast": "Error al guardar el predeterminado",
+      "styleSetSelect": "Elegir conjunto de estilos",
+      "pageColorActive": "Color de página personalizado activo",
+      "defaultTheme": "Predeterminado (tema)"
     },
     "ink": {
       "audio": {
@@ -1789,5 +1793,48 @@
     "stage": "Etapa",
     "table": "Tabla",
     "title": "Copia de seguridad"
+  },
+  "common": {
+    "clearSearch": "Limpiar búsqueda",
+    "removeTag": "Eliminar etiqueta {tag}",
+    "wordGoal": "meta de palabras",
+    "setGoal": "establecer meta",
+    "editGoal": "editar",
+    "wordsToGo": "{count} palabras para alcanzar la meta",
+    "goalReached": "meta alcanzada",
+    "wordsCount": "{count} palabra{plural}",
+    "words": "Palabras",
+    "notSynced": "No sincronizado",
+    "syncNotAvailable": "Sincronización no disponible aún",
+    "savedStatus": "guardado",
+    "savingStatus": "guardando…",
+    "draftStatus": "borrador",
+    "untitledNote": "Nota sin título",
+    "clickToRename": "Clic para renombrar",
+    "addTag": "+ etiqueta",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "total": "Total",
+    "errors": "errores",
+    "error": "error",
+    "unknownDate": "fecha desconocida",
+    "clear": "Limpiar",
+    "import": "Importar",
+    "noResults": "Sin resultados"
+  },
+  "tagFilter": {
+    "title": "Filtrar por etiquetas",
+    "searchPlaceholder": "Filtrar etiquetas…",
+    "noTags": "Aún no hay etiquetas en la bóveda",
+    "builtin": "Integradas",
+    "custom": "Personalizadas",
+    "selected": "{count} seleccionadas",
+    "done": "Listo"
+  },
+  "searchResults": {
+    "taggedLines": "Líneas etiquetadas",
+    "hideCompleted": "Ocultar completadas",
+    "createSummary": "Crear nota de resumen",
+    "noTaggedLines": "No hay líneas etiquetadas que coincidan"
   }
 }

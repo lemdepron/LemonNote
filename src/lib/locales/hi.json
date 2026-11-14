@@ -44,6 +44,7 @@
     "groupsAria": "रिबन समूह",
     "home": {
       "clipboard": "क्लिपबोर्ड",
+      "edit": "संपादित करें",
       "undo": "पूर्ववत करें",
       "undoHint": "अंतिम संपादन को पूर्ववत करें",
       "redo": "फिर से करें",
@@ -266,7 +267,10 @@
       "presets": "प्रीसेट",
       "resetDesignToast": "ऐप डिफ़ॉल्ट पर रीसेट किया गया",
       "saveAsDefaultToast": "नई नोट्स के लिए डिफ़ॉल्ट के रूप में सहेजा गया",
-      "saveFailedToast": "डिफ़ॉल्ट सहेजने में विफल"
+      "saveFailedToast": "डिफ़ॉल्ट सहेजने में विफल",
+      "styleSetSelect": "शैली सेट चुनें",
+      "pageColorActive": "कस्टम पेज रंग सक्रिय",
+      "defaultTheme": "डिफ़ॉल्ट (थीम)"
     },
     "ink": {
       "audio": {
@@ -1789,5 +1793,48 @@
     "stage": "चरण",
     "table": "टेबल",
     "title": "बैकअप"
+  },
+  "common": {
+    "clearSearch": "खोज साफ़ करें",
+    "removeTag": "टैग {tag} हटाएं",
+    "wordGoal": "शब्द लक्ष्य",
+    "setGoal": "लक्ष्य सेट करें",
+    "editGoal": "संपादित करें",
+    "wordsToGo": "{count} शब्द लक्ष्य तक",
+    "goalReached": "लक्ष्य पहुंचा",
+    "wordsCount": "{count} शब्द{plural}",
+    "words": "शब्द",
+    "notSynced": "सिंक नहीं हुआ",
+    "syncNotAvailable": "सिंक अभी उपलब्ध नहीं है",
+    "savedStatus": "सेव किया गया",
+    "savingStatus": "सेव हो रहा है…",
+    "draftStatus": "मसौदा",
+    "untitledNote": "बिना शीर्षक की नोट",
+    "clickToRename": "नाम बदलने के लिए क्लिक करें",
+    "addTag": "+ टैग",
+    "close": "बंद करें",
+    "cancel": "रद्द करें",
+    "total": "कुल",
+    "errors": "त्रुटियां",
+    "error": "त्रुटि",
+    "unknownDate": "अज्ञात तारीख",
+    "clear": "साफ़ करें",
+    "import": "आयात",
+    "noResults": "कोई परिणाम नहीं"
+  },
+  "tagFilter": {
+    "title": "टैग के अनुसार फ़िल्टर करें",
+    "searchPlaceholder": "टैग फ़िल्टर करें…",
+    "noTags": "वॉल्ट में अभी तक कोई टैग नहीं",
+    "builtin": "अंतर्निहित",
+    "custom": "कस्टम",
+    "selected": "{count} चयनित",
+    "done": "हो गया"
+  },
+  "searchResults": {
+    "taggedLines": "टैग की गई लाइनें",
+    "hideCompleted": "पूर्ण छुपाएं",
+    "createSummary": "सारांश नोट बनाएं",
+    "noTaggedLines": "कोई टैग की गई लाइन मेल नहीं खाती"
   }
 }

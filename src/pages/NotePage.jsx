@@ -57,7 +57,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -1343,7 +1343,7 @@ export default function NotePage() {
                         setZoom(Math.max(50, Math.min(300, Number(val))));
                       }
                     }}>
-                    <SelectTrigger className="h-7 w-24 rounded-[4px] border border-border/70 bg-card/60 px-1.5 font-mono text-[10.5px] outline-none focus:border-primary/40" title="Zoom">
+                    <SelectTrigger className="w-24" title="Zoom">
                       <SelectValue placeholder="Zoom" />
                     </SelectTrigger>
                     <SelectContent position="popper">
@@ -1536,7 +1536,7 @@ export default function NotePage() {
                 <div className="mt-4 flex items-center gap-2">
                   <Folder className="h-3.5 w-3.5 text-muted-foreground" />
                   <Select value={folder} onValueChange={setFolder}>
-                    <SelectTrigger className="flex-1 h-8 rounded-md border border-border/70 bg-card/60 px-2 py-1 font-mono text-[11px] text-foreground outline-none focus:border-primary/40" aria-label="Folder">
+                    <SelectTrigger className="flex-1" aria-label="Folder">
                       <SelectValue placeholder="Unfiled" />
                     </SelectTrigger>
                     <SelectContent position="popper">

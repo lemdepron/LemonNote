@@ -25,6 +25,190 @@
     "quickSearchAria": "Quick search",
     "newNote": "New note"
   },
+  "ink": {
+    "groups": {
+      "draw": "Draw",
+      "color": "Color",
+      "history": "History",
+      "view": "View",
+      "more": "More"
+    },
+    "more": {
+      "label": "More",
+      "hint": "Rarely used tools",
+      "modes": "Modes",
+      "eraser": "Eraser settings",
+      "brushEngine": "Brush engine",
+      "brushEngineHint": "Pen behaviour, eraser engine, shape and ruler assists",
+      "shapes": "Shapes",
+      "coordinateGraph": "Coordinate graph",
+      "paper": "Paper",
+      "paperStudio": "Paper studio",
+      "smartInk": "Smart ink",
+      "handwriting": "Handwriting",
+      "equation": "Equation",
+      "resultsSearch": "Results & search",
+      "audio": "Audio",
+      "record": "Record",
+      "stop": "Stop",
+      "play": "Play",
+      "pause": "Pause",
+      "replayInk": "Replay ink",
+      "removeAudio": "Remove audio",
+      "overlay": "Overlay",
+      "fullPage": "Full page",
+      "inkOverText": "Ink over text",
+      "destructive": "Destructive",
+      "removeInk": "Remove ink",
+      "attachOld": "Attach old page",
+      "disabled": "Select marks with the lasso first"
+    },
+    "draw": {
+      "pen": "Pen",
+      "penHint": "Choose a pen",
+      "eraser": "Eraser",
+      "eraserHint": "Erase marks",
+      "lasso": "Lasso",
+      "lassoHint": "Select marks by circling them",
+      "width": "Width",
+      "saveFavPen": "Save current pen as favourite",
+      "removeFavPen": "Remove favourite pen",
+      "noFavPens": "save your favourite pen setups here (max 8)"
+    },
+    "color": {
+      "picker": "Colour",
+      "pickerHint": "Open colour mixer, palettes and history"
+    },
+    "mode": {
+      "select": "Select",
+      "shape": "Shapes",
+      "pan": "Pan",
+      "pick": "Pick",
+      "insertSpace": "Insert space"
+    },
+    "groups": {
+      "draw": "Draw",
+      "color": "Color",
+      "history": "History",
+      "view": "View",
+      "more": "More",
+      "select": "Select",
+      "object": "Object",
+      "strokes": "Strokes",
+      "transform": "Transform",
+      "template": "Template",
+      "pageSize": "Page size",
+      "pages": "Pages",
+      "paperStudio": "Paper studio",
+      "recognise": "Recognise",
+      "results": "Results",
+      "record": "Record",
+      "playback": "Playback",
+      "manage": "Manage"
+    },
+    "history": {
+      "undo": "Undo",
+      "undoHint": "Undo the last mark",
+      "redo": "Redo",
+      "redoHint": "Redo"
+    },
+    "view": {
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "fit": "Fit",
+      "fitHint": "Fit the page to the ink"
+    },
+    "select": {
+      "select": "Select",
+      "selectHint": "Select, move, resize and rotate objects",
+      "lasso": "Lasso",
+      "lassoHint": "Select marks by circling them"
+    },
+    "object": {
+      "delete": "Delete",
+      "deleteHint": "Delete the selected object",
+      "front": "Front",
+      "frontHint": "Bring to front",
+      "back": "Back",
+      "backHint": "Send to back"
+    },
+    "strokes": {
+      "apply": "Apply",
+      "applyHint": "Commit the move, scale or rotation",
+      "recolor": "Recolor",
+      "recolorHint": "Paint the selection with the current ink",
+      "delete": "Delete",
+      "deleteHint": "Delete the selected marks",
+      "deselect": "Deselect",
+      "deselectHint": "Clear the selection"
+    },
+    "transform": {
+      "studio": "Selection studio",
+      "studioHint": "Move, scale and rotate the selection precisely",
+      "disabled": "Select marks with the lasso first"
+    },
+    "paper": {
+      "template": "Paper template",
+      "tone": "Paper tone",
+      "size": "Page size",
+      "studio": "Paper studio",
+      "studioHint": "All paper options in one place",
+      "clear": "Clear page",
+      "clearHint": "Remove every mark on this page"
+    },
+    "pages": {
+      "prev": "Previous page",
+      "next": "Next page",
+      "page": "page {num}"
+    },
+    "smart": {
+      "handwriting": "Handwriting",
+      "handwritingHint": "Turn the lasso selection, or the page in view, into text",
+      "equation": "Equation",
+      "equationHint": "Turn handwritten maths into LaTeX",
+      "results": "Results & search",
+      "resultsHint": "Recognised text, insert it on the page, search all handwriting"
+    },
+    "audio": {
+      "record": "Record",
+      "recordHint": "Record audio while you write; every stroke is time-stamped",
+      "stop": "Stop",
+      "play": "Play",
+      "playHint": "Play the recording and redraw the page as it was written",
+      "pause": "Pause",
+      "replayInk": "Replay ink",
+      "replayInkHint": "Replay the strokes without sound",
+      "noRecording": "no recording",
+      "studio": "Audio studio",
+      "studioHint": "Scrub through the recording",
+      "remove": "Remove audio",
+      "removeHint": "Delete the recording from this page",
+      "recording": "recording…"
+    },
+    "overlay": {
+      "fullPage": "Full page",
+      "inkOverText": "Ink over text",
+      "fullPageHint": "Switch to full-page ink surface",
+      "inkOverTextHint": "Show ink over note text in Read view"
+    },
+    "tab": {
+      "handwriting": "Handwriting",
+      "startInking": "Start inking",
+      "startInkingHint": "Add a handwriting page to this note",
+      "attachOldPage": "Attach old page",
+      "attachOldPageHint": "Bring in a handwriting page from before Ink moved inside notes",
+      "noAttachable": "No unattached ink pages.",
+      "ink": "Ink",
+      "overlay": "Overlay",
+      "handwritingPage": "Handwriting page",
+      "marks": "{count} marks",
+      "statusSaving": "saving…",
+      "statusSaved": "saved",
+      "statusAutosave": "autosave on",
+      "removeInk": "Remove ink",
+      "removeInkHint": "Delete all handwriting in this note"
+    }
+  },
   "ribbon": {
     "tabsAria": "Ribbon tabs",
     "tabs": {
@@ -44,6 +228,7 @@
     "groupsAria": "Ribbon groups",
     "home": {
       "clipboard": "Clipboard",
+      "edit": "Edit",
       "undo": "Undo",
       "undoHint": "Undo the last edit",
       "redo": "Redo",
@@ -234,7 +419,10 @@
       "saveFailedToast": "Failed to save default",
       "loadDefaultToast": "Applied default style",
       "noDefaultToast": "No default style saved",
-      "resetDesignToast": "Reset to app defaults"
+      "resetDesignToast": "Reset to app defaults",
+      "styleSetSelect": "Choose a style set",
+      "pageColorActive": "Custom page color active",
+      "defaultTheme": "Default (theme)"
     },
     "layout": {
       "pageSetup": "Page setup",
@@ -781,6 +969,80 @@
       "eraserModes": {
         "stroke": "Stroke",
         "precision": "Precision"
+      },
+      "groups": {
+        "draw": "Draw",
+        "color": "Color",
+        "history": "History",
+        "view": "View",
+        "more": "More"
+      },
+      "more": {
+        "label": "More",
+        "hint": "Rarely used tools",
+        "modes": "Modes",
+        "eraser": "Eraser settings",
+        "brushEngine": "Brush engine",
+        "brushEngineHint": "Pen behaviour, eraser engine, shape and ruler assists",
+        "shapes": "Shapes",
+        "coordinateGraph": "Coordinate graph",
+        "paper": "Paper",
+        "paperStudio": "Paper studio",
+        "smartInk": "Smart ink",
+        "handwriting": "Handwriting",
+        "equation": "Equation",
+        "resultsSearch": "Results & search",
+        "audio": "Audio",
+        "record": "Record",
+        "stop": "Stop",
+        "play": "Play",
+        "pause": "Pause",
+        "replayInk": "Replay ink",
+        "removeAudio": "Remove audio",
+        "overlay": "Overlay",
+        "fullPage": "Full page",
+        "inkOverText": "Ink over text",
+        "destructive": "Destructive",
+        "removeInk": "Remove ink",
+        "attachOld": "Attach old page",
+        "disabled": "Select marks with the lasso first"
+      },
+      "draw": {
+        "pen": "Pen",
+        "penHint": "Choose a pen",
+        "eraser": "Eraser",
+        "eraserHint": "Erase marks",
+        "lasso": "Lasso",
+        "lassoHint": "Select marks by circling them",
+        "width": "Width",
+        "saveFavPen": "Save current pen as favourite",
+        "removeFavPen": "Remove favourite pen",
+        "noFavPens": "save your favourite pen setups here (max 8)"
+      },
+      "color": {
+        "picker": "Colour",
+        "pickerHint": "Open colour mixer, palettes and history"
+      },
+      "tab": {
+        "handwriting": "Handwriting",
+        "startInking": "Start inking",
+        "startInkingHint": "Add a handwriting page to this note",
+        "attachOldPage": "Attach old page",
+        "attachOldPageHint": "Bring in a handwriting page from before Ink moved inside notes",
+        "noAttachable": "No unattached ink pages.",
+        "ink": "Ink",
+        "overlay": "Overlay",
+        "fullPage": "Full page",
+        "inkOverText": "Ink over text",
+        "fullPageHint": "Switch to full-page ink surface",
+        "inkOverTextHint": "Show ink over note text in Read view",
+        "handwritingPage": "Handwriting page",
+        "marks": "{count} marks",
+        "statusSaving": "saving…",
+        "statusSaved": "saved",
+        "statusAutosave": "autosave on",
+        "removeInk": "Remove ink",
+        "removeInkHint": "Delete all handwriting in this note"
       }
     },
     "wordGoal": {
@@ -926,7 +1188,39 @@
     "overwrite": "Overwrite",
     "duplicate": "DUPLICATE",
     "title": "Backup",
-    "desc": "Export or import your entire vault. Set a reminder to back up regularly."
+    "desc": "Export or import your entire vault. Set a reminder to back up regularly.",
+    "exportSuccess": "Backup exported successfully.",
+    "largeWarning": "Large backup file — consider splitting or using external storage.",
+    "exportFailed": "Failed to export backup.",
+    "readFailed": "Failed to read backup file.",
+    "importFailed": "Failed to import backup.",
+    "previewFailed": "Failed to preview import.",
+    "selectFilesAgain": "Please select the files again.",
+    "selectFolderAgain": "Please select the folder again.",
+    "inFile": "In file",
+    "willImport": "Will import",
+    "replaceWarning": "This will replace all existing data in the vault.",
+    "attachmentsWarning": "Backup contains attachments ({size}). Import may take a while.",
+    "confirmFolderImport": "Confirm folder import",
+    "confirmFileImport": "Confirm file import",
+    "filesFound": "Files found",
+    "notesToImport": "Notes to import",
+    "duplicatesFound": "Duplicates found",
+    "duplicateAction": "On duplicates",
+    "andMore": "+{count} more",
+    "preserveFolders": "Preserve folder structure",
+    "wholeVault": "Whole vault",
+    "exportBackup": "Export backup",
+    "importBackup": "Import backup",
+    "importFiles": "Import Markdown files",
+    "importMarkdown": "Import Markdown / text files",
+    "importMarkdownDesc": "Select .md, .markdown, or .txt files to import as notes.",
+    "importFilesBtn": "Select files",
+    "importFolderBtn": "Select folder",
+    "onImport": "On import",
+    "keepExisting": "Keep existing",
+    "replaceEverything": "Replace everything",
+    "confirmImport": "Confirm import"
   },
   "dir": {
     "ltr": "Left-to-right",
@@ -1283,7 +1577,7 @@
     }
   },
   "vault": {
-    "searchPlaceholder": "Search every note, title and body…",
+    "searchPlaceholder": "Search every note, title and body…  Use #tag to filter by tag",
     "backupTooltip": "Backup",
     "favourites": "Favourites",
     "tags": "Tags",
@@ -1652,6 +1946,22 @@
     "error": "error",
     "unknownDate": "unknown date",
     "clear": "Clear",
-    "import": "Import"
+    "import": "Import",
+    "noResults": "No results"
+  },
+  "tagFilter": {
+    "title": "Filter by tags",
+    "searchPlaceholder": "Filter tags…",
+    "noTags": "No tags in vault yet",
+    "builtin": "Built-in",
+    "custom": "Custom",
+    "selected": "{count} selected",
+    "done": "Done"
+  },
+  "searchResults": {
+    "taggedLines": "Tagged lines",
+    "hideCompleted": "Hide completed",
+    "createSummary": "Create summary note",
+    "noTaggedLines": "No tagged lines match"
   }
 }

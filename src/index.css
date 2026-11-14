@@ -44,11 +44,11 @@ html[data-rail="expanded"] {
   --rail-w: 12.5rem;
 }
 html[data-rail="collapsed"] {
-  --rail-w: 3.75rem;
+  --rail-w: 2.875rem; /* 46px */
 }
 @media (max-width: 640px) {
   html[data-rail="expanded"] {
-    --rail-w: 3.75rem;
+    --rail-w: 2.875rem;
   }
 }
 
@@ -272,6 +272,32 @@ html[data-rail="collapsed"] {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--border) / 0.8);
+}
+
+/* Custom scrollbar for Ribbon Panel - thin horizontal scrollbar only, sits below group names */
+.ribbon-panel-scrollbar {
+  overflow-y: hidden;
+}
+.ribbon-panel-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.ribbon-panel-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ribbon-panel-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.5);
+  border-radius: 999px;
+}
+.ribbon-panel-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.8);
+}
+.ribbon-panel-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.ribbon-panel-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.5) transparent;
 }
 
 @layer components {

@@ -84,14 +84,14 @@ export default function SpaceRail() {
       className={cn(
         "fixed inset-y-0 start-0 z-40 flex flex-col border-e border-border/70 bg-card/90 backdrop-blur-xl",
         "transition-[width,box-shadow] duration-200 ease-out",
-        open ? "w-[12.5rem]" : "w-[3.75rem]",
+        open ? "w-[12.5rem]" : "w-[2.875rem]",
         open && !pinned ? "shadow-xl" : ""
       )}
     >
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-3">
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-1.5 py-2">
         {railItems.map((item, index) => {
           if (item.type === "divider") {
-            return <div key={`divider-${index}`} className="border-t border-border/60 my-1" />;
+            return <div key={`divider-${index}`} className="border-t border-border/40 my-0.5" />;
           }
 
           const Icon = item.icon;
@@ -111,15 +111,15 @@ export default function SpaceRail() {
                 aria-label={t("rail.bin")}
                 aria-current={binCurrent ? "page" : undefined}
                 className={cn(
-                  "relative flex shrink-0 items-center rounded-md py-2 transition",
-                  open ? "gap-2.5 px-2.5" : "justify-center px-0",
+                  "relative flex shrink-0 items-center rounded-md h-8 transition",
+                  open ? "gap-2 px-2" : "justify-center px-0",
                   binCurrent
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                 )}
               >
                 {binCurrent && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className="h-5 w-5 shrink-0" />
                 {open && (
                   <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.bin")}</span>
                 )}
@@ -138,8 +138,8 @@ export default function SpaceRail() {
               tabIndex={isDisabled ? -1 : undefined}
               onClick={(e) => isDisabled && e.preventDefault()}
               className={cn(
-                "relative flex shrink-0 items-center rounded-md py-2 transition",
-                open ? "gap-2.5 px-2.5" : "justify-center px-0",
+                "relative flex shrink-0 items-center rounded-md h-8 transition",
+                open ? "gap-2 px-2" : "justify-center px-0",
                 isDisabled
                   ? "opacity-40 cursor-not-allowed text-muted-foreground"
                   : current || settingsCurrent
@@ -150,7 +150,7 @@ export default function SpaceRail() {
               {(current || settingsCurrent) && !isDisabled && (
                 <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />
               )}
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className="h-5 w-5 shrink-0" />
               {open && (
                 <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em] flex items-center gap-1">
                   {item.title || spaceLabel(item.id)}
@@ -167,9 +167,9 @@ export default function SpaceRail() {
         })}
       </nav>
 
-      <div className="border-t border-border/60 px-2 py-2">
+      <div className="border-t border-border/40 px-1.5 py-1.5">
         {open && (
-          <p className="px-1.5 pb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/60">
+          <p className="px-1 pb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/60">
             {t("rail.oneWorkspace")}
           </p>
         )}
@@ -199,13 +199,13 @@ export default function SpaceRail() {
             aria-label={collapsed ? t("rail.pinOpenAria") : t("rail.collapseAria")}
             title={collapsed ? t("rail.pinOpen") : t("rail.collapse")}
             className={cn(
-              "flex w-full items-center rounded-md py-1.5 text-muted-foreground transition hover:bg-accent/60 hover:text-foreground",
+              "flex w-full items-center rounded-md h-8 text-muted-foreground transition hover:bg-accent/60 hover:text-foreground",
               open ? "gap-1.5 px-1.5" : "justify-center px-0"
             )}
           >
             <ChevronsRight
               className={cn(
-                "h-3.5 w-3.5 transition-transform duration-200 rtl:rotate-180",
+                "h-4 w-4 transition-transform duration-200 rtl:rotate-180",
                 open ? "rotate-180" : ""
               )}
             />

@@ -13,7 +13,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from "@/components/ui/select-compact";
 import { useI18n } from "@/lib/i18n";
 
 export default function CodePage() {
@@ -121,7 +121,7 @@ export default function CodePage() {
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-mono text-[16px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
           />
           <Select value={file.language} onValueChange={(lang) => patch({ language: lang })}>
-            <SelectTrigger aria-label={t("vault.code.languagePlaceholder")} className="h-8 shrink-0 rounded-lg border border-border/80 bg-card/50 px-2 font-mono text-[11px] text-muted-foreground outline-none transition focus:border-primary/40">
+            <SelectTrigger aria-label={t("vault.code.languagePlaceholder")} className="shrink-0">
               <SelectValue placeholder={t("vault.code.languagePlaceholder")} />
             </SelectTrigger>
             <SelectContent position="popper">

@@ -170,7 +170,7 @@ export default function NoteTabs({
   };
 
   return (
-    <div className="flex items-center gap-1 border-b border-border/60 px-2 pb-1" role="tablist" aria-label="Note tabs">
+    <div className="flex items-center gap-1 border-b border-border/60 px-2 pb-0" role="tablist" aria-label="Note tabs">
       {/* Tab list */}
       <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
         {tabs.map((tab, index) => {

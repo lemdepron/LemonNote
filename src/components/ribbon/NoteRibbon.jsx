@@ -85,7 +85,6 @@ export function initialRibbonTab() {
 
 export default function NoteRibbon({
   body, onChange, images, noteId, noteTitle, tags = [], format = "markdown", onFormat, typography = {}, onTypography, tab, onTab, noteInk,
-  onFindTags,
   wordGoal = 0,
   wordCount = 0,
   wordGoalPopoverOpen = false,
@@ -392,7 +391,7 @@ export default function NoteRibbon({
           }
         >
           {activeTab === "home" && (
-            <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} onFindTags={onFindTags} /></TabErrorBoundary>
+            <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} /></TabErrorBoundary>
           )}
           {activeTab === "insert" && (
             <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} /></TabErrorBoundary>
