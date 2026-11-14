@@ -1,0 +1,9 @@
+{
+  "dir.center": "居中",
+  "ribbon.design.loadDefaultToast": "已应用默认样式",
+  "ribbon.design.noDefaultToast": "未保存默认样式",
+  "ribbon.design.presets": "预设",
+  "ribbon.design.resetDesignToast": "已重置为应用默认值",
+  "ribbon.design.saveAsDefaultToast": "已保存为新笔记的默认值",
+  "ribbon.design.saveFailedToast": "保存默认值失败"
+}

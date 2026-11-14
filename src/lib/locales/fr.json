@@ -7,14 +7,12 @@
       "canvas": "Toile",
       "queries": "Requêtes",
       "extensions": "Extensions",
-      "sync": "Synchronisation"
+      "sync": "Synchronisation",
+      "settings": "Settings"
     },
     "syncTitle": "Synchronisation prévue",
     "soon": "bientôt",
     "bin": "Corbeille",
-    "more": "Plus",
-    "moreGroupAria": "Plus d'options",
-    "settings": "Paramètres",
     "localVault": "coffre local",
     "oneWorkspace": "un espace de travail",
     "pinOpen": "épingler ouvert",
@@ -145,8 +143,15 @@
         "replace": "Remplacer la sélection",
         "insertBelow": "Insérer en dessous",
         "copy": "Copier",
-        "discard": "Annuler"
-      }
+        "discard": "Annuler",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "Copié en tant que {label}.",
@@ -255,7 +260,13 @@
       "watermarkPresets": "Préréglages",
       "watermarkText": "Texte du filigrane",
       "watermarkTextHint": "Texte à afficher comme filigrane (ex. BROUILLON, CONFIDENTIEL)",
-      "watermarkTextPlaceholder": "Texte du filigrane"
+      "watermarkTextPlaceholder": "Texte du filigrane",
+      "loadDefaultToast": "Style par défaut appliqué",
+      "noDefaultToast": "Aucun style par défaut enregistré",
+      "presets": "Préréglages",
+      "resetDesignToast": "Réinitialisé aux valeurs par défaut de l'app",
+      "saveAsDefaultToast": "Enregistré comme défaut pour les nouvelles notes",
+      "saveFailedToast": "Échec de l'enregistrement du défaut"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "Le titre de cette note n'est ni une date, ni une semaine (2026-S45) ni un mois (2026-11)",
       "prevDayHint": "Le jour, la semaine ou le mois précédent cette note",
       "quickLanguageHint": "Insérer un bloc de code {lang}",
+      "needCodeBlock": "Placez le curseur à l'intérieur d'un bloc de code d'abord.",
+      "figureCaptionPrompt": "Légende de la figure :",
       "quoteBlock": "Citation",
       "quoteBlockHint": "Citation en bloc",
       "recordingSaveError": "Échec de la sauvegarde de l'enregistrement.",
@@ -769,6 +782,8 @@
     "editGoal": "Modifier l'objectif",
     "clearGoal": "Effacer l'objectif"
   },
+  "macros": "Macros",
+  "macrosHint": "Enregistrer et rejouer des macros d'édition",
   "fileMenu": {
     "title": "Fichier",
     "close": "Fermer",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "Gauche à droite",
     "rtl": "Droite à gauche",
-    "auto": "Auto (détecter par ligne)"
+    "auto": "Auto (détecter par ligne)",
+    "center": "Centre"
   },
   "digits": {
     "latin": "Chiffres latins (123)",
@@ -938,6 +954,8 @@
       "light": "Clair",
       "dark": "Sombre",
       "system": "Système",
+      "switchToLight": "Passer au mode clair",
+      "switchToDark": "Passer au mode sombre",
       "themePreset": "Préréglage de thème",
       "surface": "Texture d'arrière-plan",
       "density": "Densité de l'interface",
@@ -1689,6 +1707,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "Mots",
+    "notSynced": "Non synchronisé",
+    "syncNotAvailable": "La synchronisation n'est pas encore disponible",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

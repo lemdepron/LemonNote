@@ -7,14 +7,12 @@
       "canvas": "کینوس",
       "queries": "کوئریز",
       "extensions": "ایکسٹنشنز",
-      "sync": "سینک"
+      "sync": "سینک",
+      "settings": "Settings"
     },
     "syncTitle": "سینک پلانڈ ہے",
     "soon": "جلد ہی",
     "bin": "کچرے کا ڈبہ",
-    "more": "مزید",
-    "moreGroupAria": "مزید آپشنز",
-    "settings": "سیٹنگز",
     "localVault": "مقامی وولٹ",
     "oneWorkspace": "ایک ورک سپیس",
     "pinOpen": "کھلا پن کر دیں",
@@ -145,8 +143,15 @@
         "replace": "سلیکشن کو تبدیل کریں",
         "insertBelow": "نیچے داخل کریں",
         "copy": "کاپی",
-        "discard": "منسوخ کریں"
-      }
+        "discard": "منسوخ کریں",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "{label} کے طور پر کاپی کیا گیا۔",
@@ -255,7 +260,13 @@
       "watermarkPresets": "پری سیٹس",
       "watermarkText": "واٹر مارک متن",
       "watermarkTextHint": "واٹر مارک کے طور پر دکھانے والا متن (مثال: مسودہ، رازدار)",
-      "watermarkTextPlaceholder": "واٹر مارک متن"
+      "watermarkTextPlaceholder": "واٹر مارک متن",
+      "loadDefaultToast": "ڈیفالٹ اسٹائل لاگو ہو گئی",
+      "noDefaultToast": "کوئی ڈیفالٹ اسٹائل محفوظ نہیں",
+      "presets": "پری سیٹس",
+      "resetDesignToast": "ایپ کے ڈیفالٹ پر واپس سیٹ",
+      "saveAsDefaultToast": "نئی نوٹس کے لیے ڈیفالٹ کے طور پر محفوظ",
+      "saveFailedToast": "ڈیفالٹ محفوظ کرنے میں ناکام"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "اس نوٹ کا عنوان تاریخ، ہفتہ (2026-W45) یا مہینہ (2026-11) نہیں ہے",
       "prevDayHint": "اس نوٹ سے پہلے کا دن، ہفتہ یا مہینہ",
       "quickLanguageHint": "{lang} کوڈ بلاک داخل کریں",
+      "needCodeBlock": "سب سے پہلے کرسر کو کوڈ بلاک کے اندر رکھیں۔",
+      "figureCaptionPrompt": "شکل کا عنوان:",
       "quoteBlock": "اقتباس",
       "quoteBlockHint": "بلاک اقتباس",
       "recordingSaveError": "رکارینگ محفوظ کرنے میں ناکام۔",
@@ -759,7 +772,9 @@
       "zoomOutHint": "زوم کم کریں (Ctrl+-)",
       "zoomPlaceholder": "زوم",
       "zoomSlider": "اسلائڈر:"
-    }
+    },
+    "macros": "میکراز",
+    "macrosHint": "ترمیمی میکراز ریکارڈ اور ریپلے کریں"
   },
   "wordGoal": {
     "wordGoal": "الفاظ کا ہدف",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "بائیں سے دائیں",
     "rtl": "دائیں سے بائیں",
-    "auto": "آٹو (ہر لائن پہچانیں)"
+    "auto": "آٹو (ہر لائن پہچانیں)",
+    "center": "مرکز"
   },
   "digits": {
     "latin": "لاطینی ہندسے (123)",
@@ -940,6 +956,8 @@
       "light": "لائٹ",
       "dark": "ڈارک",
       "system": "سسٹم",
+      "switchToLight": "لائٹ موڈ پر سوئچ کریں",
+      "switchToDark": "ڈارک موڈ پر سوئچ کریں",
       "themePreset": "تھیم پری سیٹ",
       "surface": "بیک گراؤنڈ ٹیکسچر",
       "density": "انٹرفیس ڈینسٹی",
@@ -1282,6 +1300,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "الفاظ",
+    "notSynced": "مطابقت نہیں ہوئی",
+    "syncNotAvailable": "مطابقت ابھی دستیاب نہیں",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

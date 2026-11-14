@@ -7,14 +7,12 @@
       "canvas": "Leinwand",
       "queries": "Abfragen",
       "extensions": "Erweiterungen",
-      "sync": "Sync"
+      "sync": "Sync",
+      "settings": "Settings"
     },
     "syncTitle": "Sync ist geplant",
     "soon": "bald",
     "bin": "Papierkorb",
-    "more": "Mehr",
-    "moreGroupAria": "Weitere Optionen",
-    "settings": "Einstellungen",
     "localVault": "lokaler Tresor",
     "oneWorkspace": "ein Arbeitsbereich",
     "pinOpen": "offen anheften",
@@ -145,8 +143,15 @@
         "replace": "Auswahl ersetzen",
         "insertBelow": "Darunter einfügen",
         "copy": "Kopieren",
-        "discard": "Verwerfen"
-      }
+        "discard": "Verwerfen",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "Als {label} kopiert.",
@@ -255,7 +260,13 @@
       "watermarkPresets": "Vorlagen",
       "watermarkText": "Wasserzeichen-Text",
       "watermarkTextHint": "Als Wasserzeichen anzuzeigender Text (z. B. ENTWURF, VERTRAULICH)",
-      "watermarkTextPlaceholder": "Wasserzeichen-Text"
+      "watermarkTextPlaceholder": "Wasserzeichen-Text",
+      "loadDefaultToast": "Standardstil angewendet",
+      "noDefaultToast": "Kein Standardstil gespeichert",
+      "presets": "Vorgaben",
+      "resetDesignToast": "Auf App-Standard zurückgesetzt",
+      "saveAsDefaultToast": "Als Standard für neue Notizen gespeichert",
+      "saveFailedToast": "Speichern des Standards fehlgeschlagen"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "Der Titel dieser Notiz ist kein Datum, keine Woche (2026-W45) und kein Monat (2026-11)",
       "prevDayHint": "Der Tag, die Woche oder der Monat vor dieser Notiz",
       "quickLanguageHint": "Einen {lang} Code-Block einfügen",
+      "needCodeBlock": "Setzen Sie den Cursor zuerst in einen Code-Block.",
+      "figureCaptionPrompt": "Abbildungsbeschriftung:",
       "quoteBlock": "Zitat",
       "quoteBlockHint": "Blockzitat",
       "recordingSaveError": "Aufnahme konnte nicht gespeichert werden.",
@@ -769,6 +782,8 @@
     "editGoal": "Ziel bearbeiten",
     "clearGoal": "Ziel löschen"
   },
+  "macros": "Makros",
+  "macrosHint": "Makros aufzeichnen und wiedergeben",
   "fileMenu": {
     "title": "Datei",
     "close": "Schließen",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "Links nach Rechts",
     "rtl": "Rechts nach Links",
-    "auto": "Auto (pro Zeile erkennen)"
+    "auto": "Auto (pro Zeile erkennen)",
+    "center": "Zentriert"
   },
   "digits": {
     "latin": "Lateinische Ziffern (123)",
@@ -940,6 +956,8 @@
       "light": "Hell",
       "dark": "Dunkel",
       "system": "System",
+      "switchToLight": "Auf Hellmodus wechseln",
+      "switchToDark": "Auf Dunkelmodus wechseln",
       "themePreset": "Theme-Preset",
       "surface": "Hintergrundtextur",
       "density": "Interface-Dichte",
@@ -1691,6 +1709,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "Wörter",
+    "notSynced": "Nicht synchronisiert",
+    "syncNotAvailable": "Synchronisierung noch nicht verfügbar",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

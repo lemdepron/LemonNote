@@ -7,14 +7,12 @@
       "canvas": "कैनवास",
       "queries": "क्वेरीज़",
       "extensions": "एक्सटेंशन",
-      "sync": "सिंक"
+      "sync": "सिंक",
+      "settings": "Settings"
     },
     "syncTitle": "सिंक योजनाबद्ध है",
     "soon": "जल्द ही",
     "bin": "कचरा",
-    "more": "अधिक",
-    "moreGroupAria": "अधिक विकल्प",
-    "settings": "सेटिंग्स",
     "localVault": "स्थानीय वॉल्ट",
     "oneWorkspace": "एक कार्यक्षेत्र",
     "pinOpen": "खुला पिन करें",
@@ -145,8 +143,15 @@
         "replace": "चयन बदलें",
         "insertBelow": "नीचे डालें",
         "copy": "कॉपी",
-        "discard": "त्यागें"
-      }
+        "discard": "त्यागें",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "{label} के रूप में कॉपी किया गया।",
@@ -255,7 +260,13 @@
       "watermarkPresets": "प्रीसेट",
       "watermarkText": "वॉटरमार्क टेक्स्ट",
       "watermarkTextHint": "वॉटरमार्क के रूप में दिखाने के लिए टेक्स्ट (जैसे DRAFT, CONFIDENTIAL)",
-      "watermarkTextPlaceholder": "वॉटरमार्क टेक्स्ट"
+      "watermarkTextPlaceholder": "वॉटरमार्क टेक्स्ट",
+      "loadDefaultToast": "डिफ़ॉल्ट शैली लागू की गई",
+      "noDefaultToast": "कोई डिफ़ॉल्ट शैली सहेजी नहीं गई",
+      "presets": "प्रीसेट",
+      "resetDesignToast": "ऐप डिफ़ॉल्ट पर रीसेट किया गया",
+      "saveAsDefaultToast": "नई नोट्स के लिए डिफ़ॉल्ट के रूप में सहेजा गया",
+      "saveFailedToast": "डिफ़ॉल्ट सहेजने में विफल"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "इस नोट का शीर्षक तारीख, सप्ताह (2026-W45) या महीना (2026-11) नहीं है",
       "prevDayHint": "इस नोट से पहले का दिन, सप्ताह या महीना",
       "quickLanguageHint": "एक {lang} कोड ब्लॉक डालें",
+      "needCodeBlock": "पहले कर्सर को कोड ब्लॉक के अंदर रखें।",
+      "figureCaptionPrompt": "आकृति शीर्षक:",
       "quoteBlock": "उद्धरण",
       "quoteBlockHint": "ब्लॉक कोट",
       "recordingSaveError": "रिकॉर्डिंग सेव करने में विफल।",
@@ -759,7 +772,9 @@
       "zoomPlaceholder": "ज़ूम",
       "zoomSlider": "स्लाइडर:",
       "horizontalHint": "क्षैतिज पृष्ठ प्रवाह (केवल प्रिंट लेआउट)"
-    }
+    },
+    "macros": "मैक्रो",
+    "macrosHint": "संपादन मैक्रो रिकॉर्ड और रीप्ले करें"
   },
   "wordGoal": {
     "wordGoal": "शब्द लक्ष्य",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "बाएँ से दाएँ",
     "rtl": "दाएँ से बाएँ",
-    "auto": "ऑटो (प्रति लाइन पहचानें)"
+    "auto": "ऑटो (प्रति लाइन पहचानें)",
+    "center": "केंद्र"
   },
   "digits": {
     "latin": "लैटिन अंक (123)",
@@ -940,6 +956,8 @@
       "light": "लाइट",
       "dark": "डार्क",
       "system": "सिस्टम",
+      "switchToLight": "लाइट मोड पर स्विच करें",
+      "switchToDark": "डार्क मोड पर स्विच करें",
       "themePreset": "थीम प्रीसेट",
       "surface": "बैकग्राउंड टेक्सचर",
       "density": "इंटरफ़ेस डेंसिटी",
@@ -1691,6 +1709,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "शब्द",
+    "notSynced": "सिंक नहीं किया गया",
+    "syncNotAvailable": "सिंक अभी उपलब्ध नहीं है",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

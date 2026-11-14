@@ -1,0 +1,9 @@
+{
+  "dir.center": "Zentriert",
+  "ribbon.design.loadDefaultToast": "Standardstil angewendet",
+  "ribbon.design.noDefaultToast": "Kein Standardstil gespeichert",
+  "ribbon.design.presets": "Vorgaben",
+  "ribbon.design.resetDesignToast": "Auf App-Standard zurückgesetzt",
+  "ribbon.design.saveAsDefaultToast": "Als Standard für neue Notizen gespeichert",
+  "ribbon.design.saveFailedToast": "Speichern des Standards fehlgeschlagen"
+}

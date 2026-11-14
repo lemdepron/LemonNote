@@ -1,0 +1,9 @@
+{
+  "dir.center": "中央",
+  "ribbon.design.loadDefaultToast": "デフォルトスタイルを適用しました",
+  "ribbon.design.noDefaultToast": "保存されているデフォルトスタイルがありません",
+  "ribbon.design.presets": "プリセット",
+  "ribbon.design.resetDesignToast": "アプリのデフォルトにリセットしました",
+  "ribbon.design.saveAsDefaultToast": "新規ノートのデフォルトとして保存しました",
+  "ribbon.design.saveFailedToast": "デフォルトの保存に失敗しました"
+}

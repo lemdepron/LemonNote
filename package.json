@@ -47,9 +47,10 @@
     "@stripe/react-stripe-js": "^3.0.0",
     "@stripe/stripe-js": "^5.2.0",
     "@tanstack/react-query": "^5.84.1",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
     "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-notification": "^2.8.0",
-    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-updater": "^2.8.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -86,8 +87,7 @@
     "three": "^0.171.0",
     "vaul": "^1.1.2",
     "write-excel-file": "^4.1.1",
-    "zod": "^4.6.7",
-    "@tauri-apps/plugin-updater": "^2.8.0"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
@@ -106,6 +106,7 @@
     "fake-indexeddb": "^6.2.8",
     "globals": "^15.14.0",
     "nitro": "^3.0.260610-beta",
+    "playwright": "^1.65.1",
     "postcss": "^8.5.3",
     "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",

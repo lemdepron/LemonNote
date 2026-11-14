@@ -39,7 +39,7 @@ All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do
 15. **Layout is direction-safe.** Use logical CSS (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`) instead of `left`/`right`/`ml-`/`mr-` in anything you touch. Arabic, Persian and Urdu are right-to-left.
 16. **Colours come from theme tokens** (`bg-background`, `text-foreground`, `bg-primary`, ...). No hard-coded colours in components except inside theme data. Any new or changed theme must pass the contrast check: text on page and on card at least 4.5:1, button text on button at least 4.5:1, link on page at least 4.5:1.
 17. **Overlays.** Panels that open over the page (Find Tags, Backup, import options, anything similar) use `src/components/ui/dialog.jsx` (modal) or a Popover with a fixed max width and max height, a scrolling body and a solid background. Content must never overflow its box. Check at a narrow window width and in right-to-left.
-18. **One sticky stack.** The app header and the note ribbon stick together as one element. Do not position them separately with measured pixel offsets.
+18. **Tab line sticky, panel hides on scroll.** Only the ribbon tab line (undo/redo/star, file, tabs, goal, macros) is sticky at the top of the window, below the app header. The note tabs row and breadcrumb row scroll away normally. The panel (96 px row of groups) hides on scroll down, shows on scroll up, always shown at page top. Dead zone ~8 px, re-show threshold ~80 px. Clicking a tab or focusing the ribbon shows the panel. No content jump: wrapper keeps full height, panel slides over text. Animates with short transition; prefers-reduced-motion disables animation. Panel must not hide while a popover from it is open.
 19. **Do not create planning, summary or throwaway files** in the repo (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`, no `fix-*.cjs`, `debug-*.mjs`, `check-*.cjs`, no backup copies like `original_*.jsx`). Run one-off helper scripts from a temporary folder outside the repo, or delete them when done. Reusable checks go in `scripts/` with a one-line comment at the top and an entry in package.json. Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
 
 ## Translation workflow
@@ -107,7 +107,7 @@ npm ci --dry-run
 
 ## UI design decisions (decided by the owner)
 
-- The note ribbon is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover and on keyboard focus, and it stays visible (sticky) below the app header when the page scrolls.
+- The note ribbon tab line is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover and on keyboard focus, and it stays sticky at the top of the window below the app header. The panel (groups row) hides on scroll down, shows on scroll up, always shown at page top. Each group shows up to six buttons in two rows with the group name below; overflow goes into a "..." popover per group. No group collapses to a dropdown. In narrow windows the panel scrolls sideways.
 - The ink layer lives inside the note (no separate Ink page).
 - The logo is the lemon notebook icon (`src-tauri/icons/icon.png`), not an emoji.
 - The default theme is **lemon**: lemon-yellow buttons with dark text on a warm cream page. Themes must look clearly different from each other (different colour family and character), not the same layout recoloured.

@@ -1,0 +1,9 @@
+{
+  "dir.center": "По центру",
+  "ribbon.design.loadDefaultToast": "Применен стиль по умолчанию",
+  "ribbon.design.noDefaultToast": "Стиль по умолчанию не сохранен",
+  "ribbon.design.presets": "Предустановки",
+  "ribbon.design.resetDesignToast": "Сброшено к настройкам приложения",
+  "ribbon.design.saveAsDefaultToast": "Сохранено как умолчание для новых заметок",
+  "ribbon.design.saveFailedToast": "Не удалось сохранить умолчание"
+}

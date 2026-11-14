@@ -1,0 +1,9 @@
+{
+  "dir.center": "Centre",
+  "ribbon.design.loadDefaultToast": "Style par défaut appliqué",
+  "ribbon.design.noDefaultToast": "Aucun style par défaut enregistré",
+  "ribbon.design.presets": "Préréglages",
+  "ribbon.design.resetDesignToast": "Réinitialisé aux valeurs par défaut de l'app",
+  "ribbon.design.saveAsDefaultToast": "Enregistré comme défaut pour les nouvelles notes",
+  "ribbon.design.saveFailedToast": "Échec de l'enregistrement du défaut"
+}

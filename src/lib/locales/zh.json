@@ -7,14 +7,12 @@
       "canvas": "画布",
       "queries": "查询",
       "extensions": "插件",
-      "sync": "同步"
+      "sync": "同步",
+      "settings": "Settings"
     },
     "syncTitle": "同步功能计划中",
     "soon": "即将推出",
     "bin": "回收站",
-    "more": "更多",
-    "moreGroupAria": "更多选项",
-    "settings": "设置",
     "localVault": "本地保险库",
     "oneWorkspace": "一个工作区",
     "pinOpen": "固定打开",
@@ -145,8 +143,15 @@
         "replace": "替换选中内容",
         "insertBelow": "在下方插入",
         "copy": "复制",
-        "discard": "丢弃"
-      }
+        "discard": "丢弃",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "已复制为 {label}。",
@@ -255,7 +260,13 @@
       "watermarkPresets": "预设",
       "watermarkText": "水印文字",
       "watermarkTextHint": "作为水印显示的文字（如：草稿、机密）",
-      "watermarkTextPlaceholder": "水印文字"
+      "watermarkTextPlaceholder": "水印文字",
+      "loadDefaultToast": "已应用默认样式",
+      "noDefaultToast": "未保存默认样式",
+      "presets": "预设",
+      "resetDesignToast": "已重置为应用默认值",
+      "saveAsDefaultToast": "已保存为新笔记的默认值",
+      "saveFailedToast": "保存默认值失败"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "该笔记标题不是日期、周（2026-W45）或月（2026-11）格式",
       "prevDayHint": "该笔记之前的一天、一周或一个月",
       "quickLanguageHint": "插入 {lang} 代码块",
+      "needCodeBlock": "请先将光标放在代码块内。",
+      "figureCaptionPrompt": "图形标题：",
       "quoteBlock": "引用",
       "quoteBlockHint": "块引用",
       "recordingSaveError": "录音保存失败。",
@@ -759,7 +772,9 @@
       "zoomOutHint": "减小缩放 (Ctrl+-)",
       "zoomPlaceholder": "缩放",
       "zoomSlider": "滑块："
-    }
+    },
+    "macros": "宏",
+    "macrosHint": "记录和重放编辑宏"
   },
   "wordGoal": {
     "wordGoal": "字数目标",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "从左到右",
     "rtl": "从右到左",
-    "auto": "自动 (按行检测)"
+    "auto": "自动 (按行检测)",
+    "center": "居中"
   },
   "digits": {
     "latin": "拉丁数字 (123)",
@@ -938,6 +954,8 @@
       "light": "浅色",
       "dark": "深色",
       "system": "跟随系统",
+      "switchToLight": "切换到浅色模式",
+      "switchToDark": "切换到深色模式",
       "themePreset": "主题预设",
       "surface": "背景纹理",
       "density": "界面密度",
@@ -1689,6 +1707,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "字数",
+    "notSynced": "未同步",
+    "syncNotAvailable": "同步暂不可用",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

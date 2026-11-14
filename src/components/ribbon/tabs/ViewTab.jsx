@@ -1,9 +1,9 @@
 import {
-  LayoutDashboard,
+  Eye,
+  PenLine,
   FileText,
   List,
   BookOpen,
-  AlignLeft,
   Search,
   ZoomIn,
   ZoomOut,
@@ -13,39 +13,61 @@ import {
   Ruler,
   Grid,
   Type,
-  Eye,
-  PenLine,
   Shield,
   AlertTriangle,
   CheckCircle,
-  LayoutGrid,
   Paperclip,
   Table,
+  Image,
+  SpellCheck,
+  Sidebar,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, useRibbon } from "@/components/ribbon/RibbonKit";
 import { useI18n } from "@/lib/i18n";
 import { countWords } from "@/lib/note-stats";
-import { EDITOR_FONTS, WIDTHS } from "@/lib/text-style";
+import { EDITOR_FONTS } from "@/lib/text-style";
 import { runAccessibilityChecks } from "@/lib/accessibility";
 import { addAttachment } from "@/lib/attachments";
-import { tableAt, tableInsert } from "@/lib/ribbon-actions";
+import { tableInsert } from "@/lib/ribbon-actions";
 import { useState } from "react";
 
 const VIEW_MODES = [
-  { id: "read", label: "Read Mode", icon: Eye, hint: "Rendered markdown with styling" },
-  { id: "draft", label: "Draft", icon: PenLine, hint: "Plain writing box, no styling" },
-  { id: "print", label: "Print Layout", icon: FileText, hint: "Pages with shadows, numbers, margins" },
-  { id: "outline", label: "Outline", icon: List, hint: "Collapsible heading tree" },
-  { id: "immersive", label: "Immersive Reader", icon: BookOpen, hint: "Distraction-free, large text, read-aloud" },
+  { id: "read", label: "ribbon.view.readMode", icon: Eye, hint: "ribbon.view.readModeHint" },
+  { id: "draft", label: "ribbon.view.draft", icon: PenLine, hint: "ribbon.view.draftHint" },
+  { id: "print", label: "ribbon.view.printLayout", icon: FileText, hint: "ribbon.view.printLayoutHint" },
+  { id: "outline", label: "ribbon.view.outline", icon: List, hint: "ribbon.view.outlineHint" },
+  { id: "immersive", label: "ribbon.view.immersiveReader", icon: BookOpen, hint: "ribbon.view.immersiveReaderHint" },
 ];
 
 const ZOOM_PRESETS = [
-  { value: 100, label: "100%" },
-  { value: "page-width", label: "Page Width" },
-  { value: "one-page", label: "One Page" },
-  { value: "two-pages", label: "Multiple Pages" },
+  { value: "50", label: "50%" },
+  { value: "75", label: "75%" },
+  { value: "100", label: "100%" },
+  { value: "125", label: "125%" },
+  { value: "150", label: "150%" },
+  { value: "200", label: "200%" },
+  { value: "300", label: "300%" },
+  { value: "page-width", label: "ribbon.view.pageWidth" },
+  { value: "one-page", label: "ribbon.view.onePage" },
+  { value: "two-pages", label: "ribbon.view.twoPages" },
 ];
+
+const READ_WIDTHS = [
+  { value: "36", label: "ribbon.view.narrow" },
+  { value: "42", label: "ribbon.view.medium" },
+  { value: "48", label: "ribbon.view.wide" },
+  { value: "60", label: "ribbon.view.full" },
+];
+
+function StatRow({ label, text }) {
+  return (
+    <div className="flex min-w-[3.6rem] flex-col items-center px-1.5 font-mono">
+      <span className="text-[12px] text_foreground">{text}</span>
+      <span className="text_[8.5px] uppercase tracking_[0.12em] text-muted_foreground/70">{label}</span>
+    </div>
+  );
+}
 
 export function ViewTab() {
   const { t } = useI18n();
@@ -60,14 +82,7 @@ export function ViewTab() {
   const words = countWords(body);
   const lines = body ? body.split("\n").length : 0;
   const readMinutes = Math.max(1, Math.round(words / 220));
-  const stat = (label, text) => (
-    <div className="flex min-w-[3.6rem] flex-col items-center px-1.5 font-mono">
-      <span className="text-[12px] text-foreground">{text}</span>
-      <span className="text-[8.5px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</span>
-    </div>
-  );
 
-  // Accessibility checker state
   const [a11yOpen, setA11yOpen] = useState(false);
   const [a11yIssues, setA11yIssues] = useState([]);
   const [a11yRunning, setA11yRunning] = useState(false);
@@ -107,8 +122,8 @@ export function ViewTab() {
 
   const getSeverityIcon = (severity) => {
     if (severity === 'error') return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
-    if (severity === 'warning') return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
-    return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
+    if (severity === 'warning') return <AlertTriangle className="h-3.5 w-3.5 text-amber_500" />;
+    return <CheckCircle className="h-3.5 w-3.5 text-green_500" />;
   };
 
   const handleAttachFile = async () => {
@@ -157,164 +172,140 @@ export function ViewTab() {
   };
 
   const handleInsertTable = () => {
-    const table = tableAt(value, selection.start);
+    const table = tableInsert(selection, 3, 3);
     if (table) {
-      // Cursor is in a table - could show table tools
-      return;
+      run(table);
     }
-    run(tableInsert(selection, 3, 3)); // Insert 3x3 table by default
   };
+
+  const viewMode = typo.viewMode || "read";
 
   return (
     <>
-      {/* 1. Views */}
-      <RibbonGroup label="Views" icon={LayoutDashboard} priority={70}>
-        <div className="flex flex-wrap gap-1">
-          {VIEW_MODES.map(({ id, label, icon: Icon, hint }) => (
-            <Btn
-              key={id}
-              id={`view.mode.${id}`}
-              icon={Icon}
-              label={label}
-              hint={hint}
-              active={typo.viewMode === id}
-              onClick={() => patch({ viewMode: id })}
-            />
-          ))}
-        </div>
+      {/* ─── Views ─── */}
+      <RibbonGroup label={t("ribbon.view.views")} icon={Maximize2} priority={90}>
+        {VIEW_MODES.map((mode) => (
+          <Btn
+            key={mode.id}
+            id={`view.mode.${mode.id}`}
+            icon={mode.icon}
+            label={t(mode.label)}
+            hint={t(mode.hint)}
+            active={viewMode === mode.id}
+            onClick={() => patch({ viewMode: mode.id })}
+          />
+        ))}
       </RibbonGroup>
 
-      {/* 2. Navigation Pane */}
-      <RibbonGroup label="Navigation pane" icon={AlignLeft} priority={60}>
+      {/* ─── Navigation ─── */}
+      <RibbonGroup label={t("ribbon.view.navigation")} icon={Sidebar} priority={80}>
         <Btn
           id="view.navPane"
-          icon={AlignLeft}
-          label="Navigation pane"
-          hint="Show side panel with headings and find"
-          active={typo.showNavPane === true}
+          icon={Sidebar}
+          label={t("ribbon.view.navigationPane")}
+          hint={t("ribbon.view.navigationPaneHint")}
+          active={typo.showNavPane}
           onClick={() => patch({ showNavPane: !typo.showNavPane })}
         />
         <Btn
           id="view.find"
           icon={Search}
-          label="Find"
-          hint="Find in this note (Ctrl+F)"
-          onClick={() => {
-            patch({ showNavPane: true, navPaneTab: "find" });
-            // Focus the find input after a tick
-            setTimeout(() => {
-              const input = document.querySelector('[data-find-input]');
-              input?.focus();
-            }, 0);
-          }}
+          label={t("ribbon.view.find")}
+          hint={t("ribbon.view.findHint")}
+          shortcut="Ctrl+F"
+          onClick={() => patch({ showNavPane: true, navPaneTab: "find" })}
         />
       </RibbonGroup>
 
-      {/* 3. Zoom */}
-      <RibbonGroup label="Zoom" icon={Maximize2} priority={50}>
-        <div className="flex items-center gap-2">
-          <Btn
-            id="view.zoomOut"
-            icon={ZoomOut}
-            label="Zoom out"
-            hint="Decrease zoom (Ctrl+-)"
-            onClick={() => patch({ zoom: Math.max(50, (typo.zoom || 100) - 10) })}
-          />
-          <div className="w-24">
-            <RibbonSelect
-              title="Zoom level"
-              placeholder="Zoom"
-              options={ZOOM_PRESETS.map((item) => ({ value: String(item.value), label: item.label }))}
-              value={typo.zoom === "page-width" ? "page-width" : typo.zoom === "one-page" ? "one-page" : typo.zoom === "two-pages" ? "two-pages" : String(typo.zoom || 100)}
-              onChange={(value) => {
-                if (value === "page-width" || value === "one-page" || value === "two-pages") {
-                  patch({ zoom: value });
-                } else {
-                  const num = Number(value);
-                  if (Number.isFinite(num)) patch({ zoom: Math.max(50, Math.min(300, num)) });
-                }
-              }}
-            />
-          </div>
-          <Btn
-            id="view.zoomIn"
-            icon={ZoomIn}
-            label="Zoom in"
-            hint="Increase zoom (Ctrl++)"
-            onClick={() => patch({ zoom: Math.min(300, (typo.zoom || 100) + 10) })}
-          />
-        </div>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="font-mono text-[10px] text-muted-foreground/70">Slider:</span>
-          <input
-            type="range"
-            min="50"
-            max="300"
-            step="10"
-            value={typeof typo.zoom === "number" ? typo.zoom : 100}
-            onChange={(e) => patch({ zoom: Number(e.target.value) })}
-            className="flex-1 h-4 accent-primary"
-            title="Zoom 50%–300%"
-          />
-        </div>
+      {/* ─── Zoom ─── */}
+      <RibbonGroup label={t("ribbon.view.zoom")} icon={ZoomIn} priority={70}>
+        <Btn
+          id="view.zoomOut"
+          icon={ZoomOut}
+          label={t("ribbon.view.zoomOut")}
+          hint={t("ribbon.view.zoomOutHint")}
+          shortcut="Ctrl+-"
+          onClick={() => {
+            const current = typeof typo.zoom === "number" ? typo.zoom : 100;
+            patch({ zoom: Math.max(50, current - 10) });
+          }}
+        />
+        <Btn
+          id="view.zoomIn"
+          icon={ZoomIn}
+          label={t("ribbon.view.zoomIn")}
+          hint={t("ribbon.view.zoomInHint")}
+          shortcut="Ctrl++"
+          onClick={() => {
+            const current = typeof typo.zoom === "number" ? typo.zoom : 100;
+            patch({ zoom: Math.min(300, current + 10) });
+          }}
+        />
+        <RibbonSelect
+          title={t("ribbon.view.zoomLevel")}
+          value={String(typo.zoom ?? 100)}
+          onChange={(val) => {
+            if (val === "page-width" || val === "one-page" || val === "two-pages") {
+              patch({ zoom: val });
+            } else {
+              patch({ zoom: Math.max(50, Math.min(300, Number(val))) });
+            }
+          }}
+          options={ZOOM_PRESETS}
+          style={{ gridRow: "span 2" }}
+        />
       </RibbonGroup>
 
-      {/* 4. Page Display */}
-      <RibbonGroup label="Page display" icon={LayoutGrid} priority={40}>
+      {/* ─── Page & Scroll ─── */}
+      <RibbonGroup label={t("ribbon.view.pageScroll")} icon={MoveVertical} priority={60}>
         <Btn
           id="view.ruler"
           icon={Ruler}
-          label="Ruler"
-          hint="Show horizontal ruler with page width and margins"
-          active={typo.showRuler === true}
+          label={t("ribbon.view.ruler")}
+          hint={t("ribbon.view.rulerHint")}
+          active={typo.showRuler}
           onClick={() => patch({ showRuler: !typo.showRuler })}
         />
         <Btn
           id="view.gridlines"
           icon={Grid}
-          label="Gridlines"
-          hint="Show overlay grid on the page"
-          active={typo.showGridlines === true}
+          label={t("ribbon.view.gridlines")}
+          hint={t("ribbon.view.gridlinesHint")}
+          active={typo.showGridlines}
           onClick={() => patch({ showGridlines: !typo.showGridlines })}
         />
-      </RibbonGroup>
-
-      {/* 5. Scroll Mode */}
-      <RibbonGroup label="Scroll mode" icon={MoveVertical} priority={35}>
-        <div className="flex gap-1">
-          <Btn
-            id="view.scrollVertical"
-            icon={MoveVertical}
-            label="Vertical"
-            hint="Vertical scrolling (default)"
-            active={typo.scrollMode !== "horizontal"}
-            onClick={() => patch({ scrollMode: "vertical" })}
-          />
-          <Btn
-            id="view.scrollHorizontal"
-            icon={MoveHorizontal}
-            label="Side to Side"
-            hint="Horizontal page flow (Print Layout only)"
-            active={typo.scrollMode === "horizontal"}
-            onClick={() => patch({ scrollMode: "horizontal" })}
-            disabled={typo.viewMode !== "print"}
-          />
-        </div>
-      </RibbonGroup>
-
-      {/* 6. Reading page width (existing) */}
-      <RibbonGroup label="Reading page" priority={30}>
-        <RibbonSelect
-          title="Width of the reading column"
-          placeholder="Width"
-          options={WIDTHS.map((item) => ({ value: item.id, label: item.label }))}
-          value={typo.width || ""}
-          onChange={(value) => (value ? patch({ width: value }) : drop("width"))}
+        <Btn
+          id="view.scrollVertical"
+          icon={MoveVertical}
+          label={t("ribbon.view.vertical")}
+          hint={t("ribbon.view.verticalHint")}
+          active={typo.scrollMode === "vertical" || !typo.scrollMode}
+          onClick={() => patch({ scrollMode: "vertical" })}
+        />
+        <Btn
+          id="view.scrollHorizontal"
+          icon={MoveHorizontal}
+          label={t("ribbon.view.horizontal")}
+          hint={t("ribbon.view.horizontalHint")}
+          active={typo.scrollMode === "horizontal"}
+          disabled={viewMode !== "print"}
+          disabledReason={viewMode !== "print" ? t("ribbon.view.horizontalHint") : undefined}
+          onClick={() => patch({ scrollMode: "horizontal" })}
+        />
+        <Stepper
+          title={t("ribbon.view.readingPageWidth")}
+          value={typo.readWidth || 42}
+          min={36}
+          max={60}
+          step={2}
+          onChange={(w) => patch({ readWidth: w })}
+          format={(n) => `${n}em`}
+          style={{ gridRow: "span 2" }}
         />
       </RibbonGroup>
 
-      {/* Attach files */}
-      <RibbonGroup label={t("ribbon.view.attach")} icon={Paperclip} priority={25}>
+      {/* ─── Attach & Table ─── */}
+      <RibbonGroup label={t("ribbon.view.attachTable")} icon={Paperclip} priority={50}>
         <Btn
           id="view.attachFile"
           icon={Paperclip}
@@ -324,15 +315,11 @@ export function ViewTab() {
         />
         <Btn
           id="view.attachImage"
-          icon={FileText}
+          icon={Image}
           label={t("ribbon.view.attachImage")}
           hint={t("ribbon.view.attachImageHint")}
           onClick={handleAttachImage}
         />
-      </RibbonGroup>
-
-      {/* Insert Table */}
-      <RibbonGroup label={t("ribbon.view.table")} icon={Table} priority={20}>
         <Btn
           id="view.insertTable"
           icon={Table}
@@ -342,127 +329,113 @@ export function ViewTab() {
         />
       </RibbonGroup>
 
-      {/* 7. Editor (existing) */}
-      <RibbonGroup label="Editor" priority={15}>
+      {/* ─── Editor & Accessibility ─── */}
+      <RibbonGroup label={t("ribbon.view.editorA11y")} icon={Type} priority={40}>
         <RibbonSelect
-          title="Font of the writing box"
-          placeholder="Editor font"
-          options={EDITOR_FONTS.map((item) => ({ value: item.id, label: item.label }))}
+          title={t("ribbon.view.editorFont")}
+          placeholder={t("ribbon.view.editorFontPlaceholder")}
+          options={EDITOR_FONTS.map((f) => ({ value: f.id, label: f.label }))}
           value={typo.editorFont || ""}
           onChange={(value) => (value ? patch({ editorFont: value }) : drop("editorFont"))}
+          style={{ gridRow: "span 2" }}
         />
-        <Stepper title="Editor text size (px)" value={typo.editorSize || 14} min={10} max={32} onChange={(editorSize) => patch({ editorSize })} format={(n) => `${n}px`} />
+        <Stepper
+          title={t("ribbon.view.editorSize")}
+          value={typo.editorSize || 14}
+          min={10}
+          max={24}
+          step={1}
+          onChange={(size) => patch({ editorSize: size })}
+          format={(n) => `${n}px`}
+          style={{ gridRow: "span 2" }}
+        />
         <Btn
           id="view.spellCheck"
-          icon={Type}
-          label="Spell check"
-          hint="Underline misspelled words in the writing box"
+          icon={SpellCheck}
+          label={t("ribbon.view.spellCheck")}
+          hint={t("ribbon.view.spellCheckHint")}
           active={typo.spell !== false}
-          disabled={false}
-          onClick={() => (typo.spell === false ? drop("spell") : patch({ spell: false }))}
+          onClick={() => {
+            const t_ = typo || {};
+            if (t_.spell === false) {
+              const next = { ...t_ };
+              delete next.spell;
+              setTypography(next);
+            } else {
+              setTypography({ ...t_, spell: false });
+            }
+          }}
         />
-      </RibbonGroup>
-
-      {/* 8. Statistics (existing) */}
-      <RibbonGroup label="Statistics" priority={10}>
-        <div className="flex items-center divide-x divide-border/50" style={{ minWidth: 'max-content' }}>
-          {stat("words", words)}
-          {stat("chars", body.length)}
-          {stat("lines", lines)}
-          {stat("read", `${readMinutes} min`)}
-          {stat("selected", selected ? countWords(selected) : 0)}
-        </div>
-      </RibbonGroup>
-
-      {/* 9. Accessibility Checker */}
-      <RibbonGroup label="Accessibility" icon={Shield} priority={5}>
         <Btn
           id="view.a11yCheck"
           icon={Shield}
-          label="Check accessibility"
-          hint="Check for missing alt text, skipped headings, weak links, and low contrast"
-          onClick={runA11yCheck}
+          label={t("ribbon.view.checkAccessibility")}
+          hint={t("ribbon.view.checkAccessibilityHint")}
           disabled={a11yRunning}
+          onClick={runA11yCheck}
         />
-        {a11yRunning && <span className="text-[11px] text-muted-foreground ml-2">Checking…</span>}
       </RibbonGroup>
 
-      {/* Accessibility Issues Panel */}
+      {/* ─── Statistics (read-only display) ─── */}
+      <RibbonGroup label={t("ribbon.view.statistics")} icon={Maximize2} priority={10} className="border-s border-border/50 pl-2">
+        <StatRow label={t("ribbon.view.words")} text={String(words)} />
+        <StatRow label={t("ribbon.view.chars")} text={String(body.length)} />
+        <StatRow label={t("ribbon.view.lines")} text={String(lines)} />
+        <StatRow label={t("ribbon.view.read")} text={`${readMinutes} ${t("ribbon.view.read")}`} />
+      </RibbonGroup>
+
+      {/* ─── Accessibility Issues Dialog ─── */}
       {a11yOpen && a11yIssues.length > 0 && (
-        <div
-          className="fixed bottom-0 right-0 z-50 w-80 max-h-[60vh] bg-card border border-border/80 shadow-xl flex flex-col"
-          style={{ borderTopLeftRadius: "8px", borderTopRightRadius: "8px" }}
-          role="dialog"
-          aria-label="Accessibility issues"
-        >
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="font-mono text-[11px] font-medium">Accessibility Issues ({a11yIssues.length})</span>
-            <button
-              type="button"
-              onClick={() => setA11yOpen(false)}
-              className="p-1 rounded hover:bg-accent transition"
-              aria-label="Close accessibility panel"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {a11yIssues.map((issue, index) => (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="a11y-title">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-4 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 id="a11y-title" className="font-semibold text-lg">{t("ribbon.view.accessibilityIssues", { count: a11yIssues.length })}</h2>
               <button
-                key={`${issue.type}-${issue.line}-${index}`}
                 type="button"
-                onClick={() => scrollToIssue(issue)}
-                className="w-full flex items-start gap-2 px-2 py-2 text-left rounded hover:bg-accent transition"
+                onClick={() => setA11yOpen(false)}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent"
+                aria-label="Close"
               >
-                <span className="flex-shrink-0 mt-0.5">{getSeverityIcon(issue.severity)}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[12px]">{issue.message}</div>
-                  <div className="font-mono text-[10px] text-muted-foreground">
-                    Line {issue.line} · {issue.type.replace('-', ' ')}
-                  </div>
-                  <div className="truncate text-[11px] text-muted-foreground/70 mt-0.5">{issue.snippet}</div>
-                </div>
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
-            ))}
-          </div>
-          <div className="border-t border-border p-2 text-[10px] text-muted-foreground font-mono">
-            Click an issue to jump to it in the note.
+            </div>
+            <div className="max-h-96 overflow-auto space-y-2">
+              {a11yIssues.map((issue, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => scrollToIssue(issue)}
+                  className="w-full text-left p-3 rounded-lg border border-border/60 bg-background/50 hover:bg-accent/50 transition flex items-start gap-3"
+                >
+                  {getSeverityIcon(issue.severity)}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">{issue.message}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                      {t("ribbon.view.line")} {issue.line}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 text-center text-muted-foreground text-sm">
+              {t("ribbon.view.clickToJump")}
+            </div>
           </div>
         </div>
       )}
 
       {a11yOpen && a11yIssues.length === 0 && !a11yRunning && (
-        <div
-          className="fixed bottom-0 right-0 z-50 w-80 bg-card border border-border/80 shadow-xl flex flex-col"
-          style={{ borderTopLeftRadius: "8px", borderTopRightRadius: "8px" }}
-          role="dialog"
-          aria-label="Accessibility check passed"
-        >
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <span className="font-mono text-[11px] font-medium">Accessibility Check</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="a11y-title">
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-xl text-center">
+            <CheckCircle className="h-12 w-12 text-green_500 mx-auto mb-4" />
+            <h2 id="a11y-title" className="font-semibold text-lg mb-2">{t("ribbon.view.noIssuesFound")}</h2>
+            <p className="text-muted-foreground mb-6">{t("ribbon.view.passesAllChecks")}</p>
             <button
               type="button"
               onClick={() => setA11yOpen(false)}
-              className="p-1 rounded hover:bg-accent transition"
-              aria-label="Close"
+              className="h-8 rounded-md bg-primary text-primary-foreground px-4 font-mono text-[10.5px] transition hover:bg-primary/90"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="p-4 text-center">
-            <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-            <p className="font-medium text-[13px]">No issues found</p>
-            <p className="text-[11px] text-muted-foreground mt-1">Your note passes all accessibility checks.</p>
-            <button
-              type="button"
-              onClick={() => setA11yOpen(false)}
-              className="mt-3 px-3 py-1.5 text-[11px] rounded border border-border/70 hover:bg-accent transition"
-            >
-              Close
+              {t("ribbon.view.checkAccessibility")}
             </button>
           </div>
         </div>

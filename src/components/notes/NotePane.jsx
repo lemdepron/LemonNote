@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles } from "lucide-react";
+import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Sun, Moon, CloudOff, Check, Loader2 } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
-import VaultHeader from "@/components/vault/VaultHeader";
 import MarkdownEditor from "@/components/vault/MarkdownEditor";
 import MarkdownView from "@/components/vault/MarkdownView";
 import FormatEditor from "@/components/vault/FormatEditor";
@@ -13,7 +12,6 @@ import { editorProps, normalizeStyle, readerProps } from "@/lib/text-style";
 import { readPref, writePref } from "@/lib/preferences";
 import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
-import MacroBar from "@/components/macros/MacroBar";
 import ExtensionPanels from "@/components/extensions/ExtensionPanels";
 import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
@@ -24,6 +22,7 @@ import useNoteImages from "@/hooks/useNoteImages";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { useFocusMode } from "@/lib/focusMode";
+import { useTheme } from "@/lib/theme";
 import { trashNote, restoreNote } from "@/lib/notes";
 import { toast } from "@/lib/toast";
 import { emitEvent, runHook } from "@/lib/extensions";
@@ -36,6 +35,8 @@ import FindTagsPanel from "@/components/tags/FindTagsPanel";
 import { confirm } from "@/components/ui/use-dialog";
 import { usePaneFocus } from "@/context/PaneFocusContext";
 import SplitDivider from "@/components/notes/SplitDivider";
+import SpaceRail from "@/components/shell/SpaceRail";
+import CommandPalette from "@/components/shell/CommandPalette";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -60,6 +61,7 @@ export default function NotePane({
   const navigate = useNavigate();
   const { notes, reload } = useVault();
   const { focus } = useFocusMode();
+  const { resolved, setMode: setThemeMode } = useTheme();
   const initialTitle = new URLSearchParams(window.location.search).get("title") || "";
   const { registerPane, unregisterPane, focusPane } = usePaneFocus();
 
@@ -111,8 +113,21 @@ export default function NotePane({
   const [findQuery, setFindQuery] = useState("");
   const [findMatches, setFindMatches] = useState([]);
   const [findIndex, setFindIndex] = useState(-1);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const { t } = useI18n();
+
+  // Ctrl+K palette (from VaultHeader)
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const createdIdRef = useRef(isNew ? null : noteId);
   const loadedIdRef = useRef(null);
@@ -1209,8 +1224,138 @@ export default function NotePane({
 
   return (
     <div className="nb-shell min-h-screen">
-      {!loadingNote && !isLocked ? (
-        <VaultHeader>
+      <SpaceRail />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <main
+        className={cn(
+          "pb-24 pt-4",
+          !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
+          isInSplit && "px-2",
+          focus && "pr-12 sm:pr-14"
+        )}
+      >
+        {/* Slim top row (breadcrumb) - FIRST */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <Link
+            to="/"
+            className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+            title="Back to vault"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> vault
+          </Link>
+          <span className="text-[11px] text-muted-foreground/40">/</span>
+
+          {/* Editable title */}
+          <div className="flex-1 min-w-0 max-w-[40ch]">
+            {isEditingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                onBlur={handleTitleBlur}
+                placeholder={t("common.untitledNote")}
+                aria-label="Note title"
+                className="w-full bg-transparent font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 px-1 py-0.5 rounded"
+                autoFocus
+              />
+            ) : (
+              <span
+                onClick={startEditTitle}
+                className="block truncate font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground cursor-pointer hover:underline px-1 py-0.5 rounded transition"
+                title={t("common.clickToRename")}
+              >
+                {title.trim() || t("common.untitledNote")}
+              </span>
+            )}
+          </div>
+
+          {/* Tag chips with + tag - hide when no tags */}
+          {(tags.length > 0 || inlineTags.length > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="group flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[11px] text-primary"
+                >
+                  #{tag}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${tag}`}
+                    onClick={() => {
+                      setTags(tags.filter((item) => item !== tag));
+                      touch();
+                    }}
+                    className="text-primary/50 transition hover:text-primary"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {inlineTags
+                .filter((tag) => !tags.includes(tag))
+                .map((tag) => (
+                  <span
+                    key={tag}
+                    title="Detected inline hashtag"
+                    className="rounded-md border border-dashed border-border px-2 py-1 font-mono text-[11px] text-muted-foreground"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              <form onSubmit={addTag} className="flex items-center">
+                <input
+                  value={tagDraft}
+                  onChange={(event) => setTagDraft(event.target.value)}
+                  placeholder={t("common.addTag")}
+                  aria-label="Add tag"
+                  className="w-16 bg-transparent px-1 py-1 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:w-24 rounded border border-transparent focus:border-primary/30"
+                />
+              </form>
+            </div>
+          )}
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* Write / Split / Read switch */}
+            <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5">
+              {MODES.map(({ id: modeId, label, icon: Icon }) => (
+                <button
+                  key={modeId}
+                  type="button"
+                  onClick={() => setMode(modeId)}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 font-mono text-[10.5px] transition",
+                    mode === modeId
+                      ? "bg-accent text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  title={label}
+                >
+                  <Icon className="h-3 w-3" />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Theme toggle: one click switches light/dark (system mode stays in Settings) */}
+            <button
+              type="button"
+              onClick={() => setThemeMode(resolved === "dark" ? "light" : "dark")}
+              className="flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 font-mono text-[10.5px] uppercase tracking-[0.12em] transition-[transform,opacity,background-color,border-color,color] duration-200 ease-out transform-gpu active:scale-95 border-border/70 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              aria-label={resolved === "dark" ? t("settings.appearance.switchToLight") : t("settings.appearance.switchToDark")}
+              title={resolved === "dark" ? t("settings.appearance.switchToLight") : t("settings.appearance.switchToDark")}
+            >
+              {resolved === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{resolved === "dark" ? t("settings.appearance.light") : t("settings.appearance.dark")}</span>
+            </button>
+
+            {/* Focus button */}
+            <FocusToggle />
+          </div>
+        </div>
+
+        {/* Ribbon tab line + panel - AFTER breadcrumb */}
+        {!loadingNote && !isLocked && (
           <NoteRibbon
             body={body}
             onChange={changeBody}
@@ -1256,134 +1401,7 @@ export default function NotePane({
             saveWordGoalFromPopover={saveWordGoalFromPopover}
             clearWordGoal={clearWordGoal}
           />
-        </VaultHeader>
-      ) : (
-        <VaultHeader />
-      )}
-      <main
-        className={cn(
-          "pb-24 pt-4",
-          !isInSplit && "mx-auto max-w-[1480px] px-5 sm:px-6 lg:px-8",
-          isInSplit && "px-2",
-          focus && "pr-12 sm:pr-14"
         )}
-      >
-        {/* Slim top row */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <Link
-            to="/"
-            className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
-            title="Back to vault"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> vault
-          </Link>
-          <span className="text-[11px] text-muted-foreground/40">/</span>
-
-          {/* Editable title */}
-          <div className="flex-1 min-w-0 max-w-[40ch]">
-            {isEditingTitle ? (
-              <input
-                ref={titleInputRef}
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onKeyDown={handleTitleKeyDown}
-                onBlur={handleTitleBlur}
-                placeholder={t("common.untitledNote")}
-                aria-label="Note title"
-                className="w-full bg-transparent font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/30 px-1 py-0.5 rounded"
-                autoFocus
-              />
-            ) : (
-              <span
-                onClick={startEditTitle}
-                className="block truncate font-heading text-[18px] font-medium leading-tight tracking-tight text-foreground cursor-pointer hover:underline px-1 py-0.5 rounded transition"
-                title={t("common.clickToRename")}
-              >
-                {title.trim() || t("common.untitledNote")}
-              </span>
-            )}
-          </div>
-
-          {/* Saved indicator */}
-          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full",
-                status === "saving" ? "bg-primary animate-pulse" : "bg-[hsl(var(--link))]"
-              )}
-            />
-            {statusLabel}
-          </span>
-
-          {/* Tag chips with + tag */}
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="group flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-mono text-[11px] text-primary"
-              >
-                #{tag}
-                <button
-                  type="button"
-                  aria-label={`Remove ${tag}`}
-                  onClick={() => {
-                    setTags(tags.filter((item) => item !== tag));
-                    touch();
-                  }}
-                  className="text-primary/50 transition hover:text-primary"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            {inlineTags
-              .filter((tag) => !tags.includes(tag))
-              .map((tag) => (
-                <span
-                  key={tag}
-                  title="Detected inline hashtag"
-                  className="rounded-md border border-dashed border-border px-2 py-1 font-mono text-[11px] text-muted-foreground"
-                >
-                  #{tag}
-                </span>
-              ))}
-            <form onSubmit={addTag} className="flex items-center">
-              <input
-                value={tagDraft}
-                onChange={(event) => setTagDraft(event.target.value)}
-                placeholder={t("common.addTag")}
-                aria-label="Add tag"
-                className="w-16 bg-transparent px-1 py-1 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground/50 focus:w-24 rounded border border-transparent focus:border-primary/30"
-              />
-            </form>
-          </div>
-
-          <div className="ml-auto flex items-center gap-1.5">
-            {/* Write / Split / Read switch */}
-            <div className="inline-flex rounded-lg border border-border/80 bg-card/50 p-0.5">
-              {MODES.map(({ id: modeId, label, icon: Icon }) => (
-                <button
-                  key={modeId}
-                  type="button"
-                  onClick={() => setMode(modeId)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-[6px] px-2.5 py-1.5 font-mono text-[10.5px] transition",
-                    mode === modeId
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  title={label}
-                >
-                  <Icon className="h-3 w-3" />
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Focus button */}
-            <FocusToggle />
-          </div>
-        </div>
 
         {/* Main content area - centered with reading width, side panel only when open */}
         <div className={cn(
@@ -1470,13 +1488,6 @@ export default function NotePane({
                               hasInk={noteInk.hasPage && noteInk.markCount > 0}
                               showLineNumbers={typography.showLineNumbers}
                               {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
-                            />
-                            <MacroBar
-                              body={body}
-                              onChange={(next) => {
-                                setBody(next);
-                                touch();
-                              }}
                             />
                           </>
                         ) : (
@@ -1594,13 +1605,7 @@ export default function NotePane({
                                       showLineNumbers={typography.showLineNumbers}
                                       {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, true)}
                                     />
-                                    <MacroBar
-                                      body={body}
-                                      onChange={(next) => {
-                                        setBody(next);
-                                        touch();
-                                      }}
-                                    />
+                                    
                                   </div>
                                 </div>
                               ) : (
@@ -1618,13 +1623,7 @@ export default function NotePane({
                                     showLineNumbers={typography.showLineNumbers}
                                     {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
                                   />
-                                  <MacroBar
-                                    body={body}
-                                    onChange={(next) => {
-                                      setBody(next);
-                                      touch();
-                                    }}
-                                  />
+                                  
                                 </>
                               )}
                             </>
@@ -1725,15 +1724,40 @@ export default function NotePane({
 
           {/* Bottom status bar */}
           <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 py-1.5">
-            <div className="mx-auto max-w-[1480px] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
-              <div className="flex items-center gap-4">
+            <div className={cn(
+              "mx-auto max-w-[1480px] flex flex-wrap items-center justify-end gap-2 text-[11px] font-mono",
+              showNavPane && "pe-[288px]"
+            )}>
+              {/* All status items grouped on the right */}
+              <div className="flex items-center gap-3 text-muted-foreground">
                 {/* Word count */}
-                <span className="text-muted-foreground">
-                  {wordCount} word{wordCount !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{statusLabel === "saving…" ? t("common.savingStatus") : statusLabel === "saved" ? t("common.savedStatus") : t("common.draftStatus")}</span>
+                <div className="flex items-center gap-1.5">
+                  <span>{t("common.words")}:</span>
+                  <span>{wordCount}</span>
+                </div>
+
+                {/* Not synced (non-button, with tooltip) */}
+                <div className="flex items-center gap-1.5" title={t("common.syncNotAvailable")}>
+                  <CloudOff className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
+                  <span>{t("common.notSynced")}</span>
+                </div>
+
+                {/* Save status with icons */}
+                <div className="flex items-center gap-1.5">
+                  {status === "saving" ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden="true" />
+                      <span>{t("common.savingStatus")}</span>
+                    </>
+                  ) : status === "saved" ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-[hsl(var(--link))]" aria-hidden="true" />
+                      <span>{t("common.savedStatus")}</span>
+                    </>
+                  ) : (
+                    <span>{t("common.draftStatus")}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

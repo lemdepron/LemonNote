@@ -1,0 +1,9 @@
+{
+  "dir.center": "Centro",
+  "ribbon.design.loadDefaultToast": "Estilo predeterminado aplicado",
+  "ribbon.design.noDefaultToast": "No hay estilo predeterminado guardado",
+  "ribbon.design.presets": "Preajustes",
+  "ribbon.design.resetDesignToast": "Restablecido a valores predeterminados de la app",
+  "ribbon.design.saveAsDefaultToast": "Guardado como predeterminado para nuevas notas",
+  "ribbon.design.saveFailedToast": "Error al guardar el predeterminado"
+}

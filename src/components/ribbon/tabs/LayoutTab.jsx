@@ -22,8 +22,6 @@ import {
   Ungroup,
   AlignHorizontalDistributeCenter,
   AlignVerticalDistributeCenter,
-  Minus,
-  Plus,
   ChevronRight,
   Trash2,
   Square,
@@ -33,7 +31,8 @@ import {
   ArrowUp,
   ArrowDown,
   MoveHorizontal,
-  LayoutDashboard,
+  Layers,
+  Redo2,
 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
@@ -388,8 +387,78 @@ export function LayoutTab({ ink }) {
   return (
     <>
       {/* 1. Page Setup */}
-      <RibbonGroup label="Page setup" icon={FileText} priority={70}>
+      <RibbonGroup label="Page setup" icon={FileText} priority={70} more={
+        <>
+          <Stepper
+            id="layout.pageWidth"
+            title="Custom page width (mm)"
+            value={t.pageWidth || 210}
+            min={50}
+            max={1000}
+            step={1}
+            onChange={(pageWidth) => patch({ pageSize: "custom", pageWidth })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+          <Stepper
+            id="layout.pageHeight"
+            title="Custom page height (mm)"
+            value={t.pageHeight || 297}
+            min={50}
+            max={1000}
+            step={1}
+            onChange={(pageHeight) => patch({ pageSize: "custom", pageHeight })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+          <Stepper
+            id="layout.marginTop"
+            title="Top margin (mm)"
+            value={t.marginTop !== undefined ? t.marginTop : 25.4}
+            min={0}
+            max={200}
+            step={0.1}
+            onChange={(marginTop) => patch({ pageMargins: "custom", marginTop })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+          <Stepper
+            id="layout.marginRight"
+            title="Right margin (mm)"
+            value={t.marginRight !== undefined ? t.marginRight : 25.4}
+            min={0}
+            max={200}
+            step={0.1}
+            onChange={(marginRight) => patch({ pageMargins: "custom", marginRight })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+          <Stepper
+            id="layout.marginBottom"
+            title="Bottom margin (mm)"
+            value={t.marginBottom !== undefined ? t.marginBottom : 25.4}
+            min={0}
+            max={200}
+            step={0.1}
+            onChange={(marginBottom) => patch({ pageMargins: "custom", marginBottom })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+          <Stepper
+            id="layout.marginLeft"
+            title="Left margin (mm)"
+            value={t.marginLeft !== undefined ? t.marginLeft : 25.4}
+            min={0}
+            max={200}
+            step={0.1}
+            onChange={(marginLeft) => patch({ pageMargins: "custom", marginLeft })}
+            format={(n) => `${n}mm`}
+            disabled={isDisabled}
+          />
+        </>
+      }>
         <RibbonSelect
+          id="layout.pageSize"
           title="Paper size for printing and PDF export"
           placeholder="Page size"
           options={pageSizeOptions}
@@ -397,32 +466,8 @@ export function LayoutTab({ ink }) {
           onChange={(value) => patch({ pageSize: value })}
           disabled={isDisabled}
         />
-        {(t.pageSize === "custom" || t.pageSize === undefined) && (
-          <div className="flex gap-1.5">
-            <Stepper
-              title="Custom page width (mm)"
-              value={t.pageWidth || 210}
-              min={50}
-              max={1000}
-              step={1}
-              onChange={(pageWidth) => patch({ pageSize: "custom", pageWidth })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-            <Stepper
-              title="Custom page height (mm)"
-              value={t.pageHeight || 297}
-              min={50}
-              max={1000}
-              step={1}
-              onChange={(pageHeight) => patch({ pageSize: "custom", pageHeight })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-          </div>
-        )}
-
         <RibbonSelect
+          id="layout.pageOrientation"
           title="Page orientation"
           placeholder="Orientation"
           options={orientationOptions}
@@ -430,8 +475,8 @@ export function LayoutTab({ ink }) {
           onChange={(value) => patch({ pageOrientation: value })}
           disabled={isDisabled}
         />
-
         <RibbonSelect
+          id="layout.pageMargins"
           title="Page margins"
           placeholder="Margins"
           options={marginOptions}
@@ -439,55 +484,12 @@ export function LayoutTab({ ink }) {
           onChange={(value) => patch({ pageMargins: value })}
           disabled={isDisabled}
         />
-        {(t.pageMargins === "custom" || t.pageMargins === undefined) && (
-          <div className="flex flex-wrap gap-1.5">
-            <Stepper
-              title="Top margin (mm)"
-              value={t.marginTop !== undefined ? t.marginTop : 25.4}
-              min={0}
-              max={200}
-              step={0.1}
-              onChange={(marginTop) => patch({ pageMargins: "custom", marginTop })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-            <Stepper
-              title="Right margin (mm)"
-              value={t.marginRight !== undefined ? t.marginRight : 25.4}
-              min={0}
-              max={200}
-              step={0.1}
-              onChange={(marginRight) => patch({ pageMargins: "custom", marginRight })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-            <Stepper
-              title="Bottom margin (mm)"
-              value={t.marginBottom !== undefined ? t.marginBottom : 25.4}
-              min={0}
-              max={200}
-              step={0.1}
-              onChange={(marginBottom) => patch({ pageMargins: "custom", marginBottom })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-            <Stepper
-              title="Left margin (mm)"
-              value={t.marginLeft !== undefined ? t.marginLeft : 25.4}
-              min={0}
-              max={200}
-              step={0.1}
-              onChange={(marginLeft) => patch({ pageMargins: "custom", marginLeft })}
-              format={(n) => `${n}mm`}
-              disabled={isDisabled}
-            />
-          </div>
-        )}
       </RibbonGroup>
 
       {/* 2. Columns */}
       <RibbonGroup label="Columns" icon={Columns} priority={60}>
         <RibbonSelect
+          id="layout.columnCount"
           title="Number of columns in the reader (CSS columns)"
           placeholder="Columns"
           options={COLUMN_COUNTS.map((n) => ({ value: String(n), label: `${n} column${n > 1 ? "s" : ""}` }))}
@@ -496,6 +498,7 @@ export function LayoutTab({ ink }) {
           disabled={isDisabled}
         />
         <RibbonSelect
+          id="layout.columnGap"
           title="Gap between columns (em)"
           placeholder="Column gap"
           options={COLUMN_GAPS.map((n) => ({ value: String(n), label: `${n}em` }))}
@@ -503,25 +506,22 @@ export function LayoutTab({ ink }) {
           onChange={(value) => (value ? patch({ columnGap: Number(value) }) : drop("columnGap"))}
           disabled={isDisabled}
         />
-
-        <div className="flex gap-1">
-          <Btn
-            id="layout.columnBreak"
-            icon={GripVertical}
-            label="Column break"
-            hint="Insert a column break at the cursor (forces next content to next column)"
-            onClick={handleColumnBreak}
-            disabled={isDisabled}
-          />
-          <Btn
-            id="layout.pageBreak"
-            icon={LayoutDashboard}
-            label="Page break"
-            hint="Insert a page break at the cursor (forces next content to next page when printing)"
-            onClick={handlePageBreak}
-            disabled={isDisabled}
-          />
-        </div>
+        <Btn
+          id="layout.columnBreak"
+          icon={GripVertical}
+          label="Column break"
+          hint="Insert a column break at the cursor (forces next content to next column)"
+          onClick={handleColumnBreak}
+          disabled={isDisabled}
+        />
+        <Btn
+          id="layout.pageBreak"
+          icon={FileText}
+          label="Page break"
+          hint="Insert a page break at the cursor (forces next content to next page when printing)"
+          onClick={handlePageBreak}
+          disabled={isDisabled}
+        />
       </RibbonGroup>
 
       {/* 3. Editor */}
@@ -536,6 +536,7 @@ export function LayoutTab({ ink }) {
           disabled={isDisabled}
         />
         <RibbonSelect
+          id="layout.hyphens"
           title="Hyphenation in the reader and editor"
           placeholder="Hyphenation"
           options={[
@@ -549,60 +550,8 @@ export function LayoutTab({ ink }) {
       </RibbonGroup>
 
       {/* 4. Paragraph (Indent & Spacing) */}
-      <RibbonGroup label="Paragraph" icon={AlignLeft} priority={40}>
-        <div className="flex flex-wrap gap-1">
-          <Stepper
-            title="Indent left (em) — 0.5em steps"
-            value={indentLeft}
-            min={0}
-            max={20}
-            step={0.5}
-            onChange={(il) => patch({ il: il || undefined })}
-            format={(n) => `${n}em`}
-            disabled={isDisabled}
-          />
-          <Stepper
-            title="Indent right (em) — 0.5em steps"
-            value={indentRight}
-            min={0}
-            max={20}
-            step={0.5}
-            onChange={(ir) => patch({ ir: ir || undefined })}
-            format={(n) => `${n}em`}
-            disabled={isDisabled}
-          />
-          <Stepper
-            title="Spacing before (em) — 0.5em steps"
-            value={spacingBefore}
-            min={0}
-            max={20}
-            step={0.5}
-            onChange={(sb) => patch({ sb: sb || undefined })}
-            format={(n) => `${n}em`}
-            disabled={isDisabled}
-          />
-          <Stepper
-            title="Spacing after (em) — 0.5em steps"
-            value={spacingAfter}
-            min={0}
-            max={20}
-            step={0.5}
-            onChange={(sa) => patch({ sa: sa || undefined })}
-            format={(n) => `${n}em`}
-            disabled={isDisabled}
-          />
-        </div>
-
-        <div className="flex gap-1">
-          <Btn
-            id="layout.alignLeft"
-            icon={AlignLeft}
-            label="Align left"
-            hint="Align selected paragraphs left"
-            active={t.a === "left"}
-            onClick={() => (t.a === "left" ? drop("a") : patch({ a: "left" }))}
-            disabled={isDisabled}
-          />
+      <RibbonGroup label="Paragraph" icon={AlignLeft} priority={40} more={
+        <>
           <Btn
             id="layout.alignCenter"
             icon={AlignCenter}
@@ -630,11 +579,262 @@ export function LayoutTab({ ink }) {
             onClick={() => (t.a === "justify" ? drop("a") : patch({ a: "justify" }))}
             disabled={isDisabled}
           />
-        </div>
+        </>
+      }>
+        <Stepper
+          id="layout.indentLeft"
+          title="Indent left (em) — 0.5em steps"
+          value={indentLeft}
+          min={0}
+          max={20}
+          step={0.5}
+          onChange={(il) => patch({ il: il || undefined })}
+          format={(n) => `${n}em`}
+          disabled={isDisabled}
+        />
+        <Stepper
+          id="layout.indentRight"
+          title="Indent right (em) — 0.5em steps"
+          value={indentRight}
+          min={0}
+          max={20}
+          step={0.5}
+          onChange={(ir) => patch({ ir: ir || undefined })}
+          format={(n) => `${n}em`}
+          disabled={isDisabled}
+        />
+        <Stepper
+          id="layout.spacingBefore"
+          title="Spacing before (em) — 0.5em steps"
+          value={spacingBefore}
+          min={0}
+          max={20}
+          step={0.5}
+          onChange={(sb) => patch({ sb: sb || undefined })}
+          format={(n) => `${n}em`}
+          disabled={isDisabled}
+        />
+        <Stepper
+          id="layout.spacingAfter"
+          title="Spacing after (em) — 0.5em steps"
+          value={spacingAfter}
+          min={0}
+          max={20}
+          step={0.5}
+          onChange={(sa) => patch({ sa: sa || undefined })}
+          format={(n) => `${n}em`}
+          disabled={isDisabled}
+        />
+        <Btn
+          id="layout.alignLeft"
+          icon={AlignLeft}
+          label="Align left"
+          hint="Align selected paragraphs left"
+          active={t.a === "left"}
+          onClick={() => (t.a === "left" ? drop("a") : patch({ a: "left" }))}
+          disabled={isDisabled}
+        />
       </RibbonGroup>
 
       {/* 5. Floating Objects */}
-      <RibbonGroup label="Floating objects" icon={MoreHorizontal} priority={30}>
+      <RibbonGroup label="Floating objects" icon={MoreHorizontal} priority={30} more={
+        <>
+          <Btn
+            id="layout.sendToBack"
+            icon={Layers}
+            label="Send to Back"
+            hint="Move the selected object to the back layer"
+            onClick={handleSendToBack}
+            disabled={!hasSelection}
+          />
+          <Btn
+            id="layout.selectionPane"
+            icon={List}
+            label="Selection Pane"
+            hint="Show a panel listing all floating objects with visibility and lock controls"
+            active={showSelectionPane}
+            onClick={() => setShowSelectionPane((prev) => !prev)}
+            disabled={objects.length === 0}
+          />
+          <RibbonMenu
+            id="layout.align"
+            icon={AlignHorizontalDistributeCenter}
+            label="Align"
+            hint="Align the selected object relative to the page"
+            width={200}
+            disabled={!hasSelection}
+          >
+            {(close) => (
+              <div className="p-1">
+                {[
+                  { id: "left", label: "Align Left", icon: AlignLeft },
+                  { id: "center", label: "Align Center", icon: AlignCenter },
+                  { id: "right", label: "Align Right", icon: AlignRight },
+                  { id: "top", label: "Align Top", icon: Move },
+                  { id: "middle", label: "Align Middle", icon: Move },
+                  { id: "bottom", label: "Align Bottom", icon: Move },
+                ].map((opt) => (
+                  <MenuItem
+                    key={opt.id}
+                    onClick={() => {
+                      handleAlign(opt.id);
+                      close();
+                    }}
+                  >
+                    <opt.icon className="h-3.5 w-3.5 mr-1" />
+                    {opt.label}
+                  </MenuItem>
+                ))}
+                <MenuItem disabled className="border-t border-border/50 my-1" />
+                {[
+                  { id: "h-distribute", label: "Distribute Horizontally", icon: AlignHorizontalDistributeCenter },
+                  { id: "v-distribute", label: "Distribute Vertically", icon: AlignVerticalDistributeCenter },
+                ].map((opt) => (
+                  <MenuItem
+                    key={opt.id}
+                    onClick={() => {
+                      handleDistribute(opt.id);
+                      close();
+                    }}
+                    disabled={true}
+                    title="Requires multiple objects selected"
+                  >
+                    <opt.icon className="h-3.5 w-3.5 mr-1" />
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </div>
+            )}
+          </RibbonMenu>
+          <RibbonMenu
+            id="layout.group"
+            icon={Group}
+            label="Group"
+            hint="Group or ungroup selected objects"
+            width={180}
+            disabled={!hasSelection}
+          >
+            {(close) => (
+              <div className="p-1">
+                <MenuItem
+                  onClick={() => {
+                    handleGroup();
+                    close();
+                  }}
+                  disabled={selectedObject?.groupId}
+                >
+                  <Group className="h-3.5 w-3.5 mr-1" />
+                  Group
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleUngroup();
+                    close();
+                  }}
+                  disabled={!selectedObject?.groupId}
+                >
+                  <Ungroup className="h-3.5 w-3.5 mr-1" />
+                  Ungroup
+                </MenuItem>
+              </div>
+            )}
+          </RibbonMenu>
+          <RibbonMenu
+            id="layout.rotate"
+            icon={RotateCw}
+            label="Rotate"
+            hint="Rotate or flip the selected object"
+            width={220}
+            disabled={!hasSelection}
+          >
+            {(close) => (
+              <div className="p-1 space-y-1">
+                <MenuItem
+                  onClick={() => {
+                    handleRotate(-90);
+                    close();
+                  }}
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Rotate Right 90°
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleRotate(90);
+                    close();
+                  }}
+                >
+                  <RotateCw className="h-3.5 w-3.5 mr-1" />
+                  Rotate Left 90°
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleRotate(180);
+                    close();
+                  }}
+                >
+                  <RotateCw className="h-3.5 w-3.5 mr-1 rotate-180" />
+                  Rotate 180°
+                </MenuItem>
+                <hr className="border-border/50 my-1" />
+                <MenuItem
+                  onClick={() => {
+                    handleFlip("horizontal");
+                    close();
+                  }}
+                >
+                  <FlipHorizontal className="h-3.5 w-3.5 mr-1" />
+                  Flip Horizontal
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    handleFlip("vertical");
+                    close();
+                  }}
+                >
+                  <FlipVertical className="h-3.5 w-3.5 mr-1" />
+                  Flip Vertical
+                </MenuItem>
+                <hr className="border-border/50 my-1" />
+                <MenuItem className="p-1" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="number"
+                    placeholder="Custom angle (degrees)"
+                    value={selectedObject?.rotation ? Math.round(selectedObject.rotation * 180 / Math.PI) : 0}
+                    onChange={(e) => {
+                      if (!selectedObject || !updateObject) return;
+                      const degrees = parseFloat(e.target.value) || 0;
+                      const radians = degrees * (Math.PI / 180);
+                      updateObject(selectedObject.id, { rotation: Number(radians.toFixed(4)) }, { history: true });
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") close();
+                      e.stopPropagation();
+                    }}
+                    className="w-full h-8 px-2 text-[11px] rounded border border-border/70 bg-card/60 outline-none focus:border-primary/40"
+                  />
+                </MenuItem>
+              </div>
+            )}
+          </RibbonMenu>
+          <Btn
+            id="layout.undo"
+            icon={RotateCcw}
+            label="Undo"
+            hint="Undo last floating object change (Ctrl+Z)"
+            onClick={onUndo}
+            disabled={!canUndo}
+          />
+          <Btn
+            id="layout.redo"
+            icon={Redo2}
+            label="Redo"
+            hint="Redo last floating object change (Ctrl+Shift+Z)"
+            onClick={onRedo}
+            disabled={!canRedo}
+          />
+        </>
+      }>
         {/* Position */}
         <RibbonMenu
           id="layout.position"
@@ -716,217 +916,11 @@ export function LayoutTab({ ink }) {
         {/* Bring to Front */}
         <Btn
           id="layout.bringToFront"
-          icon={Plus}
+          icon={Layers}
           label="Bring to Front"
           hint="Move the selected object to the front layer"
           onClick={handleBringToFront}
           disabled={!hasSelection}
-        />
-
-        {/* Send to Back */}
-        <Btn
-          id="layout.sendToBack"
-          icon={Minus}
-          label="Send to Back"
-          hint="Move the selected object to the back layer"
-          onClick={handleSendToBack}
-          disabled={!hasSelection}
-        />
-
-        {/* Selection Pane */}
-        <Btn
-          id="layout.selectionPane"
-          icon={List}
-          label="Selection Pane"
-          hint="Show a panel listing all floating objects with visibility and lock controls"
-          active={showSelectionPane}
-          onClick={() => setShowSelectionPane((prev) => !prev)}
-          disabled={objects.length === 0}
-        />
-
-        {/* Align */}
-        <RibbonMenu
-          id="layout.align"
-          icon={AlignHorizontalDistributeCenter}
-          label="Align"
-          hint="Align the selected object relative to the page"
-          width={200}
-          disabled={!hasSelection}
-        >
-          {(close) => (
-            <div className="p-1">
-              {[
-                { id: "left", label: "Align Left", icon: AlignLeft },
-                { id: "center", label: "Align Center", icon: AlignCenter },
-                { id: "right", label: "Align Right", icon: AlignRight },
-                { id: "top", label: "Align Top", icon: Move },
-                { id: "middle", label: "Align Middle", icon: Move },
-                { id: "bottom", label: "Align Bottom", icon: Move },
-              ].map((opt) => (
-                <MenuItem
-                  key={opt.id}
-                  onClick={() => {
-                    handleAlign(opt.id);
-                    close();
-                  }}
-                >
-                  <opt.icon className="h-3.5 w-3.5 mr-1" />
-                  {opt.label}
-                </MenuItem>
-              ))}
-              <MenuItem disabled className="border-t border-border/50 my-1" />
-              {[
-                { id: "h-distribute", label: "Distribute Horizontally", icon: AlignHorizontalDistributeCenter },
-                { id: "v-distribute", label: "Distribute Vertically", icon: AlignVerticalDistributeCenter },
-              ].map((opt) => (
-                <MenuItem
-                  key={opt.id}
-                  onClick={() => {
-                    handleDistribute(opt.id);
-                    close();
-                  }}
-                  disabled={true}
-                  title="Requires multiple objects selected"
-                >
-                  <opt.icon className="h-3.5 w-3.5 mr-1" />
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </div>
-          )}
-        </RibbonMenu>
-
-        {/* Group / Ungroup */}
-        <RibbonMenu
-          id="layout.group"
-          icon={Group}
-          label="Group"
-          hint="Group or ungroup selected objects"
-          width={180}
-          disabled={!hasSelection}
-        >
-          {(close) => (
-            <div className="p-1">
-              <MenuItem
-                onClick={() => {
-                  handleGroup();
-                  close();
-                }}
-                disabled={selectedObject?.groupId}
-              >
-                <Group className="h-3.5 w-3.5 mr-1" />
-                Group
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleUngroup();
-                  close();
-                }}
-                disabled={!selectedObject?.groupId}
-              >
-                <Ungroup className="h-3.5 w-3.5 mr-1" />
-                Ungroup
-              </MenuItem>
-            </div>
-          )}
-        </RibbonMenu>
-
-        {/* Rotate */}
-        <RibbonMenu
-          id="layout.rotate"
-          icon={RotateCw}
-          label="Rotate"
-          hint="Rotate or flip the selected object"
-          width={220}
-          disabled={!hasSelection}
-        >
-          {(close) => (
-            <div className="p-1 space-y-1">
-              <MenuItem
-                onClick={() => {
-                  handleRotate(-90);
-                  close();
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                Rotate Right 90°
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleRotate(90);
-                  close();
-                }}
-              >
-                <RotateCw className="h-3.5 w-3.5 mr-1" />
-                Rotate Left 90°
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleRotate(180);
-                  close();
-                }}
-              >
-                <RotateCw className="h-3.5 w-3.5 mr-1 rotate-180" />
-                Rotate 180°
-              </MenuItem>
-              <hr className="border-border/50 my-1" />
-              <MenuItem
-                onClick={() => {
-                  handleFlip("horizontal");
-                  close();
-                }}
-              >
-                <FlipHorizontal className="h-3.5 w-3.5 mr-1" />
-                Flip Horizontal
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleFlip("vertical");
-                  close();
-                }}
-              >
-                <FlipVertical className="h-3.5 w-3.5 mr-1" />
-                Flip Vertical
-              </MenuItem>
-              <hr className="border-border/50 my-1" />
-              <MenuItem className="p-1" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="number"
-                  placeholder="Custom angle (degrees)"
-                  value={selectedObject?.rotation ? Math.round(selectedObject.rotation * 180 / Math.PI) : 0}
-                  onChange={(e) => {
-                    if (!selectedObject || !updateObject) return;
-                    const degrees = parseFloat(e.target.value) || 0;
-                    const radians = degrees * (Math.PI / 180);
-                    updateObject(selectedObject.id, { rotation: Number(radians.toFixed(4)) }, { history: true });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") close();
-                    e.stopPropagation();
-                  }}
-                  className="w-full h-8 px-2 text-[11px] rounded border border-border/70 bg-card/60 outline-none focus:border-primary/40"
-                />
-              </MenuItem>
-            </div>
-          )}
-        </RibbonMenu>
-
-        {/* Undo / Redo for floating objects */}
-        <Btn
-          id="layout.undo"
-          icon={RotateCcw}
-          label="Undo"
-          hint="Undo last floating object change (Ctrl+Z)"
-          onClick={onUndo}
-          disabled={!canUndo}
-        />
-        <Btn
-          id="layout.redo"
-          icon={RotateCw}
-          label="Redo"
-          hint="Redo last floating object change (Ctrl+Shift+Z)"
-          onClick={onRedo}
-          disabled={!canRedo}
         />
       </RibbonGroup>
 

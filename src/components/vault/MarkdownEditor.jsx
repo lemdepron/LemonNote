@@ -22,8 +22,9 @@ function countLines(text) {
 }
 
 // Maximum height before falling back to inner scrollbar (for performance with very long notes)
-// ~20,000 lines at ~26px per line = ~520,000px, cap at 600,000px to handle 20k lines
-const MAX_AUTO_HEIGHT = 600000;
+  // ~20,000 lines at ~26px per line = ~520,000px. Set very high so inner scroll virtually never triggers.
+  // Modern browsers handle textarea heights up to ~10M+ px. 10,000,000 ≈ 380k lines.
+  const MAX_AUTO_HEIGHT = 10000000;
 
 export default function MarkdownEditor({ value, onChange, titles = [], onCreateNote, onImageFiles, style, spellCheck = true, hasInk = false, showLineNumbers = false }) {
   const [suggest, setSuggest] = useState(null);

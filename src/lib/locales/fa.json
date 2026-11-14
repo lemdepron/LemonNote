@@ -7,14 +7,12 @@
       "canvas": "بوم",
       "queries": "پرس‌وجوها",
       "extensions": "افزونه‌ها",
-      "sync": "همگام‌سازی"
+      "sync": "همگام‌سازی",
+      "settings": "Settings"
     },
     "syncTitle": "همگام‌سازی برنامه‌ریزی شده",
     "soon": "بزودی",
     "bin": "زباله‌دان",
-    "more": "بیشتر",
-    "moreGroupAria": "گزینه‌های بیشتر",
-    "settings": "تنظیمات",
     "localVault": "مخزن محلی",
     "oneWorkspace": "یک فضای کار",
     "pinOpen": "ثابت باز",
@@ -145,8 +143,15 @@
         "replace": "جایگزینی انتخاب",
         "insertBelow": "درج در پایین",
         "copy": "کپی",
-        "discard": "لغو"
-      }
+        "discard": "لغو",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "به صورت {label} کپی شد.",
@@ -255,7 +260,13 @@
       "watermarkPresets": "پیش‌فرض‌ها",
       "watermarkText": "متن واترمارک",
       "watermarkTextHint": "متنی که به عنوان واترمارک نمایش داده شود (مثلاً پیش‌نویس، محرمانه)",
-      "watermarkTextPlaceholder": "متن واترمارک"
+      "watermarkTextPlaceholder": "متن واترمارک",
+      "loadDefaultToast": "سبک پیش‌فرض اعمال شد",
+      "noDefaultToast": "سبک پیش‌فرضی ذخیره نشده است",
+      "presets": "پیش‌تنظیم‌ها",
+      "resetDesignToast": "بازنشانی به پیش‌فرض‌های برنامه",
+      "saveAsDefaultToast": "به‌عنوان پیش‌فرض برای یادداشت‌های جدید ذخیره شد",
+      "saveFailedToast": "ذخیره پیش‌فرض ناموفق بود"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "عنوان این یادداشت یک تاریخ، هفته (۲۰۲۶-W45) یا ماه (۲۰۲۶-۱۱) نیست",
       "prevDayHint": "روز، هفته یا ماه قبل از این یادداشت",
       "quickLanguageHint": "یک بلوک کد {lang} درج کنید",
+      "needCodeBlock": "ابتدا نشانگر را داخل یک بلوک کد قرار دهید.",
+      "figureCaptionPrompt": "عنوان شکل:",
       "quoteBlock": "نقل‌قول",
       "quoteBlockHint": "نقل‌قول بلوکی",
       "recordingSaveError": "ذخیره ضبط ناموفق بود.",
@@ -769,6 +782,8 @@
     "editGoal": "ویرایش هدف",
     "clearGoal": "حذف هدف"
   },
+  "macros": "ماکرو",
+  "macrosHint": "ثبت و پخش مجدد ماکروهای ویرایش",
   "fileMenu": {
     "title": "فایل",
     "close": "بستن",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "چپ به راست",
     "rtl": "راست به چپ",
-    "auto": "خودکار (تشخیص در هر خط)"
+    "auto": "خودکار (تشخیص در هر خط)",
+    "center": "وسط"
   },
   "digits": {
     "latin": "ارقام لاتین (123)",
@@ -940,6 +956,8 @@
       "light": "روشن",
       "dark": "تیره",
       "system": "سیستم",
+      "switchToLight": "تبدیل به حالت روشن",
+      "switchToDark": "تبدیل به حالت تیره",
       "themePreset": "پیش‌فرض موضوع",
       "surface": "بافت پس‌زمینه",
       "density": "تراکم رابط",
@@ -1691,6 +1709,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "کلمات",
+    "notSynced": "همگام‌سازی نشده",
+    "syncNotAvailable": "همگام‌سازی هنوز در دسترس نیست",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

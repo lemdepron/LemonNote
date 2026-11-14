@@ -18,12 +18,14 @@ import {
   AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDown, ArrowDownAZ, ArrowDownToLine, ArrowLeft, ArrowLeftRight,
   ArrowLeftToLine, ArrowRight, ArrowRightToLine, ArrowUp, ArrowUpAZ, ArrowUpToLine, AtSign, Bold, BookOpen, Braces,
   CalendarCheck, CalendarClock, CalendarDays, CalendarPlus, CalendarRange, ChevronsDownUp, Circle, CircleCheck,
-  CircleDashed, ClipboardCopy, Clock, Code, Copy, CopyPlus, CornerDownLeft, Download, Eraser, FileJson, FileSpreadsheet,
-  FlipHorizontal2, Footprints, Hash, Highlighter, ImagePlus, IndentDecrease, IndentIncrease, Italic, Layers, Link, Link2,
-  List, ListChecks, ListOrdered, ListRestart, ListTree, ListX, Merge, MessageSquareOff, MessageSquareQuote, Minus, Omega,
-  PackageOpen, Pilcrow, Quote, Redo2, Replace, Scissors, Shrink, Sigma, Space, SpellCheck, SquareCode,
+  CircleDashed, ClipboardCopy, Clock, Code, Copy, CopyPlus, CornerDownLeft, Download, Eraser, Eye, FileJson, FileSpreadsheet,
+  FileText, FlipHorizontal2, Footprints, Grid, Hash, Highlighter, Image, ImagePlus, IndentDecrease, IndentIncrease, Italic, Layers, Link, Link2,
+  List, ListChecks, ListOrdered, ListRestart, ListTree, ListX, Merge, MessageSquareOff, MessageSquareQuote, Minus, MoveHorizontal, MoveVertical, Omega,
+  BarChart,
+  PackageOpen, Paperclip, PenLine, Pilcrow, Quote, Redo2, Replace, Ruler, Scissors, Search, Shield, Shrink, Sigma, Space, SpellCheck, SquareCode,
   SquareDashedMousePointer, SquareTerminal, Strikethrough, Table, Table2, TableProperties, TextQuote, Timer, Trash2,
-  Type, Underline, Undo2, Wand2, WrapText,
+  Type, Underline, Undo2, Wand2, WrapText, ZoomIn, ZoomOut,
+  Bookmark, Mic, Mic2, FileImage, Film, SquareDashed, Square, Star, Triangle, Smile, StickyNote, SquarePen, BookOpenCheck, Sidebar,
 } from "lucide-react";
 
 import { copyText, execEditor } from "./editor-bridge";
@@ -280,6 +282,74 @@ const ACTIONS = {
     },
   },
 
+  /* Insert — Figures & Media */
+  "insert.figure": {
+    icon: FileImage, label: "Figure", hint: "Insert an image with a caption", kind: "call",
+    fn: (ctx) => ctx.insertFigure?.(),
+  },
+  "insert.gif": {
+    icon: Film, label: "GIF", hint: "Insert an animated GIF, WebP or APNG", kind: "call",
+    fn: (ctx) => ctx.pickGif?.(),
+  },
+  "insert.file": {
+    icon: Paperclip, label: "Attach file", hint: "Attach any file (PDF, Word, zip, etc.)", kind: "call",
+    fn: (ctx) => ctx.pickFile?.(),
+  },
+  "insert.audio": {
+    icon: Mic2, label: "Record audio", hint: "Record audio from microphone", kind: "call",
+    fn: (ctx) => ctx.toggleAudioRecord?.(),
+  },
+
+  /* Insert — Bookmarks */
+  "insert.bookmark": {
+    icon: Bookmark, label: "Bookmark", hint: "Insert a named anchor at the cursor", kind: "call",
+    fn: async (ctx) => {
+      const name = await ctx.prompt?.("Bookmark name:");
+      if (name) ctx.run(insertBookmark(ctx.selection, name));
+    },
+  },
+  "insert.bookmarks": {
+    icon: Bookmark, label: "Bookmarks", hint: "Jump to a bookmark in this note", kind: "menu", width: 240,
+    menu: { type: "bookmarks" },
+  },
+
+  /* Insert — Chart */
+  "insert.chart": {
+    icon: BarChart, label: "Chart", hint: "Create a chart from a table", kind: "call",
+    enabled: (ctx) => Boolean(tableAt(ctx.value, ctx.selection.start)), disabledReason: NEED_TABLE,
+    fn: async (ctx) => {
+      const tableCount = (ctx.value.match(/\|.*\|/g) || []).length;
+      if (!tableCount) return;
+      const type = await ctx.prompt?.("Chart type (bar, line, pie):", "bar");
+      if (!type || !['bar', 'line', 'pie'].includes(type)) return;
+      const tableIndex = await ctx.prompt?.(`Table index (0 to ${tableCount - 1}):`, '0');
+      if (tableIndex === null) return;
+      const idx = parseInt(tableIndex, 10);
+      if (isNaN(idx) || idx < 0 || idx >= tableCount) return;
+      const title = await ctx.prompt?.("Chart title (optional):", '');
+      ctx.run(insertChart(ctx.selection, { type, table: idx, title: title || undefined }));
+    },
+  },
+
+  /* Insert — Shapes (ink layer) */
+  "insert.shape.rect": { icon: Square, label: "Rectangle", hint: "Insert a rectangle", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "rect" }) },
+  "insert.shape.rounded": { icon: SquareDashed, label: "Rounded rect", hint: "Insert a rounded rectangle", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "rounded-rect" }) },
+  "insert.shape.ellipse": { icon: Circle, label: "Ellipse", hint: "Insert an ellipse", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "ellipse" }) },
+  "insert.shape.line": { icon: Minus, label: "Line", hint: "Insert a line", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "line" }) },
+  "insert.shape.arrow": { icon: ArrowRight, label: "Arrow", hint: "Insert an arrow", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "arrow" }) },
+  "insert.shape.triangle": { icon: Triangle, label: "Triangle", hint: "Insert a triangle", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "triangle" }) },
+  "insert.shape.star": { icon: Star, label: "Star", hint: "Insert a star", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("shape", 100, 100, { shapeType: "star" }) },
+
+  /* Insert — Stickers */
+  "insert.sticker": {
+    icon: Smile, label: "Stickers", hint: "Insert a built-in sticker", kind: "menu", width: 320,
+    menu: { type: "stickers" },
+  },
+
+  /* Insert — Text notes (ink layer) */
+  "insert.textbox": { icon: SquarePen, label: "Text box", hint: "Insert a text box", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("textbox", 100, 100) },
+  "insert.sticky": { icon: StickyNote, label: "Sticky note", hint: "Insert a sticky note", kind: "call", fn: (ctx) => ctx.ink?.addObject?.("sticky", 100, 100) },
+
   /* Design */
   "design.resetTypography": {
     icon: Trash2, label: "Reset typography", hint: "Reset the typography of this note to the app default",
@@ -298,6 +368,135 @@ const ACTIONS = {
         ctx.setTypography(next);
       } else {
         ctx.setTypography({ ...t, spell: false });
+      }
+    },
+  },
+
+  "view.mode.read": {
+    icon: Eye, label: "Read Mode", hint: "Rendered markdown with styling", kind: "call",
+    active: (ctx) => (ctx.typography || {}).viewMode === "read" || !(ctx.typography || {}).viewMode,
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), viewMode: "read" }),
+  },
+  "view.mode.draft": {
+    icon: PenLine, label: "Draft", hint: "Plain writing box, no styling", kind: "call",
+    active: (ctx) => (ctx.typography || {}).viewMode === "draft",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), viewMode: "draft" }),
+  },
+  "view.mode.print": {
+    icon: FileText, label: "Print Layout", hint: "Pages with shadows, numbers, margins", kind: "call",
+    active: (ctx) => (ctx.typography || {}).viewMode === "print",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), viewMode: "print" }),
+  },
+  "view.mode.outline": {
+    icon: List, label: "Outline", hint: "Collapsible heading tree", kind: "call",
+    active: (ctx) => (ctx.typography || {}).viewMode === "outline",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), viewMode: "outline" }),
+  },
+  "view.mode.immersive": {
+    icon: BookOpen, label: "Immersive Reader", hint: "Distraction-free, large text, read-aloud", kind: "call",
+    active: (ctx) => (ctx.typography || {}).viewMode === "immersive",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), viewMode: "immersive" }),
+  },
+
+  "view.navPane": {
+    icon: Sidebar, label: "Navigation pane", hint: "Show side panel with headings and find", kind: "call",
+    active: (ctx) => Boolean((ctx.typography || {}).showNavPane),
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), showNavPane: !(ctx.typography || {}).showNavPane }),
+  },
+  "view.find": {
+    icon: Search, label: "Find", hint: "Find in this note (Ctrl+F)", kind: "call",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), showNavPane: true, navPaneTab: "find" }),
+  },
+
+  "view.zoomOut": {
+    icon: ZoomOut, label: "Zoom out", hint: "Decrease zoom (Ctrl+-)", kind: "call",
+    fn: (ctx) => {
+      const current = typeof (ctx.typography || {}).zoom === "number" ? (ctx.typography || {}).zoom : 100;
+      ctx.setTypography({ ...(ctx.typography || {}), zoom: Math.max(50, current - 10) });
+    },
+  },
+  "view.zoomIn": {
+    icon: ZoomIn, label: "Zoom in", hint: "Increase zoom (Ctrl++)", kind: "call",
+    fn: (ctx) => {
+      const current = typeof (ctx.typography || {}).zoom === "number" ? (ctx.typography || {}).zoom : 100;
+      ctx.setTypography({ ...(ctx.typography || {}), zoom: Math.min(300, current + 10) });
+    },
+  },
+
+  "view.ruler": {
+    icon: Ruler, label: "Ruler", hint: "Show horizontal ruler with page width and margins", kind: "call",
+    active: (ctx) => Boolean((ctx.typography || {}).showRuler),
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), showRuler: !(ctx.typography || {}).showRuler }),
+  },
+  "view.gridlines": {
+    icon: Grid, label: "Gridlines", hint: "Show overlay grid on the page", kind: "call",
+    active: (ctx) => Boolean((ctx.typography || {}).showGridlines),
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), showGridlines: !(ctx.typography || {}).showGridlines }),
+  },
+  "view.scrollVertical": {
+    icon: MoveVertical, label: "Vertical", hint: "Vertical scrolling (default)", kind: "call",
+    active: (ctx) => !(ctx.typography || {}).scrollMode || (ctx.typography || {}).scrollMode === "vertical",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), scrollMode: "vertical" }),
+  },
+  "view.scrollHorizontal": {
+    icon: MoveHorizontal, label: "Side to Side", hint: "Horizontal page flow (Print Layout only)", kind: "call",
+    active: (ctx) => (ctx.typography || {}).scrollMode === "horizontal",
+    enabled: (ctx) => (ctx.typography || {}).viewMode === "print",
+    fn: (ctx) => ctx.setTypography({ ...(ctx.typography || {}), scrollMode: "horizontal" }),
+  },
+
+  "view.attachFile": {
+    icon: Paperclip, label: "Attach file", hint: "Attach any file (PDF, Word, zip, etc.)", kind: "call",
+    fn: (ctx) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const { addAttachment } = await import("./attachments");
+        const attachment = await addAttachment(file);
+        const snippet = `\n[${file.name}](${attachment.ref})\n\n`;
+        ctx.run({ next: snippet, start: ctx.selection.start, end: ctx.selection.end, text: snippet, caret: ctx.selection.start + snippet.length });
+      };
+      input.click();
+    },
+  },
+  "view.attachImage": {
+    icon: Image, label: "Insert image", hint: "Insert an image from your computer", kind: "call",
+    fn: (ctx) => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const { addAttachment } = await import("./attachments");
+        const attachment = await addAttachment(file);
+        const snippet = `\n![${file.name.replace(/\.[^.]+$/, "")}](${attachment.ref})\n\n`;
+        ctx.run({ next: snippet, start: ctx.selection.start, end: ctx.selection.end, text: snippet, caret: ctx.selection.start + snippet.length });
+      };
+      input.click();
+    },
+  },
+  "view.insertTable": {
+    icon: Table, label: "Insert table", hint: "Insert a markdown table", kind: "call",
+    fn: async (ctx) => {
+      const { tableInsert } = await import("./ribbon-actions");
+      const table = tableInsert(ctx.selection, 3, 3);
+      if (table) ctx.run(table);
+    },
+  },
+
+  "view.a11yCheck": {
+    icon: Shield, label: "Check accessibility", hint: "Check for missing alt text, skipped headings, weak links, and low contrast", kind: "call",
+    fn: async (ctx) => {
+      const { runAccessibilityChecks } = await import("./accessibility");
+      const issues = runAccessibilityChecks(ctx.body || "");
+      // The tab handles opening the dialog; Quick Access could show a toast with count
+      if (issues.length === 0) {
+        console.log("No accessibility issues found");
+      } else {
+        console.log(`${issues.length} accessibility issues found`);
       }
     },
   },

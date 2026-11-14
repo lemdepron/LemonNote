@@ -7,14 +7,12 @@
       "canvas": "Lienzo",
       "queries": "Consultas",
       "extensions": "Extensiones",
-      "sync": "Sincronización"
+      "sync": "Sincronización",
+      "settings": "Settings"
     },
     "syncTitle": "Sincronización planificada",
     "soon": "pronto",
     "bin": "Papelera",
-    "more": "Más",
-    "moreGroupAria": "Más opciones",
-    "settings": "Ajustes",
     "localVault": "bóveda local",
     "oneWorkspace": "un espacio de trabajo",
     "pinOpen": "fijar abierto",
@@ -145,8 +143,15 @@
         "replace": "Reemplazar selección",
         "insertBelow": "Insertar abajo",
         "copy": "Copiar",
-        "discard": "Descartar"
-      }
+        "discard": "Descartar",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "Copiado como {label}.",
@@ -255,7 +260,13 @@
       "watermarkPresets": "Preajustes",
       "watermarkText": "Texto de la marca de agua",
       "watermarkTextHint": "Texto a mostrar como marca de agua (p. ej. BORRADOR, CONFIDENCIAL)",
-      "watermarkTextPlaceholder": "Texto de marca de agua"
+      "watermarkTextPlaceholder": "Texto de marca de agua",
+      "loadDefaultToast": "Estilo predeterminado aplicado",
+      "noDefaultToast": "No hay estilo predeterminado guardado",
+      "presets": "Preajustes",
+      "resetDesignToast": "Restablecido a valores predeterminados de la app",
+      "saveAsDefaultToast": "Guardado como predeterminado para nuevas notas",
+      "saveFailedToast": "Error al guardar el predeterminado"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "El título de esta nota no es una fecha, semana (2026-W45) ni mes (2026-11)",
       "prevDayHint": "El día, semana o mes anterior a esta nota",
       "quickLanguageHint": "Insertar un bloque de código {lang}",
+      "needCodeBlock": "Coloque el cursor dentro de un bloque de código primero.",
+      "figureCaptionPrompt": "Título de la figura:",
       "quoteBlock": "Cita",
       "quoteBlockHint": "Cita en bloque",
       "recordingSaveError": "Error al guardar la grabación.",
@@ -769,6 +782,8 @@
     "editGoal": "Editar objetivo",
     "clearGoal": "Borrar objetivo"
   },
+  "macros": "Macros",
+  "macrosHint": "Grabar y reproducir macros de edición",
   "fileMenu": {
     "title": "Archivo",
     "close": "Cerrar",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "Izquierda a derecha",
     "rtl": "Derecha a izquierda",
-    "auto": "Auto (detectar por línea)"
+    "auto": "Auto (detectar por línea)",
+    "center": "Centro"
   },
   "digits": {
     "latin": "Dígitos latinos (123)",
@@ -940,6 +956,8 @@
       "light": "Claro",
       "dark": "Oscuro",
       "system": "Sistema",
+      "switchToLight": "Cambiar a modo claro",
+      "switchToDark": "Cambiar a modo oscuro",
       "themePreset": "Tema preestablecido",
       "surface": "Textura de fondo",
       "density": "Densidad de la interfaz",
@@ -1691,6 +1709,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "Palabras",
+    "notSynced": "No sincronizado",
+    "syncNotAvailable": "La sincronización aún no está disponible",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

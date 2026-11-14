@@ -1,0 +1,9 @@
+{
+  "dir.center": "وسط",
+  "ribbon.design.loadDefaultToast": "سبک پیش‌فرض اعمال شد",
+  "ribbon.design.noDefaultToast": "سبک پیش‌فرضی ذخیره نشده است",
+  "ribbon.design.presets": "پیش‌تنظیم‌ها",
+  "ribbon.design.resetDesignToast": "بازنشانی به پیش‌فرض‌های برنامه",
+  "ribbon.design.saveAsDefaultToast": "به‌عنوان پیش‌فرض برای یادداشت‌های جدید ذخیره شد",
+  "ribbon.design.saveFailedToast": "ذخیره پیش‌فرض ناموفق بود"
+}

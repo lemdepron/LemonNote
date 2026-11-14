@@ -1,0 +1,9 @@
+{
+  "dir.center": "وسط",
+  "ribbon.design.loadDefaultToast": "تم تطبيق النمط الافتراضي",
+  "ribbon.design.noDefaultToast": "لا يوجد نمط افتراضي محفوظ",
+  "ribbon.design.presets": "إعدادات مسبقة",
+  "ribbon.design.resetDesignToast": "إعادة تعيين إلى إعدادات التطبيق الافتراضية",
+  "ribbon.design.saveAsDefaultToast": "تم الحفظ كافتراضي للملاحظات الجديدة",
+  "ribbon.design.saveFailedToast": "فشل في حفظ الإعداد الافتراضي"
+}

@@ -1,0 +1,9 @@
+{
+  "dir.center": "केंद्र",
+  "ribbon.design.loadDefaultToast": "डिफ़ॉल्ट शैली लागू की गई",
+  "ribbon.design.noDefaultToast": "कोई डिफ़ॉल्ट शैली सहेजी नहीं गई",
+  "ribbon.design.presets": "प्रीसेट",
+  "ribbon.design.resetDesignToast": "ऐप डिफ़ॉल्ट पर रीसेट किया गया",
+  "ribbon.design.saveAsDefaultToast": "नई नोट्स के लिए डिफ़ॉल्ट के रूप में सहेजा गया",
+  "ribbon.design.saveFailedToast": "डिफ़ॉल्ट सहेजने में विफल"
+}

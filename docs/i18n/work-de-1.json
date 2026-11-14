@@ -1,4 +1,17 @@
 {
-  "ribbon.view.horizontalHint": "Horizontale Seitenanzeige (nur Drucklayout)",
-  "vault.code.newFile": "Neue Datei"
+  "dir.center": "Center",
+  "ribbon.design.loadDefaultToast": "Applied default style",
+  "ribbon.design.noDefaultToast": "No default style saved",
+  "ribbon.design.presets": "Presets",
+  "ribbon.design.resetDesignToast": "Reset to app defaults",
+  "ribbon.design.saveAsDefaultToast": "Saved as default for new notes",
+  "ribbon.design.saveFailedToast": "Failed to save default",
+  "ribbon.macros": "Macros",
+  "ribbon.macrosHint": "Record and replay editing macros",
+  "ribbon.wordGoal.clearGoal": "Clear goal",
+  "ribbon.wordGoal.editGoal": "Edit goal",
+  "ribbon.wordGoal.setGoal": "Set goal",
+  "ribbon.wordGoal.targetWords": "Target words",
+  "ribbon.wordGoal.updateGoal": "Update goal",
+  "ribbon.wordGoal.wordGoal": "Word goal"
 }

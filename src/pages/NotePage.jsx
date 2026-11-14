@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Columns2, Eye, Link2, PenLine, Puzzle, Sparkles, Trash2, ChevronLeft, ChevronRight, Volume2, MoveHorizontal, MoveVertical, Ruler, Grid, AlignLeft, ZoomIn, ZoomOut, Star, Star as StarFilled, Folder, MoreHorizontal, Lock } from "lucide-react";
 import { db } from "@/api/localDb";
 import useVault from "@/hooks/useVault";
-import VaultHeader from "@/components/vault/VaultHeader";
 import MarkdownEditor from "@/components/vault/MarkdownEditor";
 import MarkdownView from "@/components/vault/MarkdownView";
 import FormatEditor from "@/components/vault/FormatEditor";
@@ -13,7 +12,6 @@ import { editorProps, normalizeStyle, readerProps, fontStack } from "@/lib/text-
 import { writePref } from "@/lib/preferences";
 import AiAssist from "@/components/notes/AiAssist";
 import LinkRail from "@/components/vault/LinkRail";
-import MacroBar from "@/components/macros/MacroBar";
 import ExtensionPanels from "@/components/extensions/ExtensionPanels";
 import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
@@ -24,6 +22,8 @@ import useNoteImages from "@/hooks/useNoteImages";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { useFocusMode } from "@/lib/focusMode";
+import SpaceRail from "@/components/shell/SpaceRail";
+import CommandPalette from "@/components/shell/CommandPalette";
 import { trashNote, restoreNote } from "@/lib/notes";
 import { toast } from "@/lib/toast";
 import { emitEvent, runHook } from "@/lib/extensions";
@@ -117,6 +117,7 @@ export default function NotePage() {
   const [findQuery, setFindQuery] = useState("");
   const [findMatches, setFindMatches] = useState([]);
   const [findIndex, setFindIndex] = useState(-1);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const createdIdRef = useRef(isNew ? null : id);
   const loadedIdRef = useRef(null);
   const savePending = useRef(false);
@@ -254,6 +255,18 @@ export default function NotePage() {
     },
     []
   );
+
+  // Ctrl+K palette
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const linkIndex = useMemo(() => buildLinkIndex(notes), [notes]);
   const titles = useMemo(() => notes.map((note) => note.title).filter(Boolean), [notes]);
@@ -1201,7 +1214,8 @@ export default function NotePage() {
   if (missing) {
     return (
       <div className="nb-shell min-h-screen">
-        <VaultHeader />
+        <SpaceRail />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
         <main className="mx-auto max-w-xl px-6 py-24 text-center">
           <h1 className="font-display text-3xl">This note isn't in your vault.</h1>
           <p className="mt-3 text-[14px] text-muted-foreground">It may have been deleted or renamed.</p>
@@ -1215,7 +1229,8 @@ export default function NotePage() {
 
   return (
     <div className="nb-shell min-h-screen">
-      <VaultHeader />
+      <SpaceRail />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <main
         className={cn(
           "mx-auto max-w-[1480px] px-5 pb-24 pt-6 sm:px-6 lg:px-8",
@@ -1668,13 +1683,7 @@ export default function NotePage() {
                                       showLineNumbers={typography.showLineNumbers}
                                       {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, true)}
                                     />
-                                    <MacroBar
-                                      body={body}
-                                      onChange={(next) => {
-                                        setBody(next);
-                                        touch();
-                                      }}
-                                    />
+                                    
                                   </div>
                                 </div>
                               ) : (
@@ -1692,13 +1701,7 @@ export default function NotePage() {
                                     showLineNumbers={typography.showLineNumbers}
                                     {...editorProps(typography, noteInk.hasPage && noteInk.markCount > 0, false)}
                                   />
-                                  <MacroBar
-                                    body={body}
-                                    onChange={(next) => {
-                                      setBody(next);
-                                      touch();
-                                    }}
-                                  />
+                                  
                                 </>
                               )}
                             </>

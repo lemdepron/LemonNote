@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronsLeft, ChevronsRight, Trash2, ChevronDown, RefreshCw, Settings } from "lucide-react";
+import { ChevronsRight, GitBranch, LayoutGrid, Puzzle, RefreshCw, Search, Settings, Trash2 } from "lucide-react";
 import { SPACES, spaceForPath } from "@/lib/spaces";
 import { readPref, writePref } from "@/lib/preferences";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const PREF_KEY = "spaces:rail-collapsed";
-const MORE_PREF_KEY = "spaces:more-open";
 
 function useSmallScreen() {
   const [small, setSmall] = useState(() => window.matchMedia("(max-width: 640px)").matches);
@@ -39,10 +38,6 @@ export default function SpaceRail() {
     return typeof saved === "boolean" ? saved : window.innerWidth < 768;
   });
   const [hovered, setHovered] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(() => {
-    const saved = readPref(MORE_PREF_KEY, null);
-    return typeof saved === "boolean" ? saved : true;
-  });
 
   const pinned = !collapsed;
   // Phones keep the icon rail; everywhere else hovering a collapsed rail opens it.
@@ -63,22 +58,21 @@ export default function SpaceRail() {
     writePref(PREF_KEY, next);
   };
 
-  const toggleMore = () => {
-    const next = !moreOpen;
-    setMoreOpen(next);
-    writePref(MORE_PREF_KEY, next);
-  };
-
-  // Main spaces (excluding those with rail: false)
-  const mainSpaces = SPACES.filter((space) => space.rail !== false);
-  const spaceLabel = (id) => t(`rail.spaces.${id}`);
-
-  // More group spaces: Queries, Plugins, Sync
-  const moreSpaces = [
-    { id: "queries", label: t("rail.spaces.queries"), path: "/queries", icon: SPACES.find(s => s.id === "queries")?.icon },
-    { id: "extensions", label: t("rail.spaces.extensions"), path: "/extensions", icon: SPACES.find(s => s.id === "extensions")?.icon },
-    { id: "sync", label: t("rail.spaces.sync"), path: "#", icon: RefreshCw, disabled: true, soon: true, title: t("rail.syncTitle") },
+  // Rail items in the new order: Vault, Graph, Canvas, Queries, Plugins, Bin, divider, Sync, divider, Settings, Logo, Collapse
+  const railItems = [
+    { id: "vault", path: "/", icon: SPACES.find(s => s.id === "vault")?.icon },
+    { id: "graph", path: "/graph", icon: GitBranch },
+    { id: "canvas", path: "/canvas", icon: LayoutGrid },
+    { id: "queries", path: "/queries", icon: Search },
+    { id: "extensions", path: "/extensions", icon: Puzzle },
+    { id: "bin", path: "/trash", icon: Trash2, isBin: true },
+    { type: "divider" },
+    { id: "sync", path: "#", icon: RefreshCw, disabled: true, soon: true, title: t("rail.syncTitle") },
+    { type: "divider" },
+    { id: "settings", path: "/settings", icon: Settings },
   ];
+
+  const spaceLabel = (id) => t(`rail.spaces.${id}`);
 
   return (
     <aside
@@ -94,124 +88,83 @@ export default function SpaceRail() {
         open && !pinned ? "shadow-xl" : ""
       )}
     >
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-3">
-        {mainSpaces.map((space) => {
-          const Icon = space.icon;
-          const current = active === space.id && !inBin;
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 py-3">
+        {railItems.map((item, index) => {
+          if (item.type === "divider") {
+            return <div key={`divider-${index}`} className="border-t border-border/60 my-1" />;
+          }
+
+          const Icon = item.icon;
+          const isBin = item.isBin === true;
+          const isDisabled = item.disabled === true;
+          const isSoon = item.soon === true;
+          const current = active === item.id && !isDisabled && !isBin;
+          const binCurrent = inBin && isBin;
+          const settingsCurrent = active === "settings" && item.id === "settings";
+
+          if (isBin) {
+            return (
+              <Link
+                key={item.id}
+                to={item.path}
+                title={t("rail.bin")}
+                aria-label={t("rail.bin")}
+                aria-current={binCurrent ? "page" : undefined}
+                className={cn(
+                  "relative flex shrink-0 items-center rounded-md py-2 transition",
+                  open ? "gap-2.5 px-2.5" : "justify-center px-0",
+                  binCurrent
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                )}
+              >
+                {binCurrent && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
+                <Icon className="h-4 w-4 shrink-0" />
+                {open && (
+                  <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.bin")}</span>
+                )}
+              </Link>
+            );
+          }
+
           return (
             <Link
-              key={space.id}
-              to={space.path}
-              title={spaceLabel(space.id)}
-              aria-label={spaceLabel(space.id)}
-              aria-current={current ? "page" : undefined}
+              key={item.id}
+              to={item.path}
+              title={item.title || spaceLabel(item.id)}
+              aria-label={item.title || spaceLabel(item.id)}
+              aria-current={(current || settingsCurrent) ? "page" : undefined}
+              aria-disabled={isDisabled}
+              tabIndex={isDisabled ? -1 : undefined}
+              onClick={(e) => isDisabled && e.preventDefault()}
               className={cn(
                 "relative flex shrink-0 items-center rounded-md py-2 transition",
                 open ? "gap-2.5 px-2.5" : "justify-center px-0",
-                current
+                isDisabled
+                  ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                  : current || settingsCurrent
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
               )}
             >
-              {current && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
+              {(current || settingsCurrent) && !isDisabled && (
+                <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />
+              )}
               <Icon className="h-4 w-4 shrink-0" />
               {open && (
-                <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{spaceLabel(space.id)}</span>
-              )}
-            </Link>
-          );
-        })}
-
-        <Link
-          to="/trash"
-          title={t("rail.bin")}
-          aria-label={t("rail.bin")}
-          aria-current={inBin ? "page" : undefined}
-          className={cn(
-            "relative flex shrink-0 items-center rounded-md py-2 transition",
-            open ? "gap-2.5 px-2.5" : "justify-center px-0",
-            inBin ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          )}
-        >
-          {inBin && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
-          <Trash2 className="h-4 w-4 shrink-0" />
-          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.bin")}</span>}
-        </Link>
-
-        {/* More group - collapsible */}
-        <div className="border-t border-border/60 my-1 pt-1" />
-        <button
-          type="button"
-          onClick={toggleMore}
-          aria-expanded={moreOpen}
-          aria-label={t("rail.moreGroupAria")}
-          className={cn(
-            "flex items-center gap-2 w-full rounded-md py-1.5 px-2 transition",
-            open ? "justify-start" : "justify-center",
-            "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          )}
-        >
-          <span className="h-4 w-4 shrink-0 flex items-center justify-center">
-            <ChevronDown
-              className={cn(
-                "h-3.5 w-3.5 transition-transform duration-200",
-                moreOpen ? "rotate-180" : ""
-              )}
-            />
-          </span>
-          {open && (
-            <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.more")}</span>
-          )}
-        </button>
-
-        {moreOpen && (
-          <div className="flex flex-col gap-0.5 ps-0" role="group" aria-label={t("rail.moreGroupAria")}>
-            {moreSpaces.map((space) => {
-              const Icon = space.icon;
-              const current = active === space.id && !space.disabled;
-              const isDisabled = space.disabled;
-              return (
-                <Link
-                  key={space.id}
-                  to={space.path}
-                  title={space.title}
-                  aria-label={space.label}
-                  aria-current={current ? "page" : undefined}
-                  aria-disabled={isDisabled}
-                  tabIndex={isDisabled ? -1 : undefined}
-                  onClick={(e) => isDisabled && e.preventDefault()}
-                  className={cn(
-                    "relative flex shrink-0 items-center rounded-md py-2 transition",
-                    open ? "gap-2.5 px-2.5" : "justify-center px-0",
-                    isDisabled
-                      ? "opacity-40 cursor-not-allowed text-muted-foreground"
-                      : current
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                  )}
-                >
-                  {current && !isDisabled && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {open && (
-                    <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em] flex items-center gap-1">
-                      {space.label}
-                      {space.soon && (
-                        <span className="px-1 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground">
-                          {t("rail.soon")}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {!open && space.soon && (
-                    <span className="absolute bottom-0 end-0 -translate-y-1/2 translate-x-1/2 rtl:translate-x-[-50%] px-0.5 py-0 rounded text-[7px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground whitespace-nowrap">
+                <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em] flex items-center gap-1">
+                  {item.title || spaceLabel(item.id)}
+                  {isSoon && (
+                    <span className="px-1 py-0.5 rounded text-[8px] font-mono uppercase tracking-[0.1em] bg-muted border border-border text-muted-foreground">
                       {t("rail.soon")}
                     </span>
                   )}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                </span>
+              )}
+              
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="border-t border-border/60 px-2 py-2">
@@ -222,24 +175,11 @@ export default function SpaceRail() {
         )}
 
         <Link
-          to="/settings"
-          title={t("rail.settings")}
-          aria-label={t("rail.settings")}
-          aria-current={active === "settings" ? "page" : undefined}
-          className={cn(
-            "relative flex shrink-0 items-center rounded-md py-2 transition",
-            open ? "gap-2.5 px-2.5" : "justify-center px-0",
-            active === "settings"
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-          )}
+          to="/"
+          title={t("rail.localVault")}
+          aria-label={t("rail.localVault")}
+          className={cn("flex items-center gap-2 py-1", open ? "px-1" : "justify-center")}
         >
-          {active === "settings" && <span className="absolute inset-y-1.5 start-0 w-[2px] rounded-full bg-primary" />}
-          <Settings className="h-4 w-4 shrink-0" />
-          {open && <span className="truncate font-mono text-[10.5px] uppercase tracking-[0.14em]">{t("rail.settings")}</span>}
-        </Link>
-
-        <div className={cn("flex items-center gap-2 py-1", open ? "px-1" : "justify-center")} title={t("rail.localVault")}>
           <img
             src="/logo-64.png"
             alt=""
@@ -249,7 +189,7 @@ export default function SpaceRail() {
           {open && !small && (
             <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted-foreground">{t("rail.localVault")}</span>
           )}
-        </div>
+        </Link>
 
         {!small && (
           <button
@@ -263,7 +203,12 @@ export default function SpaceRail() {
               open ? "gap-1.5 px-1.5" : "justify-center px-0"
             )}
           >
-            {collapsed ? <ChevronsRight className="h-3.5 w-3.5 rtl:rotate-180" /> : <ChevronsLeft className="h-3.5 w-3.5 rtl:rotate-180" />}
+            <ChevronsRight
+              className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200 rtl:rotate-180",
+                open ? "rotate-180" : ""
+              )}
+            />
             {open && (
               <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
                 {collapsed ? t("rail.pinOpen") : t("rail.collapse")}

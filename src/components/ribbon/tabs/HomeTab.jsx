@@ -1,15 +1,15 @@
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowUpAZ, ArrowRight, ArrowLeftRight, Bold, Brush, Code, Copy, Eraser,
-  FlipHorizontal2, Hash, Highlighter, IndentDecrease, IndentIncrease, Italic, List, ListChecks, ListOrdered, ListX, Merge, Minus,
-  Quote, Redo2, Scissors, SquareDashedMousePointer, Strikethrough, Trash2,
-  Underline, Undo2, WrapText, Pilcrow, MoveHorizontal,
+  AlignCenter, AlignJustify, AlignLeft, AlignRight, ArrowDownAZ, ArrowUpAZ, ArrowLeftRight, ArrowRightToLine, Bold, Brush, Code, Copy, Eraser,
+  FlipHorizontal2, Hash, Highlighter, IndentDecrease, IndentIncrease, Italic, List, ListChecks, ListOrdered, ListX, Minus,
+  Quote, Redo2, Scissors, SquareDashedMousePointer, Strikethrough, RotateCcw,
+  Underline, Undo2, Pilcrow,
   Circle, CircleCheck, Timer, ListRestart, CircleDashed, Search,
   Globe, Languages, Wand2,
   Type, FileText,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { FORMAT_GROUPS, formatLabel } from "@/lib/note-formats";
-import { Btn, GroupMenu, MenuLabel, RibbonSelect, Stepper, useRibbon } from "@/components/ribbon/RibbonKit";
+import { Btn, RibbonSelect, Stepper, useRibbon } from "@/components/ribbon/RibbonKit";
 import { copyText, execEditor } from "@/lib/editor-bridge";
 import {
   applyAttr, clearFormatting, lineTool, setBlock, setHeading, shiftIndent, toggleItalic, toggleLinePrefix, toggleWrap, taskTool,
@@ -101,11 +101,11 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
   const runAI = async (action, targetLang) => {
     if (!markdown) {
-      toast.error("AI actions only work in Markdown notes");
+      toast.error(tr("ribbon.home.ai.markdownOnly"));
       return;
     }
     if (!isAIEnabled()) {
-      toast.error("AI is not enabled. Configure it in Settings > AI");
+      toast.error(tr("ribbon.home.ai.notEnabled"));
       return;
     }
 
@@ -144,9 +144,9 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
     if (!aiResult) return;
     try {
       await navigator.clipboard.writeText(aiResult);
-      toast.success("Copied to clipboard");
+      toast.success(tr("ribbon.home.ai.copied"));
     } catch {
-      toast.error("Failed to copy");
+      toast.error(tr("ribbon.home.ai.copyFailed"));
     }
   };
 
@@ -176,14 +176,14 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
       writeFormatPainter(marks);
       setFormatPainterActive(true);
       setFormatPainterLocked(false);
-      toast.info("Format painter active — select text to apply", 3000);
+      toast.info(tr("ribbon.home.formatPainterActive"), 3000);
     }
   };
 
   const handleFormatPainterLock = () => {
     if (formatPainterActive) {
       setFormatPainterLocked(true);
-      toast.info("Format painter locked — press Esc to cancel", 0);
+      toast.info(tr("ribbon.home.formatPainterLocked"), 0);
     }
   };
 
@@ -194,7 +194,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
       if (event.key === "Escape") {
         setFormatPainterActive(false);
         setFormatPainterLocked(false);
-        toast.info("Format painter cancelled", 2000);
+        toast.info(tr("ribbon.home.formatPainterCancelled"), 2000);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -210,31 +210,47 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
 
   return (
     <>
-      <RibbonGroup label={tr("ribbon.home.clipboard")} icon={Copy} priority={90}>
+      <RibbonGroup
+        label={tr("ribbon.home.clipboard")}
+        icon={Copy}
+        priority={90}
+        more={
+          <>
+            <Btn
+              id="home.formatPainter"
+              icon={Brush}
+              label={tr("ribbon.home.formatPainter")}
+              hint={tr("ribbon.home.formatPainterHint")}
+              active={formatPainterActive}
+              onClick={handleFormatPainter}
+              onDoubleClick={handleFormatPainterLock}
+            />
+          </>
+        }
+      >
         <Btn id="home.undo" icon={Undo2} label={tr("ribbon.home.undo")} hint={tr("ribbon.home.undoHint")} onClick={() => execEditor("undo")} />
         <Btn id="home.redo" icon={Redo2} label={tr("ribbon.home.redo")} hint={tr("ribbon.home.redoHint")} onClick={() => execEditor("redo")} />
         <Btn id="home.cut" icon={Scissors} label={tr("ribbon.home.cut")} hint={tr("ribbon.home.cutHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={cut} />
         <Btn id="home.copy" icon={Copy} label={tr("ribbon.home.copy")} hint={tr("ribbon.home.copyHint")} disabled={!selected} disabledReason={tr("ribbon.home.selectFirst")} onClick={() => copyText(selected)} />
         <Btn id="home.selectAll" icon={SquareDashedMousePointer} label={tr("ribbon.home.selectAll")} hint={tr("ribbon.home.selectAllHint")} onClick={() => execEditor("selectAll")} />
-        <Btn
-          id="home.formatPainter"
-          icon={Brush}
-          label={tr("ribbon.home.formatPainter")}
-          hint={tr("ribbon.home.formatPainterHint")}
-          active={formatPainterActive}
-          onClick={handleFormatPainter}
-          onDoubleClick={handleFormatPainterLock}
-        />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.font")} icon={Bold} priority={80}>
+      <RibbonGroup
+        label={tr("ribbon.home.font")}
+        icon={Bold}
+        priority={80}
+        more={
+          <>
+            <Btn id="home.inlineCode" icon={Code} hint={tr("ribbon.home.inlineCode")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
+            <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
+          </>
+        }
+      >
         <Btn id="home.bold" icon={Bold} hint={tr("ribbon.home.bold")} shortcut="Ctrl+B" edit={(s) => toggleWrap(s, "**")} />
         <Btn id="home.italic" icon={Italic} hint={tr("ribbon.home.italic")} shortcut="Ctrl+I" edit={toggleItalic} />
         <Btn id="home.underline" icon={Underline} hint={tr("ribbon.home.underline")} shortcut="Ctrl+U" edit={(s) => toggleWrap(s, "<u>", "</u>")} />
         <Btn id="home.strike" icon={Strikethrough} hint={tr("ribbon.home.strike")} shortcut="Ctrl+Shift+X" edit={(s) => toggleWrap(s, "~~")} />
         <Btn id="home.highlight" icon={Highlighter} hint={tr("ribbon.home.highlight")} shortcut="Ctrl+Shift+H" edit={(s) => applyAttr(s, "mark", "h", "yellow")} />
-        <Btn id="home.inlineCode" icon={Code} hint={tr("ribbon.home.inlineCode")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
-        <Btn id="home.clearFormatting" icon={Eraser} hint={tr("ribbon.home.clearFormatting")} edit={clearFormatting} />
       </RibbonGroup>
 
       <RibbonGroup label={tr("ribbon.home.style")} icon={Pilcrow} priority={50}>
@@ -250,16 +266,34 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lists")} icon={List} priority={70}>
+      <RibbonGroup
+        label={tr("ribbon.home.lists")}
+        icon={List}
+        priority={70}
+        more={
+          <>
+            <Btn id="home.outdent" icon={IndentDecrease} hint={tr("ribbon.home.outdent")} edit={(s) => shiftIndent(s, -1)} />
+          </>
+        }
+      >
         <Btn id="home.bulletList" icon={List} hint={tr("ribbon.home.bulletList")} edit={(s) => toggleLinePrefix(s, "bullet")} />
         <Btn id="home.numberList" icon={ListOrdered} hint={tr("ribbon.home.numberList")} edit={(s) => toggleLinePrefix(s, "number")} />
         <Btn id="home.checklist" icon={ListChecks} hint={tr("ribbon.home.checklist")} edit={(s) => toggleLinePrefix(s, "check")} />
         <Btn id="home.quote" icon={Quote} hint={tr("ribbon.home.quote")} edit={(s) => toggleLinePrefix(s, "quote")} />
         <Btn id="home.indent" icon={IndentIncrease} hint={tr("ribbon.home.indent")} edit={(s) => shiftIndent(s, 1)} />
-        <Btn id="home.outdent" icon={IndentDecrease} hint={tr("ribbon.home.outdent")} edit={(s) => shiftIndent(s, -1)} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.align")} icon={AlignLeft} priority={60}>
+      <RibbonGroup
+        label={tr("ribbon.home.align")}
+        icon={AlignLeft}
+        priority={60}
+        more={
+          <>
+            <Btn id="home.rtl" icon={FlipHorizontal2} label={tr("ribbon.home.rtl")} hint={tr("ribbon.home.rtlHint")} edit={(s) => setBlock(s, { dir: "rtl" })} />
+            <Btn id="home.dirAuto" icon={ArrowLeftRight} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
+          </>
+        }
+      >
         {[
           ["left", AlignLeft, tr("ribbon.home.alignLeft")],
           ["center", AlignCenter, tr("ribbon.home.alignCenter")],
@@ -268,77 +302,42 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
         ].map(([id, icon, hint]) => (
           <Btn key={id} id={`home.align${id.slice(0, 1).toUpperCase()}${id.slice(1)}`} icon={icon} hint={hint} edit={(s) => setBlock(s, { a: id })} />
         ))}
-        <Btn id="home.ltr" icon={Pilcrow} label={tr("ribbon.home.ltr")} hint={tr("ribbon.home.ltrHint")} edit={(s) => setBlock(s, { dir: "ltr" })} />
-        <Btn id="home.rtl" icon={FlipHorizontal2} label={tr("ribbon.home.rtl")} hint={tr("ribbon.home.rtlHint")} edit={(s) => setBlock(s, { dir: "rtl" })} />
-        <Btn id="home.dirAuto" icon={MoveHorizontal} label={tr("ribbon.home.auto")} hint={tr("ribbon.home.autoHint")} edit={(s) => setBlock(s, { dir: "auto" })} />
+        <Btn id="home.ltr" icon={Type} label={tr("ribbon.home.ltr")} hint={tr("ribbon.home.ltrHint")} edit={(s) => setBlock(s, { dir: "ltr" })} />
       </RibbonGroup>
 
-      <RibbonGroup label={tr("ribbon.home.lines")} icon={ArrowDownAZ} priority={40}>
+      <RibbonGroup
+        label={tr("ribbon.home.lines")}
+        icon={ArrowDownAZ}
+        priority={40}
+        more={
+          <>
+            <Btn id="home.numberLines" icon={Hash} hint={tr("ribbon.home.numberLinesHint")} label={tr("ribbon.home.numberLines")} edit={(s) => lineTool(s, "number")} />
+            <Btn id="home.trim" icon={Scissors} hint={tr("ribbon.home.trimHint")} label={tr("ribbon.home.trim")} edit={(s) => lineTool(s, "trim")} />
+          </>
+        }
+      >
         <Btn id="home.sortAsc" icon={ArrowDownAZ} hint={tr("ribbon.home.sortAsc")} edit={(s) => lineTool(s, "sort-asc")} />
         <Btn id="home.sortDesc" icon={ArrowUpAZ} hint={tr("ribbon.home.sortDesc")} edit={(s) => lineTool(s, "sort-desc")} />
         <Btn id="home.reverse" icon={ArrowLeftRight} hint={tr("ribbon.home.reverseHint")} label={tr("ribbon.home.reverse")} edit={(s) => lineTool(s, "reverse")} />
         <Btn id="home.unique" icon={ListX} hint={tr("ribbon.home.uniqueHint")} label={tr("ribbon.home.unique")} edit={(s) => lineTool(s, "unique")} />
         <Btn id="home.noBlanks" icon={Minus} hint={tr("ribbon.home.noBlanksHint")} label={tr("ribbon.home.noBlanks")} edit={(s) => lineTool(s, "remove-blank")} />
-        <Btn id="home.join" icon={Merge} hint={tr("ribbon.home.joinHint")} label={tr("ribbon.home.join")} edit={(s) => lineTool(s, "join")} />
-        <Btn id="home.numberLines" icon={Hash} hint={tr("ribbon.home.numberLinesHint")} label={tr("ribbon.home.numberLines")} edit={(s) => lineTool(s, "number")} />
-        <Btn id="home.trim" icon={WrapText} hint={tr("ribbon.home.trimHint")} label={tr("ribbon.home.trim")} edit={(s) => lineTool(s, "trim")} />
       </RibbonGroup>
 
       <RibbonGroup
         label={tr("ribbon.home.typography")}
         icon={Type}
         priority={1}
-        collapsedRender={() => (
+        more={
           <>
-            <Stepper title={tr("ribbon.home.noteSize")} value={typo.size || 16} min={10} max={40} onChange={(size) => patch({ size })} format={(n) => `${n}px`} />
-            <GroupMenu icon={Type} label={tr("ribbon.home.typography")} width={320}>
-              {() => (
-                <>
-                  <MenuLabel>{tr("ribbon.home.typography")}</MenuLabel>
-                  <RibbonSelect
-                    title={tr("ribbon.home.noteFont")}
-                    placeholder={tr("ribbon.home.noteFontPlaceholder")}
-                    groups={fontGroups}
-                    value={typo.font || ""}
-                    onChange={(value) => (value ? patch({ font: value }) : drop("font"))}
-                  />
-                  <RibbonSelect
-                    title={tr("ribbon.home.tracking")}
-                    placeholder={tr("ribbon.home.trackingPlaceholder")}
-                    options={LETTER_SPACING.map((item) => ({ value: item.id, label: item.label }))}
-                    value={typo.spacing || ""}
-                    onChange={(value) => (value ? patch({ spacing: value }) : drop("spacing"))}
-                  />
-                  <RibbonSelect
-                    title={tr("ribbon.home.headingFont")}
-                    placeholder={tr("ribbon.home.headingFontPlaceholder")}
-                    groups={fontGroups}
-                    value={typo.headingFont || ""}
-                    onChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
-                  />
-                  <RibbonSelect
-                    title={tr("ribbon.home.noteDirection")}
-                    placeholder={tr("ribbon.home.noteDirectionDefault")}
-                    options={[
-                      { value: "ltr", label: tr("dir.ltr") },
-                      { value: "rtl", label: tr("dir.rtl") },
-                      { value: "auto", label: tr("dir.auto") },
-                    ]}
-                    value={typo.dir || ""}
-                    onChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
-                  />
-                  <Btn
-                    id="home.resetTypography"
-                    icon={Trash2}
-                    hint={tr("ribbon.home.resetTypography")}
-                    disabled={false}
-                    onClick={() => setTypography({})}
-                  />
-                </>
-              )}
-            </GroupMenu>
+            <Btn
+              id="home.resetTypography"
+              icon={RotateCcw}
+              hint={tr("ribbon.home.resetTypography")}
+              disabled={false}
+              onClick={() => setTypography({})}
+            />
           </>
-        )}
+        }
       >
         <RibbonSelect
           title={tr("ribbon.home.noteFont")}
@@ -347,7 +346,15 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           value={typo.font || ""}
           onChange={(value) => (value ? patch({ font: value }) : drop("font"))}
         />
-        <Stepper title={tr("ribbon.home.noteSize")} value={typo.size || 16} min={10} max={40} onChange={(size) => patch({ size })} format={(n) => `${n}px`} />
+        <Stepper
+          title={tr("ribbon.home.noteSize")}
+          value={typo.size || 16}
+          min={10}
+          max={40}
+          onChange={(size) => patch({ size })}
+          format={(n) => `${n}px`}
+          style={{ gridRow: "span 2" }}
+        />
         <RibbonSelect
           title={tr("ribbon.home.tracking")}
           placeholder={tr("ribbon.home.trackingPlaceholder")}
@@ -362,7 +369,6 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           value={typo.headingFont || ""}
           onChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
         />
-        {/* Whole-note text direction: LTR, RTL or Auto (per block in the reader). */}
         <RibbonSelect
           title={tr("ribbon.home.noteDirection")}
           placeholder={tr("ribbon.home.noteDirectionDefault")}
@@ -373,13 +379,6 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           ]}
           value={typo.dir || ""}
           onChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
-        />
-        <Btn
-          id="home.resetTypography"
-          icon={Trash2}
-          hint={tr("ribbon.home.resetTypography")}
-          disabled={false}
-          onClick={() => setTypography({})}
         />
       </RibbonGroup>
 
@@ -404,7 +403,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           />
           <Btn
             id="home.ai.summarize"
-            icon={List}
+            icon={FileText}
             label={tr("ribbon.home.ai.summarize")}
             hint={tr("ribbon.home.ai.summarizeHint")}
             disabled={aiBusy || !textToProcess.trim()}
@@ -420,7 +419,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle, onFindTags 
           />
           <Btn
             id="home.ai.continue"
-            icon={ArrowRight}
+            icon={ArrowRightToLine}
             label={tr("ribbon.home.ai.continue")}
             hint={tr("ribbon.home.ai.continueHint")}
             disabled={aiBusy || !textToProcess.trim()}

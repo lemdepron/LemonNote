@@ -7,14 +7,12 @@
       "canvas": "اللوحة",
       "queries": "الاستعلامات",
       "extensions": "الإضافات",
-      "sync": "المزامنة"
+      "sync": "المزامنة",
+      "settings": "Settings"
     },
     "syncTitle": "المزامنة مخططة لاحقاً",
     "soon": "قريباً",
     "bin": "المهملات",
-    "more": "المزيد",
-    "moreGroupAria": "خيارات إضافية",
-    "settings": "الإعدادات",
     "localVault": "مخزن محلي",
     "oneWorkspace": "مساحة عمل واحدة",
     "pinOpen": "تثبيت",
@@ -145,8 +143,15 @@
         "replace": "استبدال التحديد",
         "insertBelow": "إدراج أدناه",
         "copy": "نسخ",
-        "discard": "إلغاء"
-      }
+        "discard": "إلغاء",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "تم النسخ بتنسيق {label}.",
@@ -223,7 +228,13 @@
       "loadDefaultHint": "تحميل التصميم الافتراضي المحفوظ في هذه الملاحظة",
       "resetDesign": "إعادة تعيين لإعدادات التطبيق",
       "resetDesignHint": "مسح جميع إعدادات التصميم في هذه الملاحظة",
-      "defaultStyleSaved": "تم حفظ التصميم الافتراضي"
+      "defaultStyleSaved": "تم حفظ التصميم الافتراضي",
+      "loadDefaultToast": "تم تطبيق النمط الافتراضي",
+      "noDefaultToast": "لا يوجد نمط افتراضي محفوظ",
+      "presets": "إعدادات مسبقة",
+      "resetDesignToast": "إعادة تعيين إلى إعدادات التطبيق الافتراضية",
+      "saveAsDefaultToast": "تم الحفظ كافتراضي للملاحظات الجديدة",
+      "saveFailedToast": "فشل في حفظ الإعداد الافتراضي"
     },
     "layout": {
       "pageSetup": "إعداد الصفحة",
@@ -587,7 +598,9 @@
       "recordingSaveError": "فشل حفظ التسجيل.",
       "micPermissionError": "تم رفض إذن الميكروفون. يرجى السماح بالوصول للميكروفون في إعدادات المتصفح.",
       "recordingToast": "جاري التسجيل… انقر مرة أخرى للإيقاف.",
-      "quickLanguageHint": "إدراج كتلة كود {lang}"
+      "quickLanguageHint": "إدراج كتلة كود {lang}",
+      "needCodeBlock": "ضع المؤشر داخل كتلة برمجية أولاً.",
+      "figureCaptionPrompt": "عنوان الشكل:"
     },
     "ink": {
       "draw": {
@@ -759,7 +772,17 @@
         "stroke": "خط",
         "precision": "دقة"
       }
-    }
+    },
+    "wordGoal": {
+      "wordGoal": "هدف الكلمات",
+      "targetWords": "الكلمات المستهدفة",
+      "setGoal": "تحديد الهدف",
+      "updateGoal": "تحديث الهدف",
+      "editGoal": "تعديل الهدف",
+      "clearGoal": "مسح الهدف"
+    },
+    "macros": "ماكروز",
+    "macrosHint": "تسجيل وتشغيل ماكروز التحرير"
   },
   "fileMenu": {
     "title": "ملف",
@@ -879,7 +902,8 @@
   "dir": {
     "ltr": "من اليسار إلى اليمين",
     "rtl": "من اليمين إلى اليسار",
-    "auto": "تلقائي (كل سطر حسب محتواه)"
+    "auto": "تلقائي (كل سطر حسب محتواه)",
+    "center": "وسط"
   },
   "digits": {
     "latin": "أرقام لاتينية (123)",
@@ -930,6 +954,8 @@
       "light": "فاتح",
       "dark": "داكن",
       "system": "حسب النظام",
+      "switchToLight": "التبديل إلى الوضع الفاتح",
+      "switchToDark": "التبديل إلى الوضع الداكن",
       "themePreset": "قالب المظهر",
       "surface": "نسيج الخلفية",
       "density": "كثافة الواجهة",
@@ -1537,6 +1563,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "كلمات",
+    "notSynced": "غير مزامن",
+    "syncNotAvailable": "المزامنة غير متاحة بعد",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

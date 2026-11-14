@@ -7,14 +7,12 @@
       "canvas": "Холст",
       "queries": "Запросы",
       "extensions": "Плагины",
-      "sync": "Синхронизация"
+      "sync": "Синхронизация",
+      "settings": "Settings"
     },
     "syncTitle": "Синхронизация запланирована",
     "soon": "скоро",
     "bin": "Корзина",
-    "more": "Ещё",
-    "moreGroupAria": "Дополнительные параметры",
-    "settings": "Настройки",
     "localVault": "локальное хранилище",
     "oneWorkspace": "одно рабочее пространство",
     "pinOpen": "закрепить открытым",
@@ -145,8 +143,15 @@
         "replace": "Заменить выделение",
         "insertBelow": "Вставить ниже",
         "copy": "Копировать",
-        "discard": "Отменить"
-      }
+        "discard": "Отменить",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "Скопировано как {label}.",
@@ -255,7 +260,13 @@
       "watermarkPresets": "Предустановки",
       "watermarkText": "Текст водяного знака",
       "watermarkTextHint": "Текст для показа как водяной знак (например, ЧЕРНОВИК, КОНФИДЕНЦИАЛЬНО)",
-      "watermarkTextPlaceholder": "Текст водяного знака"
+      "watermarkTextPlaceholder": "Текст водяного знака",
+      "loadDefaultToast": "Применен стиль по умолчанию",
+      "noDefaultToast": "Стиль по умолчанию не сохранен",
+      "presets": "Предустановки",
+      "resetDesignToast": "Сброшено к настройкам приложения",
+      "saveAsDefaultToast": "Сохранено как умолчание для новых заметок",
+      "saveFailedToast": "Не удалось сохранить умолчание"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "Заголовок этой заметки не является датой, неделей (2026-W45) или месяцем (2026-11)",
       "prevDayHint": "День, неделя или месяц перед этой заметкой",
       "quickLanguageHint": "Вставить блок кода {lang}",
+      "needCodeBlock": "Сначала поместите курсор внутри блока кода.",
+      "figureCaptionPrompt": "Подпись фигуры:",
       "quoteBlock": "Цитата",
       "quoteBlockHint": "Блочная цитата",
       "recordingSaveError": "Не удалось сохранить запись.",
@@ -759,7 +772,9 @@
       "zoomOutHint": "Уменьшить масштаб (Ctrl+-)",
       "zoomPlaceholder": "Масштаб",
       "zoomSlider": "Ползунок:"
-    }
+    },
+    "macros": "Макросы",
+    "macrosHint": "Запись и воспроизведение макросов редактирования"
   },
   "wordGoal": {
     "wordGoal": "Цель по словам",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "Слева направо",
     "rtl": "Справа налево",
-    "auto": "Авто (определять по строке)"
+    "auto": "Авто (определять по строке)",
+    "center": "По центру"
   },
   "digits": {
     "latin": "Латинские цифры (123)",
@@ -938,6 +954,8 @@
       "light": "Светлый",
       "dark": "Тёмный",
       "system": "Системный",
+      "switchToLight": "Переключить на светлый режим",
+      "switchToDark": "Переключить на тёмный режим",
       "themePreset": "Пресет темы",
       "surface": "Текстура фона",
       "density": "Плотность интерфейса",
@@ -1690,6 +1708,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "Слова",
+    "notSynced": "Не синхронизировано",
+    "syncNotAvailable": "Синхронизация пока недоступна",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",

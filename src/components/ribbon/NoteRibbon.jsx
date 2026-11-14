@@ -12,7 +12,7 @@ import { commit, useEditorSnapshot } from "@/lib/editor-bridge";
 import { shortcutMatches } from "@/lib/shortcuts";
 import { readPref, writePref } from "@/lib/preferences";
 import { useI18n } from "@/lib/i18n";
-import { RibbonContext, RibbonFrame } from "@/components/ribbon/RibbonKit";
+import { RibbonContext, RibbonTabLine, RibbonPanel, RibbonPanelPopoverProvider } from "@/components/ribbon/RibbonKit";
 import { TabErrorBoundary } from "@/components/ribbon/TabErrorBoundary";
 import QuickAccess from "@/components/ribbon/QuickAccess";
 import { InkTab } from "@/components/ribbon/tabs/InkTabs";
@@ -29,6 +29,7 @@ import { tableAt } from "@/lib/ribbon-actions";
 import { FilePanel } from "@/components/ribbon/FilePanel";
 import { toast } from "@/lib/toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import MacroBar from "@/components/macros/MacroBar";
 
 const MAIN_TABS = [
   { id: "home", label: "Home" },
@@ -312,43 +313,99 @@ export default function NoteRibbon({
     </Popover>
   );
 
+  // Macros button with popover
+  const [macrosPopoverOpen, setMacrosPopoverOpen] = useState(false);
+  const macrosButton = (
+    <Popover open={macrosPopoverOpen} onOpenChange={setMacrosPopoverOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          title={tr("ribbon.macros")}
+          aria-label={tr("ribbon.macros")}
+          className={cn(
+            "shrink-0 rounded-t-lg border border-b-0 px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] transition",
+            "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          {tr("ribbon.macros")}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        style={{ width: 320 }}
+        className="max-h-[70vh] overflow-auto p-2"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <MacroBar body={body} onChange={onChange} />
+      </PopoverContent>
+    </Popover>
+  );
+
+  // Combined afterTabs: word goal + macros
+  const afterTabs = (
+    <>
+      {wordGoalButton}
+      {macrosButton}
+    </>
+  );
+
   return (
     <RibbonContext.Provider value={context}>
-      <RibbonFrame
-        tabs={visibleTabs.map((item) => ({ ...item, label: tr(`ribbon.tabs.${item.id}`) }))}
-        tab={activeTab}
-        onTab={chooseTab}
-        leading={<><QuickAccess />{leading}</>}
-        isFirstTabActive={activeTab === "home"}
-        afterTabs={wordGoalButton}
-        trailing={
-          (images?.busy || images?.error) && (
-            <div
-              className={cn(
-                "flex shrink-0 items-center gap-1.5 px-2.5 font-mono text-[9.5px] uppercase tracking-[0.1em]",
-                images?.error ? "text-destructive" : "text-muted-foreground"
-              )}
-            >
-              {images?.busy && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-              {images?.error || "uploading"}
-            </div>
-          )
-        }
-      >
-        {activeTab === "home" && (
-          <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} onFindTags={onFindTags} /></TabErrorBoundary>
-        )}
-        {activeTab === "insert" && (
-          <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} /></TabErrorBoundary>
-        )}
-        {activeTab === "design" && <TabErrorBoundary><DesignTab /></TabErrorBoundary>}
-        {activeTab === "layout" && <TabErrorBoundary><LayoutTab ink={noteInk?.ink} /></TabErrorBoundary>}
-        {activeTab === "view" && <TabErrorBoundary><ViewTab /></TabErrorBoundary>}
-        {activeTab === "share" && <TabErrorBoundary><ShareTab /></TabErrorBoundary>}
-        {activeTab === "ink" && <TabErrorBoundary><InkTab noteInk={noteInk} /></TabErrorBoundary>}
-        {activeTab === "table" && <TabErrorBoundary><TableContextTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} /></TabErrorBoundary>}
-        {activeTab === "code" && <TabErrorBoundary><CodeContextTab /></TabErrorBoundary>}
-      </RibbonFrame>
+      <RibbonPanelPopoverProvider>
+        <RibbonTabLine
+          tabs={visibleTabs.map((item) => ({ ...item, label: tr(`ribbon.tabs.${item.id}`) }))}
+          tab={activeTab}
+          onTab={chooseTab}
+          leading={<><QuickAccess />{leading}</>}
+          isFirstTabActive={activeTab === "home"}
+          afterTabs={afterTabs}
+          trailing={
+            (images?.busy || images?.error) && (
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 px-2.5 font-mono text-[9.5px] uppercase tracking-[0.1em]",
+                  images?.error ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {images?.busy && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                {images?.error || "uploading"}
+              </div>
+            )
+          }
+        />
+        <RibbonPanel
+          isFirstTabActive={activeTab === "home"}
+          trailing={
+            (images?.busy || images?.error) && (
+              <div
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 px-2.5 font-mono text-[9.5px] uppercase tracking-[0.1em]",
+                  images?.error ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {images?.busy && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                {images?.error || "uploading"}
+              </div>
+            )
+          }
+        >
+          {activeTab === "home" && (
+            <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} onFindTags={onFindTags} /></TabErrorBoundary>
+          )}
+          {activeTab === "insert" && (
+            <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} /></TabErrorBoundary>
+          )}
+          {activeTab === "design" && <TabErrorBoundary><DesignTab /></TabErrorBoundary>}
+          {activeTab === "layout" && <TabErrorBoundary><LayoutTab ink={noteInk?.ink} /></TabErrorBoundary>}
+          {activeTab === "view" && <TabErrorBoundary><ViewTab /></TabErrorBoundary>}
+          {activeTab === "share" && <TabErrorBoundary><ShareTab /></TabErrorBoundary>}
+          {activeTab === "ink" && <TabErrorBoundary><InkTab noteInk={noteInk} /></TabErrorBoundary>}
+          {activeTab === "table" && <TabErrorBoundary><TableContextTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} /></TabErrorBoundary>}
+          {activeTab === "code" && <TabErrorBoundary><CodeContextTab /></TabErrorBoundary>}
+        </RibbonPanel>
+      </RibbonPanelPopoverProvider>
 
       {filePanelOpen && noteForPanel && (
         <FilePanel

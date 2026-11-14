@@ -7,14 +7,12 @@
       "canvas": "キャンバス",
       "queries": "クエリ",
       "extensions": "拡張機能",
-      "sync": "同期"
+      "sync": "同期",
+      "settings": "Settings"
     },
     "syncTitle": "同期は計画中",
     "soon": "近日公開",
     "bin": "ごみ箱",
-    "more": "その他",
-    "moreGroupAria": "その他のオプション",
-    "settings": "設定",
     "localVault": "ローカル保管庫",
     "oneWorkspace": "1つのワークスペース",
     "pinOpen": "ピン留めして開く",
@@ -145,8 +143,15 @@
         "replace": "選択範囲を置換",
         "insertBelow": "下に挿入",
         "copy": "コピー",
-        "discard": "破棄"
-      }
+        "discard": "破棄",
+        "markdownOnly": "AI actions only work in Markdown notes",
+        "notEnabled": "AI is not enabled. Configure it in Settings > AI",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Failed to copy"
+      },
+      "formatPainterActive": "Format painter active — select text to apply",
+      "formatPainterLocked": "Format painter locked — press Esc to cancel",
+      "formatPainterCancelled": "Format painter cancelled"
     },
     "share": {
       "copiedAs": "{label}としてコピーしました。",
@@ -255,7 +260,13 @@
       "watermarkPresets": "プリセット",
       "watermarkText": "ウォーターマークのテキスト",
       "watermarkTextHint": "ウォーターマークとして表示するテキスト (例: DRAFT, CONFIDENTIAL)",
-      "watermarkTextPlaceholder": "ウォーターマークのテキスト"
+      "watermarkTextPlaceholder": "ウォーターマークのテキスト",
+      "loadDefaultToast": "デフォルトスタイルを適用しました",
+      "noDefaultToast": "保存されているデフォルトスタイルがありません",
+      "presets": "プリセット",
+      "resetDesignToast": "アプリのデフォルトにリセットしました",
+      "saveAsDefaultToast": "新規ノートのデフォルトとして保存しました",
+      "saveFailedToast": "デフォルトの保存に失敗しました"
     },
     "ink": {
       "audio": {
@@ -507,6 +518,8 @@
       "prevDayDisabled": "このノートのタイトルが日付、週 (2026-W45)、または月 (2026-11) ではありません",
       "prevDayHint": "このノートの前の日、週、月",
       "quickLanguageHint": "{lang} コードブロックを挿入",
+      "needCodeBlock": "まずカーソルをコードブロックの中に置いてください。",
+      "figureCaptionPrompt": "図のキャプション：",
       "quoteBlock": "引用",
       "quoteBlockHint": "ブロック引用",
       "recordingSaveError": "録音の保存に失敗しました。",
@@ -759,7 +772,9 @@
       "zoomOutHint": "ズームアウト (Ctrl+-)",
       "zoomPlaceholder": "ズーム",
       "zoomSlider": "スライダー:"
-    }
+    },
+    "macros": "マクロ",
+    "macrosHint": "編集マクロの記録と再生"
   },
   "wordGoal": {
     "wordGoal": "単語目標",
@@ -887,7 +902,8 @@
   "dir": {
     "ltr": "左から右",
     "rtl": "右から左",
-    "auto": "自動 (行ごとに検出)"
+    "auto": "自動 (行ごとに検出)",
+    "center": "中央"
   },
   "digits": {
     "latin": "ラテン数字 (123)",
@@ -938,6 +954,8 @@
       "light": "ライト",
       "dark": "ダーク",
       "system": "システム",
+      "switchToLight": "ライトモードに切り替え",
+      "switchToDark": "ダークモードに切り替え",
       "themePreset": "テーマプリセット",
       "surface": "背景テクスチャ",
       "density": "インターフェース密度",
@@ -1689,6 +1707,9 @@
     "wordsToGo": "{count} words to go",
     "goalReached": "goal reached",
     "wordsCount": "{count} word{plural}",
+    "words": "単語数",
+    "notSynced": "未同期",
+    "syncNotAvailable": "同期はまだ利用できません",
     "savedStatus": "saved",
     "savingStatus": "saving…",
     "draftStatus": "draft",
