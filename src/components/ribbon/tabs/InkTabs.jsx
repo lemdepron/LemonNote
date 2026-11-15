@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Brush, History, Layers, Maximize, Mic, MicOff, Palette, Pause, PenLine, Play, Redo2,
   ScanText, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
-  Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus,
+  Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus, PenTool, LassoSelect,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
@@ -431,7 +431,7 @@ function MoreToolsPopover({ ink, onClose }) {
   );
 }
 
-export function InkDrawTab({ ink, onAutoStart }) {
+export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
   const { t } = useI18n();
   const { tool, onTool, engine } = ink;
   const [favPens, setFavPens] = useState(() => readFavPens());
@@ -514,7 +514,7 @@ export function InkDrawTab({ ink, onAutoStart }) {
         <Popover open={penPickerOpen} onOpenChange={setPenPickerOpen}>
           <PopoverTrigger asChild>
             <RibbonButton
-              icon={FountainPenIcon}
+              icon={PenTool}
               label={t("ink.draw.pen")}
               hint={t("ink.draw.penHint")}
               active={tool.mode === "draw"}
@@ -530,7 +530,7 @@ export function InkDrawTab({ ink, onAutoStart }) {
         <Popover open={eraserPopoverOpen} onOpenChange={setEraserPopoverOpen}>
           <PopoverTrigger asChild>
             <RibbonButton
-              icon={() => <EraserIcon mode={tool.eraserMode || "stroke"} />}
+              icon={Eraser}
               label={t("ink.draw.eraser")}
               hint={t("ink.draw.eraserHint")}
               active={tool.mode === "erase"}
@@ -544,15 +544,18 @@ export function InkDrawTab({ ink, onAutoStart }) {
 
         {/* Lasso */}
         <RibbonButton
-          icon={LassoIcon}
+          icon={LassoSelect}
           label={t("ink.draw.lasso")}
           hint={t("ink.draw.lassoHint")}
           active={tool.mode === "lasso"}
           onClick={() => wrapToolChange({ mode: "lasso" })}
         />
 
+      </RibbonGroup>
+      {afterDraw}
+      <RibbonGroup label={t("ink.draw.width")} priority={65} icon={PenLine}>
         {/* Width slider - always visible */}
-        <div style={{ gridRow: "span 2", minWidth: 140 }}>
+        <div style={{ gridRow: "span 2", minWidth: 110 }}>
           <Slider
             label={t("ink.draw.width")}
             value={tool.width}
@@ -606,11 +609,6 @@ export function InkDrawTab({ ink, onAutoStart }) {
             </button>
           )}
         </div>
-        {favPens.length === 0 && (
-          <div className="col-span-2" style={{ gridColumn: "span 2" }}>
-            <p className="font-mono text-[9.5px] text-muted-foreground">{t("ink.draw.noFavPens")}</p>
-          </div>
-        )}
       </RibbonGroup>
 
       <RibbonGroup label={t("ink.groups.history")} priority={30} icon={History}>
@@ -864,33 +862,18 @@ export function InkAudioTab({ ink }) {
 /** Lets a note jump to ink: create a page, reopen a recent one, or browse them all. */
 /* ----------------------------- The Ink tab itself ----------------------------- */
 
-const SUBTABS = [
-  ["draw", "Draw", InkDrawTab],
-  ["color", "Color", InkColorTab],
-  ["more", "More", null], // More is handled via popover in Draw tab
-];
-
 /**
  * The Ink tab of the note ribbon. `noteInk` is the note's own handwriting page
  * (see useInkPage in NotePage): until it exists the tab offers to start one.
  */
 export function InkTab({ noteInk }) {
   const { t } = useI18n();
-  const [sub, setSub] = useState(() => {
-    const saved = readPref("inkRibbonTab", "draw");
-    return SUBTABS.some(([id]) => id === saved) ? saved : "draw";
-  });
   const [legacy, setLegacy] = useState([]);
-  const choose = (id) => {
-    setSub(id);
-    writePref("inkRibbonTab", id);
-  };
   const loadLegacy = () =>
     noteInk
       .listAttachable()
       .then(setLegacy)
       .catch(() => setLegacy([]));
-  const Section = SUBTABS.find(([id]) => id === sub)?.[2] || InkDrawTab;
 
   const attach = (
     <RibbonMenu icon={Paperclip} label={t("ink.tab.attachOld")} hint={t("ink.tab.attachOldHint")} width={300} disabled={false} onOpenChange={loadLegacy}>
@@ -921,71 +904,58 @@ export function InkTab({ noteInk }) {
     }
   }, [noteInk]);
 
+  if (!noteInk.hasPage) {
+    return (
+      <RibbonGroup label={t("ink.tab.handwriting")} priority={70} icon={PenLine}>
+        <RibbonButton
+          icon={noteInk.starting ? Loader2 : PenLine}
+          spinning={noteInk.starting}
+          label={t("ink.tab.startInking")}
+          hint={t("ink.tab.startInkingHint")}
+          onClick={noteInk.onStart}
+          keepFocus={false}
+          showLabel
+          style={{ gridRow: "span 2" }}
+          className="h-[54px] flex-col gap-0.5 px-3"
+        />
+        {attach}
+      </RibbonGroup>
+    );
+  }
+
+  const statusText =
+    noteInk.status === "saving" ? t("ink.tab.saving") : noteInk.status === "saved" ? t("ink.tab.saved") : t("ink.tab.autosave");
+
   return (
     <>
-      {!noteInk.hasPage ? (
-        <>
-          <RibbonGroup label={t("ink.tab.handwriting")} priority={70} icon={PenLine}>
-            <RibbonButton
-              icon={noteInk.starting ? Loader2 : PenLine}
-              spinning={noteInk.starting}
-              label={t("ink.tab.startInking")}
-              hint={t("ink.tab.startInkingHint")}
-              onClick={noteInk.onStart}
-              keepFocus={false}
-            />
-            {attach}
-          </RibbonGroup>
-        </>
-      ) : (
-        <>
-          <RibbonGroup label={t("ink.tab.ink")} priority={70} icon={PenLine}>
-            <div className="grid grid-cols-3 gap-1" style={{ minWidth: 'max-content' }}>
-              {SUBTABS.filter(([id]) => id !== "more").map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => choose(id)}
-                  aria-pressed={sub === id}
-                  className={cn(
-                    "h-7 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.08em] transition",
-                    sub === id ? "border-primary/50 bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </RibbonGroup>
-          {noteInk.overlayMode !== undefined && (
-            <RibbonGroup label={t("ink.tab.overlay")} priority={60} icon={Maximize}>
-              <button
-                type="button"
-                onClick={noteInk.onToggleOverlayMode}
-                className={cn(
-                  "h-7 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.08em] transition",
-                  noteInk.overlayMode
-                    ? "border-primary/50 bg-primary/15 text-primary"
-                    : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-                title={noteInk.overlayMode ? t("ink.overlay.fullPageHint") : t("ink.overlay.inkOverTextHint")}
-              >
-                {noteInk.overlayMode ? t("ink.overlay.fullPage") : t("ink.overlay.inkOverText")}
-              </button>
-            </RibbonGroup>
-          )}
-          {noteInk.ink && <Section ink={noteInk.ink} onAutoStart={handleAutoStart} />}
-          <RibbonGroup label={t("ink.tab.handwritingPage")} priority={50} icon={BookOpen}>
-            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>
-              <span>{t("ink.tab.marks", { count: noteInk.markCount })}</span>
-              <span>{noteInk.status === "saving" ? t("ink.tab.saving") : noteInk.status === "saved" ? t("ink.tab.saved") : t("ink.tab.autosave")}</span>
-            </div>
-            {attach}
-            <RibbonButton icon={Trash2} label={t("ink.tab.removeInk")} hint={t("ink.tab.removeInkHint")} onClick={noteInk.onRemove} keepFocus={false} />
-          </RibbonGroup>
-        </>
+      {noteInk.ink && (
+        <InkDrawTab
+          ink={noteInk.ink}
+          onAutoStart={handleAutoStart}
+          afterDraw={<InkColorTab ink={noteInk.ink} onAutoStart={handleAutoStart} />}
+        />
       )}
+      <RibbonGroup label={t("ink.tab.handwritingPage")} priority={50} icon={BookOpen}>
+        <div
+          className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground"
+          style={{ gridRow: "span 2", minWidth: "max-content" }}
+        >
+          <span>{t("ink.tab.marks", { count: noteInk.markCount })}</span>
+          <span>{statusText}</span>
+        </div>
+        {noteInk.overlayMode !== undefined && (
+          <RibbonButton
+            icon={Layers}
+            label={noteInk.overlayMode ? t("ink.overlay.fullPage") : t("ink.overlay.inkOverText")}
+            hint={noteInk.overlayMode ? t("ink.overlay.fullPageHint") : t("ink.overlay.inkOverTextHint")}
+            active={Boolean(noteInk.overlayMode)}
+            onClick={noteInk.onToggleOverlayMode}
+            keepFocus={false}
+          />
+        )}
+        {attach}
+        <RibbonButton icon={Trash2} label={t("ink.tab.removeInk")} hint={t("ink.tab.removeInkHint")} onClick={noteInk.onRemove} keepFocus={false} />
+      </RibbonGroup>
     </>
   );
 }

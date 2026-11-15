@@ -1,0 +1,594 @@
+diff --git a/src/components/ribbon/RibbonButton.jsx b/src/components/ribbon/RibbonButton.jsx
+index 15fc27c..a728d7d 100644
+--- a/src/components/ribbon/RibbonButton.jsx
++++ b/src/components/ribbon/RibbonButton.jsx
+@@ -122,7 +122,8 @@ const RibbonButton = forwardRef(function RibbonButton(
+         aria-pressed={active || undefined}
+         aria-disabled={disabled || undefined}
+         className={cn(
+-          "flex h-[26px] shrink-0 items-center justify-center rounded-md border border-transparent px-2 transition relative",
++          "flex h-[26px] shrink-0 items-center justify-center rounded-md border border-transparent px-1 transition relative",
++          showLabel && "px-2",
+           active
+             ? "border-primary/40 bg-primary/15 text-primary"
+             : "text-muted-foreground hover:bg-accent hover:text-foreground",
+diff --git a/src/components/ribbon/RibbonGroup.jsx b/src/components/ribbon/RibbonGroup.jsx
+index d750d47..9b30432 100644
+--- a/src/components/ribbon/RibbonGroup.jsx
++++ b/src/components/ribbon/RibbonGroup.jsx
+@@ -9,8 +9,8 @@ const gridStyle = {
+   gridAutoFlow: "column",
+   gridTemplateRows: "repeat(2, 26px)",
+   gridAutoColumns: "max-content",
+-  gap: "2px",
+   alignItems: "center",
++  gap: "2px",
+ };
+ 
+ const labelClass =
+@@ -38,17 +38,42 @@ export default function RibbonGroup({ label, icon, priority = 50, className, chi
+   const popoverRef = useRef(null);
+ 
+   // Convert children to array to count and manipulate
+-  const childrenArray = Array.isArray(children) ? children : [children].filter(Boolean);
++  const childrenArray = (Array.isArray(children) ? children : [children]).flat().filter(Boolean);
+ 
+-  // Determine if we need the "more" button (more prop provided AND more than 5 children)
+-  // We reserve the 6th slot for the "..." button when more is provided
+-  const showMore = more && childrenArray.length >= 5;
++  // A group has 6 slots (3 columns x 2 rows). A control that spans both rows (a select,
++  // a stepper) uses 2 slots. When everything fits (the "..." button needs 1 slot), show it all.
++  // Otherwise show the first 5 slots, and put everything else, plus the `more` content,
++  // into the "..." popover. Nothing is ever dropped.
++  const slotsOf = (child) => (child?.props?.style?.gridRow === "span 2" ? 2 : 1);
++  const totalSlots = childrenArray.reduce((sum, child) => sum + slotsOf(child), 0);
++  const needsPopover = Boolean(more) || totalSlots > 6;
++  const fitsWithButton = totalSlots + (needsPopover ? 1 : 0) <= 6;
+ 
+-  // Visible children: first 5 if showMore, otherwise all
+-  const visibleChildren = showMore ? childrenArray.slice(0, 5) : childrenArray;
++  let visibleChildren = childrenArray;
++  let overflowChildren = [];
++  if (needsPopover && !fitsWithButton) {
++    let used = 0;
++    visibleChildren = [];
++    childrenArray.forEach((child, index) => {
++      const slots = slotsOf(child);
++      if (overflowChildren.length === 0 && used + slots <= 5) {
++        visibleChildren.push(child);
++        used += slots;
++      } else {
++        overflowChildren.push(child);
++      }
++    });
++  }
++  const showMore = needsPopover;
++  const popoverContent = (
++    <>
++      {overflowChildren}
++      {more}
++    </>
++  );
+ 
+   return (
+-    <div className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)} style={{ minWidth: "max-content" }}>
++    <div className={cn("flex shrink-0 flex-col px-1.5 pb-1 pt-1", className)} style={{ minWidth: "max-content" }}>
+       <div style={gridStyle} role="group" aria-label={label}>
+         {visibleChildren}
+         {showMore && (
+@@ -60,21 +85,23 @@ export default function RibbonGroup({ label, icon, priority = 50, className, chi
+                 onMouseDown={(event) => event.preventDefault()}
+                 title={t("ribbon.more")}
+                 aria-label={t("ribbon.more")}
+-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-card/60 transition hover:bg-accent hover:text-foreground"
++                style={{ gridRow: 2 }}
++                className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border border-transparent bg-card/60 transition hover:bg-accent hover:text-foreground"
+               >
+                 <MoreHorizontal className="h-4 w-4" />
+               </button>
+             </PopoverTrigger>
+             <PopoverContent
+               align="start"
++              className="w-auto max-w-[240px] p-1"
+               onOpenAutoFocus={(event) => event.preventDefault()}
+               onCloseAutoFocus={(event) => event.preventDefault()}
+             >
+-              <div className="flex flex-col gap-1.5 p-0.5">
+-                <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
++              <div className="flex flex-col gap-1 p-0.5">
++                <div className="px-1 pt-0.5 font-mono text-[9px] tracking-normal text-muted-foreground/70">
+                   {label}
+                 </div>
+-                {more}
++                <div className="flex flex-wrap items-center gap-1">{popoverContent}</div>
+               </div>
+             </PopoverContent>
+           </Popover>
+diff --git a/src/components/ribbon/tabs/DesignTab.jsx b/src/components/ribbon/tabs/DesignTab.jsx
+index 5454f07..aa7f1d5 100644
+--- a/src/components/ribbon/tabs/DesignTab.jsx
++++ b/src/components/ribbon/tabs/DesignTab.jsx
+@@ -2,7 +2,6 @@ import {
+   Grid,
+   Type,
+   Palette,
+-  LayoutTemplate,
+   Square,
+   Droplet,
+   Hash,
+@@ -217,12 +216,7 @@ export function DesignTab() {
+           options={PAGE_STYLES.map((item) => ({ value: item.id, label: item.label }))}
+           value={typo.pageStyle || "default"}
+           onChange={(value) => (value && value !== "default" ? patch({ pageStyle: value }) : drop("pageStyle"))}
+-          style={{ gridRow: "span 2" }}
+         />
+-      </RibbonGroup>
+-
+-      {/* 2. Style Sets */}
+-      <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={60}>
+         <RibbonSelect
+           title={t("ribbon.design.styleSets")}
+           placeholder={t("ribbon.design.styleSetSelect")}
+@@ -240,7 +234,6 @@ export function DesignTab() {
+           }))}
+           value={typo.styleSet || ""}
+           onChange={(value) => (value ? applyStyleSet(value) : drop("styleSet"))}
+-          style={{ gridRow: "span 2" }}
+         />
+       </RibbonGroup>
+ 
+diff --git a/src/components/ribbon/tabs/HomeTab.jsx b/src/components/ribbon/tabs/HomeTab.jsx
+index 5af91a6..1f3bd77 100644
+--- a/src/components/ribbon/tabs/HomeTab.jsx
++++ b/src/components/ribbon/tabs/HomeTab.jsx
+@@ -353,6 +353,27 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
+             ))}
+           </SelectContent>
+         </Select>
++        <Select
++          value={typo.headingFont || ""}
++          onValueChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
++        >
++          <SelectTrigger aria-label={tr("ribbon.home.headingFont")} className="min-w-[140px]">
++            <SelectValue placeholder={tr("ribbon.home.headingFontPlaceholder")} />
++          </SelectTrigger>
++          <SelectContent position="popper">
++            <SelectItem value="">{tr("ribbon.home.headingFontPlaceholder")}</SelectItem>
++            {fontGroups.map((group) => (
++              <SelectGroup key={group.label}>
++                <SelectLabel>{group.label}</SelectLabel>
++                {group.options.map((item) => (
++                  <SelectItem key={item.value} value={item.value}>
++                    {item.label}
++                  </SelectItem>
++                ))}
++              </SelectGroup>
++            ))}
++          </SelectContent>
++        </Select>
+         <Stepper
+           title={tr("ribbon.home.noteSize")}
+           value={typo.size || 16}
+@@ -378,27 +399,6 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
+             ))}
+           </SelectContent>
+         </Select>
+-        <Select
+-          value={typo.headingFont || ""}
+-          onValueChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
+-        >
+-          <SelectTrigger aria-label={tr("ribbon.home.headingFont")} className="min-w-[140px]">
+-            <SelectValue placeholder={tr("ribbon.home.headingFontPlaceholder")} />
+-          </SelectTrigger>
+-          <SelectContent position="popper">
+-            <SelectItem value="">{tr("ribbon.home.headingFontPlaceholder")}</SelectItem>
+-            {fontGroups.map((group) => (
+-              <SelectGroup key={group.label}>
+-                <SelectLabel>{group.label}</SelectLabel>
+-                {group.options.map((item) => (
+-                  <SelectItem key={item.value} value={item.value}>
+-                    {item.label}
+-                  </SelectItem>
+-                ))}
+-              </SelectGroup>
+-            ))}
+-          </SelectContent>
+-        </Select>
+         <Select
+           value={typo.dir || ""}
+           onValueChange={(value) => (value ? patch({ dir: value }) : drop("dir"))}
+diff --git a/src/components/ribbon/tabs/InkTabs.jsx b/src/components/ribbon/tabs/InkTabs.jsx
+index df0a315..5a85ea2 100644
+--- a/src/components/ribbon/tabs/InkTabs.jsx
++++ b/src/components/ribbon/tabs/InkTabs.jsx
+@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
+ import {
+   Brush, History, Layers, Maximize, Mic, MicOff, Palette, Pause, PenLine, Play, Redo2,
+   ScanText, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
+-  Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus,
++  Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus, PenTool, LassoSelect,
+ } from "lucide-react";
+ import RibbonGroup from "@/components/ribbon/RibbonGroup";
+ import RibbonButton from "@/components/ribbon/RibbonButton";
+@@ -431,7 +431,7 @@ function MoreToolsPopover({ ink, onClose }) {
+   );
+ }
+ 
+-export function InkDrawTab({ ink, onAutoStart }) {
++export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
+   const { t } = useI18n();
+   const { tool, onTool, engine } = ink;
+   const [favPens, setFavPens] = useState(() => readFavPens());
+@@ -514,7 +514,7 @@ export function InkDrawTab({ ink, onAutoStart }) {
+         <Popover open={penPickerOpen} onOpenChange={setPenPickerOpen}>
+           <PopoverTrigger asChild>
+             <RibbonButton
+-              icon={FountainPenIcon}
++              icon={PenTool}
+               label={t("ink.draw.pen")}
+               hint={t("ink.draw.penHint")}
+               active={tool.mode === "draw"}
+@@ -530,7 +530,7 @@ export function InkDrawTab({ ink, onAutoStart }) {
+         <Popover open={eraserPopoverOpen} onOpenChange={setEraserPopoverOpen}>
+           <PopoverTrigger asChild>
+             <RibbonButton
+-              icon={() => <EraserIcon mode={tool.eraserMode || "stroke"} />}
++              icon={Eraser}
+               label={t("ink.draw.eraser")}
+               hint={t("ink.draw.eraserHint")}
+               active={tool.mode === "erase"}
+@@ -544,15 +544,18 @@ export function InkDrawTab({ ink, onAutoStart }) {
+ 
+         {/* Lasso */}
+         <RibbonButton
+-          icon={LassoIcon}
++          icon={LassoSelect}
+           label={t("ink.draw.lasso")}
+           hint={t("ink.draw.lassoHint")}
+           active={tool.mode === "lasso"}
+           onClick={() => wrapToolChange({ mode: "lasso" })}
+         />
+ 
++      </RibbonGroup>
++      {afterDraw}
++      <RibbonGroup label={t("ink.draw.width")} priority={65} icon={PenLine}>
+         {/* Width slider - always visible */}
+-        <div style={{ gridRow: "span 2", minWidth: 140 }}>
++        <div style={{ gridRow: "span 2", minWidth: 110 }}>
+           <Slider
+             label={t("ink.draw.width")}
+             value={tool.width}
+@@ -606,11 +609,6 @@ export function InkDrawTab({ ink, onAutoStart }) {
+             </button>
+           )}
+         </div>
+-        {favPens.length === 0 && (
+-          <div className="col-span-2" style={{ gridColumn: "span 2" }}>
+-            <p className="font-mono text-[9.5px] text-muted-foreground">{t("ink.draw.noFavPens")}</p>
+-          </div>
+-        )}
+       </RibbonGroup>
+ 
+       <RibbonGroup label={t("ink.groups.history")} priority={30} icon={History}>
+@@ -864,33 +862,18 @@ export function InkAudioTab({ ink }) {
+ /** Lets a note jump to ink: create a page, reopen a recent one, or browse them all. */
+ /* ----------------------------- The Ink tab itself ----------------------------- */
+ 
+-const SUBTABS = [
+-  ["draw", "Draw", InkDrawTab],
+-  ["color", "Color", InkColorTab],
+-  ["more", "More", null], // More is handled via popover in Draw tab
+-];
+-
+ /**
+  * The Ink tab of the note ribbon. `noteInk` is the note's own handwriting page
+  * (see useInkPage in NotePage): until it exists the tab offers to start one.
+  */
+ export function InkTab({ noteInk }) {
+   const { t } = useI18n();
+-  const [sub, setSub] = useState(() => {
+-    const saved = readPref("inkRibbonTab", "draw");
+-    return SUBTABS.some(([id]) => id === saved) ? saved : "draw";
+-  });
+   const [legacy, setLegacy] = useState([]);
+-  const choose = (id) => {
+-    setSub(id);
+-    writePref("inkRibbonTab", id);
+-  };
+   const loadLegacy = () =>
+     noteInk
+       .listAttachable()
+       .then(setLegacy)
+       .catch(() => setLegacy([]));
+-  const Section = SUBTABS.find(([id]) => id === sub)?.[2] || InkDrawTab;
+ 
+   const attach = (
+     <RibbonMenu icon={Paperclip} label={t("ink.tab.attachOld")} hint={t("ink.tab.attachOldHint")} width={300} disabled={false} onOpenChange={loadLegacy}>
+@@ -921,71 +904,58 @@ export function InkTab({ noteInk }) {
+     }
+   }, [noteInk]);
+ 
++  if (!noteInk.hasPage) {
++    return (
++      <RibbonGroup label={t("ink.tab.handwriting")} priority={70} icon={PenLine}>
++        <RibbonButton
++          icon={noteInk.starting ? Loader2 : PenLine}
++          spinning={noteInk.starting}
++          label={t("ink.tab.startInking")}
++          hint={t("ink.tab.startInkingHint")}
++          onClick={noteInk.onStart}
++          keepFocus={false}
++          showLabel
++          style={{ gridRow: "span 2" }}
++          className="h-[54px] flex-col gap-0.5 px-3"
++        />
++        {attach}
++      </RibbonGroup>
++    );
++  }
++
++  const statusText =
++    noteInk.status === "saving" ? t("ink.tab.saving") : noteInk.status === "saved" ? t("ink.tab.saved") : t("ink.tab.autosave");
++
+   return (
+     <>
+-      {!noteInk.hasPage ? (
+-        <>
+-          <RibbonGroup label={t("ink.tab.handwriting")} priority={70} icon={PenLine}>
+-            <RibbonButton
+-              icon={noteInk.starting ? Loader2 : PenLine}
+-              spinning={noteInk.starting}
+-              label={t("ink.tab.startInking")}
+-              hint={t("ink.tab.startInkingHint")}
+-              onClick={noteInk.onStart}
+-              keepFocus={false}
+-            />
+-            {attach}
+-          </RibbonGroup>
+-        </>
+-      ) : (
+-        <>
+-          <RibbonGroup label={t("ink.tab.ink")} priority={70} icon={PenLine}>
+-            <div className="grid grid-cols-3 gap-1" style={{ minWidth: 'max-content' }}>
+-              {SUBTABS.filter(([id]) => id !== "more").map(([id, label]) => (
+-                <button
+-                  key={id}
+-                  type="button"
+-                  onMouseDown={(event) => event.preventDefault()}
+-                  onClick={() => choose(id)}
+-                  aria-pressed={sub === id}
+-                  className={cn(
+-                    "h-7 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.08em] transition",
+-                    sub === id ? "border-primary/50 bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+-                  )}
+-                >
+-                  {label}
+-                </button>
+-              ))}
+-            </div>
+-          </RibbonGroup>
+-          {noteInk.overlayMode !== undefined && (
+-            <RibbonGroup label={t("ink.tab.overlay")} priority={60} icon={Maximize}>
+-              <button
+-                type="button"
+-                onClick={noteInk.onToggleOverlayMode}
+-                className={cn(
+-                  "h-7 rounded-md border px-2 font-mono text-[10px] uppercase tracking-[0.08em] transition",
+-                  noteInk.overlayMode
+-                    ? "border-primary/50 bg-primary/15 text-primary"
+-                    : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+-                )}
+-                title={noteInk.overlayMode ? t("ink.overlay.fullPageHint") : t("ink.overlay.inkOverTextHint")}
+-              >
+-                {noteInk.overlayMode ? t("ink.overlay.fullPage") : t("ink.overlay.inkOverText")}
+-              </button>
+-            </RibbonGroup>
+-          )}
+-          {noteInk.ink && <Section ink={noteInk.ink} onAutoStart={handleAutoStart} />}
+-          <RibbonGroup label={t("ink.tab.handwritingPage")} priority={50} icon={BookOpen}>
+-            <div className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground" style={{ minWidth: 'max-content' }}>
+-              <span>{t("ink.tab.marks", { count: noteInk.markCount })}</span>
+-              <span>{noteInk.status === "saving" ? t("ink.tab.saving") : noteInk.status === "saved" ? t("ink.tab.saved") : t("ink.tab.autosave")}</span>
+-            </div>
+-            {attach}
+-            <RibbonButton icon={Trash2} label={t("ink.tab.removeInk")} hint={t("ink.tab.removeInkHint")} onClick={noteInk.onRemove} keepFocus={false} />
+-          </RibbonGroup>
+-        </>
++      {noteInk.ink && (
++        <InkDrawTab
++          ink={noteInk.ink}
++          onAutoStart={handleAutoStart}
++          afterDraw={<InkColorTab ink={noteInk.ink} onAutoStart={handleAutoStart} />}
++        />
+       )}
++      <RibbonGroup label={t("ink.tab.handwritingPage")} priority={50} icon={BookOpen}>
++        <div
++          className="flex flex-col justify-center px-1 font-mono text-[10px] leading-snug text-muted-foreground"
++          style={{ gridRow: "span 2", minWidth: "max-content" }}
++        >
++          <span>{t("ink.tab.marks", { count: noteInk.markCount })}</span>
++          <span>{statusText}</span>
++        </div>
++        {noteInk.overlayMode !== undefined && (
++          <RibbonButton
++            icon={Layers}
++            label={noteInk.overlayMode ? t("ink.overlay.fullPage") : t("ink.overlay.inkOverText")}
++            hint={noteInk.overlayMode ? t("ink.overlay.fullPageHint") : t("ink.overlay.inkOverTextHint")}
++            active={Boolean(noteInk.overlayMode)}
++            onClick={noteInk.onToggleOverlayMode}
++            keepFocus={false}
++          />
++        )}
++        {attach}
++        <RibbonButton icon={Trash2} label={t("ink.tab.removeInk")} hint={t("ink.tab.removeInkHint")} onClick={noteInk.onRemove} keepFocus={false} />
++      </RibbonGroup>
+     </>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/components/ribbon/tabs/TagButton.jsx b/src/components/ribbon/tabs/TagButton.jsx
+index befdabc..43fd63b 100644
+--- a/src/components/ribbon/tabs/TagButton.jsx
++++ b/src/components/ribbon/tabs/TagButton.jsx
+@@ -11,6 +11,7 @@ export default function TagButton({
+   onDoubleClick,
+   showLabel = true,
+   showShortcut = true,
++  iconOnly = false,
+   className,
+ }) {
+   if (!tagDef) return null;
+@@ -32,6 +33,7 @@ export default function TagButton({
+           ? "bg-primary/15 text-primary border-primary/40 shadow-sm"
+           : "text-foreground/80 hover:bg-accent border-border/70",
+         isCustom && "opacity-90",
++        iconOnly && "h-[26px] w-[26px] justify-center rounded-md border-transparent p-0",
+         className
+       )}
+       style={{
+@@ -48,8 +50,8 @@ export default function TagButton({
+           aria-hidden="true"
+         />
+       )}
+-      {showLabel && <span className="truncate">{tagDef.label}</span>}
+-      {showShortcut && tagDef.shortcut && (
++      {showLabel && !iconOnly && <span className="truncate">{tagDef.label}</span>}
++      {showShortcut && !iconOnly && tagDef.shortcut && (
+         <span className="ml-1 px-1.5 text-[9px] font-mono uppercase tracking-[0.1em] text-muted-foreground/60">
+           {tagDef.shortcut}
+         </span>
+diff --git a/src/components/ribbon/tabs/TagGroup.jsx b/src/components/ribbon/tabs/TagGroup.jsx
+index a2f8ea5..d0c4f5e 100644
+--- a/src/components/ribbon/tabs/TagGroup.jsx
++++ b/src/components/ribbon/tabs/TagGroup.jsx
+@@ -46,22 +46,27 @@ export function TagGroup({ format }) {
+   };
+ 
+   return (
+-    <RibbonGroup label="Tags" icon={Tag}>
+-      {sortedTags.map((tagDef) => (
+-        <TagButton
+-          key={tagDef.id}
+-          tagDef={tagDef}
+-          active={hasTag(tagDef.id)}
+-          onClick={() => handleTagClick(tagDef.id)}
+-        />
++    <RibbonGroup
++      label="Tags"
++      icon={Tag}
++      more={
++        <>
++          {sortedTags.slice(5).map((tagDef) => (
++            <TagButton key={tagDef.id} iconOnly tagDef={tagDef} active={hasTag(tagDef.id)} onClick={() => handleTagClick(tagDef.id)} />
++          ))}
++          <Btn
++            id="home.clearTags"
++            icon={Tag}
++            label="Clear"
++            hint="Remove all line tags from the selection (or the whole note)"
++            onClick={handleClearTags}
++          />
++        </>
++      }
++    >
++      {sortedTags.slice(0, 5).map((tagDef) => (
++        <TagButton key={tagDef.id} iconOnly tagDef={tagDef} active={hasTag(tagDef.id)} onClick={() => handleTagClick(tagDef.id)} />
+       ))}
+-      <Btn
+-        id="home.clearTags"
+-        icon={Tag}
+-        label="Clear"
+-        hint="Remove all line tags from the selection (or the whole note)"
+-        onClick={handleClearTags}
+-      />
+     </RibbonGroup>
+   );
+-}
+\ No newline at end of file
++}
+diff --git a/src/components/ui/select.jsx b/src/components/ui/select.jsx
+index 373dd09..06faf13 100644
+--- a/src/components/ui/select.jsx
++++ b/src/components/ui/select.jsx
+@@ -14,13 +14,13 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref)
+   <SelectPrimitive.Trigger
+     ref={ref}
+     className={cn(
+-      "flex h-9 w-full items-center justify-between rounded-md border border-border/80 bg-card/60 px-3 py-2 text-[13px] text-foreground outline-none transition focus:border-primary/40 data-[placeholder]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 [&>span]:line-clamp-1",
++      "flex h-8 w-auto min-w-[6.5rem] max-w-full items-center justify-between gap-1.5 rounded-md border border-border/80 bg-card/60 px-2.5 py-1 text-[12.5px] text-foreground outline-none transition focus:border-primary/40 data-[placeholder]:text-muted-foreground data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 [&>span]:line-clamp-1",
+       className
+     )}
+     {...props}>
+     {children}
+     <SelectPrimitive.Icon asChild>
+-      <ChevronDown className="h-4 w-4 opacity-50" />
++      <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+     </SelectPrimitive.Icon>
+   </SelectPrimitive.Trigger>
+ ))
+@@ -52,7 +52,7 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
+       ref={ref}
+       position={position}
+       className={cn(
+-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
++        "relative z-50 max-h-72 min-w-[6rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+         position === "popper" &&
+           "data-[side=bottom]:translate-y-1 data-[side=left]:translate-x-1 data-[side=right]:-translate-x-1 data-[side=top]:-translate-y-1",
+         className
+@@ -76,7 +76,7 @@ SelectContent.displayName = SelectPrimitive.Content.displayName
+ const SelectLabel = React.forwardRef(({ className, ...props }, ref) => (
+   <SelectPrimitive.Label
+     ref={ref}
+-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
++    className={cn("py-1 pl-7 pr-2 text-[11px] font-semibold", className)}
+     {...props} />
+ ))
+ SelectLabel.displayName = SelectPrimitive.Label.displayName
+@@ -85,7 +85,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) =>
+   <SelectPrimitive.Item
+     ref={ref}
+     className={cn(
+-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
++      "relative flex w-full cursor-default select-none items-center rounded-sm py-1 pl-7 pr-2 text-[12.5px] outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+       className
+     )}
+     {...props}>
+diff --git a/src/index.css b/src/index.css
+index 69bb44c..3ea5cf8 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -1271,4 +1271,15 @@ html[data-theme="light"][data-surface="plain"] .nb-shell {
+     border-radius: 0;
+     box-shadow: 3px 3px 0 0 hsl(var(--shadow));
+   }
+-}
+\ No newline at end of file
++}
++
++/* Ribbon panel: selects are as small as their content (owner's drawing, 14 Nov 2026). */
++[data-ribbon-panel] [role="combobox"] {
++  height: 24px !important;
++  width: auto !important;
++  min-width: 0 !important;
++  max-width: 104px;
++  padding: 0 6px !important;
++  font-size: 11.5px !important;
++  gap: 4px;
++}
+diff --git a/src/lib/locales/en.json b/src/lib/locales/en.json
+index d5cc3cb..3002e51 100644
+--- a/src/lib/locales/en.json
++++ b/src/lib/locales/en.json
+@@ -202,6 +202,11 @@
+       "overlay": "Overlay",
+       "handwritingPage": "Handwriting page",
+       "marks": "{count} marks",
++      "saving": "Saving...",
++      "saved": "Saved",
++      "autosave": "Autosave on",
++      "attachOld": "Attach an earlier page",
++      "attachOldHint": "Attach a handwriting page made earlier to this note",
+       "statusSaving": "saving…",
+       "statusSaved": "saved",
+       "statusAutosave": "autosave on",

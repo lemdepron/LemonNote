@@ -353,6 +353,27 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={typo.headingFont || ""}
+          onValueChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
+        >
+          <SelectTrigger aria-label={tr("ribbon.home.headingFont")} className="min-w-[140px]">
+            <SelectValue placeholder={tr("ribbon.home.headingFontPlaceholder")} />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="">{tr("ribbon.home.headingFontPlaceholder")}</SelectItem>
+            {fontGroups.map((group) => (
+              <SelectGroup key={group.label}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.options.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
         <Stepper
           title={tr("ribbon.home.noteSize")}
           value={typo.size || 16}
@@ -375,27 +396,6 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
               <SelectItem key={item.id} value={item.id}>
                 {item.label}
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={typo.headingFont || ""}
-          onValueChange={(value) => (value ? patch({ headingFont: value }) : drop("headingFont"))}
-        >
-          <SelectTrigger aria-label={tr("ribbon.home.headingFont")} className="min-w-[140px]">
-            <SelectValue placeholder={tr("ribbon.home.headingFontPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="">{tr("ribbon.home.headingFontPlaceholder")}</SelectItem>
-            {fontGroups.map((group) => (
-              <SelectGroup key={group.label}>
-                <SelectLabel>{group.label}</SelectLabel>
-                {group.options.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
             ))}
           </SelectContent>
         </Select>

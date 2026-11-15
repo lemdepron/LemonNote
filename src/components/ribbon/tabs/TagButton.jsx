@@ -11,6 +11,7 @@ export default function TagButton({
   onDoubleClick,
   showLabel = true,
   showShortcut = true,
+  iconOnly = false,
   className,
 }) {
   if (!tagDef) return null;
@@ -32,6 +33,7 @@ export default function TagButton({
           ? "bg-primary/15 text-primary border-primary/40 shadow-sm"
           : "text-foreground/80 hover:bg-accent border-border/70",
         isCustom && "opacity-90",
+        iconOnly && "h-[26px] w-[26px] justify-center rounded-md border-transparent p-0",
         className
       )}
       style={{
@@ -48,8 +50,8 @@ export default function TagButton({
           aria-hidden="true"
         />
       )}
-      {showLabel && <span className="truncate">{tagDef.label}</span>}
-      {showShortcut && tagDef.shortcut && (
+      {showLabel && !iconOnly && <span className="truncate">{tagDef.label}</span>}
+      {showShortcut && !iconOnly && tagDef.shortcut && (
         <span className="ml-1 px-1.5 text-[9px] font-mono uppercase tracking-[0.1em] text-muted-foreground/60">
           {tagDef.shortcut}
         </span>

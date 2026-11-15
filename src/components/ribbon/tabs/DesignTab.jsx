@@ -2,7 +2,6 @@ import {
   Grid,
   Type,
   Palette,
-  LayoutTemplate,
   Square,
   Droplet,
   Hash,
@@ -217,12 +216,7 @@ export function DesignTab() {
           options={PAGE_STYLES.map((item) => ({ value: item.id, label: item.label }))}
           value={typo.pageStyle || "default"}
           onChange={(value) => (value && value !== "default" ? patch({ pageStyle: value }) : drop("pageStyle"))}
-          style={{ gridRow: "span 2" }}
         />
-      </RibbonGroup>
-
-      {/* 2. Style Sets */}
-      <RibbonGroup label={t("ribbon.design.styleSets")} icon={LayoutTemplate} priority={60}>
         <RibbonSelect
           title={t("ribbon.design.styleSets")}
           placeholder={t("ribbon.design.styleSetSelect")}
@@ -240,7 +234,6 @@ export function DesignTab() {
           }))}
           value={typo.styleSet || ""}
           onChange={(value) => (value ? applyStyleSet(value) : drop("styleSet"))}
-          style={{ gridRow: "span 2" }}
         />
       </RibbonGroup>
 

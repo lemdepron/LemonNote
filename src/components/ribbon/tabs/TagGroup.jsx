@@ -46,22 +46,27 @@ export function TagGroup({ format }) {
   };
 
   return (
-    <RibbonGroup label="Tags" icon={Tag}>
-      {sortedTags.map((tagDef) => (
-        <TagButton
-          key={tagDef.id}
-          tagDef={tagDef}
-          active={hasTag(tagDef.id)}
-          onClick={() => handleTagClick(tagDef.id)}
-        />
+    <RibbonGroup
+      label="Tags"
+      icon={Tag}
+      more={
+        <>
+          {sortedTags.slice(5).map((tagDef) => (
+            <TagButton key={tagDef.id} iconOnly tagDef={tagDef} active={hasTag(tagDef.id)} onClick={() => handleTagClick(tagDef.id)} />
+          ))}
+          <Btn
+            id="home.clearTags"
+            icon={Tag}
+            label="Clear"
+            hint="Remove all line tags from the selection (or the whole note)"
+            onClick={handleClearTags}
+          />
+        </>
+      }
+    >
+      {sortedTags.slice(0, 5).map((tagDef) => (
+        <TagButton key={tagDef.id} iconOnly tagDef={tagDef} active={hasTag(tagDef.id)} onClick={() => handleTagClick(tagDef.id)} />
       ))}
-      <Btn
-        id="home.clearTags"
-        icon={Tag}
-        label="Clear"
-        hint="Remove all line tags from the selection (or the whole note)"
-        onClick={handleClearTags}
-      />
     </RibbonGroup>
   );
 }

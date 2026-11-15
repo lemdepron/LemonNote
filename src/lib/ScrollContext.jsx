@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { calculateScrollState, initialScrollState, enterGraceMode } from "./scroll-direction";
 
 /**
@@ -150,6 +150,59 @@ export function ScrollAwareTopArea({ children, className, style, "data-testid": 
       <div style={containerStyle} role="region" aria-hidden={!visible}>
         {children}
       </div>
+    </div>
+  );
+}
+
+/**
+ * One sticky block for breadcrumb row + ribbon tab line + ribbon panel.
+ *
+ * Why one block: the note tabs row, the breadcrumb and the panel used to move
+ * themselves with transform inside the normal page flow. After the page had
+ * scrolled, "visible" moved nothing into the window, so scrolling up never
+ * brought them back. Here the whole block is position: sticky, so the same
+ * transform really slides it in and out of the window.
+ *
+ * Hidden: the block is moved up by (tabs row height + breadcrumb height), so the
+ * tab line lands exactly at the top of the window, and the panel (the last
+ * rows of the block) is clipped away. The block keeps its place in the page flow,
+ * so the text never jumps.
+ * Needs the CSS variable --nb-tabs-h (set by NoteContainer) = height of the note tabs row.
+ */
+export function NoteTopStack({ children, className }) {
+  const { visible, prefersReducedMotion } = useScrollVisibility();
+  const ref = useRef(null);
+  const [sizes, setSizes] = useState({ crumb: 0, panel: 0 });
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const measure = () => {
+      // "crumb" = distance from the top of the block to the tab line (breadcrumb row + its gap).
+      const tabLine = el.querySelector("[data-ribbon-tab-line]");
+      const panel = el.querySelector("[data-ribbon-panel]");
+      const lead = tabLine ? Math.round(tabLine.getBoundingClientRect().top - el.getBoundingClientRect().top) : 0;
+      const next = { crumb: lead, panel: panel ? panel.offsetHeight : 0 };
+      setSizes((prev) => (prev.crumb === next.crumb && prev.panel === next.panel ? prev : next));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const hiddenShift = `calc(-1 * (var(--nb-tabs-h, 33px) + ${sizes.crumb}px))`;
+  const style = {
+    top: "var(--nb-tabs-h, 33px)",
+    transform: visible ? "translateY(0)" : `translateY(${hiddenShift})`,
+    clipPath: visible ? "none" : `inset(0 0 ${sizes.panel}px 0)`,
+    transition: prefersReducedMotion ? "none" : "transform 180ms ease-out",
+  };
+
+  return (
+    <div ref={ref} className={`sticky z-30 bg-background ${className || ""}`} style={style} data-top-stack data-top-area>
+      {children}
     </div>
   );
 }

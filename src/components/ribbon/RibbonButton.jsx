@@ -122,7 +122,8 @@ const RibbonButton = forwardRef(function RibbonButton(
         aria-pressed={active || undefined}
         aria-disabled={disabled || undefined}
         className={cn(
-          "flex h-[26px] shrink-0 items-center justify-center rounded-md border border-transparent px-2 transition relative",
+          "flex h-[26px] shrink-0 items-center justify-center rounded-md border border-transparent px-1 transition relative",
+          showLabel && "px-2",
           active
             ? "border-primary/40 bg-primary/15 text-primary"
             : "text-muted-foreground hover:bg-accent hover:text-foreground",

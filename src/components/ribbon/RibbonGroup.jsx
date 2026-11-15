@@ -9,8 +9,8 @@ const gridStyle = {
   gridAutoFlow: "column",
   gridTemplateRows: "repeat(2, 26px)",
   gridAutoColumns: "max-content",
-  gap: "2px",
   alignItems: "center",
+  gap: "2px",
 };
 
 const labelClass =
@@ -38,17 +38,42 @@ export default function RibbonGroup({ label, icon, priority = 50, className, chi
   const popoverRef = useRef(null);
 
   // Convert children to array to count and manipulate
-  const childrenArray = Array.isArray(children) ? children : [children].filter(Boolean);
+  const childrenArray = (Array.isArray(children) ? children : [children]).flat().filter(Boolean);
 
-  // Determine if we need the "more" button (more prop provided AND more than 5 children)
-  // We reserve the 6th slot for the "..." button when more is provided
-  const showMore = more && childrenArray.length >= 5;
+  // A group has 6 slots (3 columns x 2 rows). A control that spans both rows (a select,
+  // a stepper) uses 2 slots. When everything fits (the "..." button needs 1 slot), show it all.
+  // Otherwise show the first 5 slots, and put everything else, plus the `more` content,
+  // into the "..." popover. Nothing is ever dropped.
+  const slotsOf = (child) => (child?.props?.style?.gridRow === "span 2" ? 2 : 1);
+  const totalSlots = childrenArray.reduce((sum, child) => sum + slotsOf(child), 0);
+  const needsPopover = Boolean(more) || totalSlots > 6;
+  const fitsWithButton = totalSlots + (needsPopover ? 1 : 0) <= 6;
 
-  // Visible children: first 5 if showMore, otherwise all
-  const visibleChildren = showMore ? childrenArray.slice(0, 5) : childrenArray;
+  let visibleChildren = childrenArray;
+  let overflowChildren = [];
+  if (needsPopover && !fitsWithButton) {
+    let used = 0;
+    visibleChildren = [];
+    childrenArray.forEach((child, index) => {
+      const slots = slotsOf(child);
+      if (overflowChildren.length === 0 && used + slots <= 5) {
+        visibleChildren.push(child);
+        used += slots;
+      } else {
+        overflowChildren.push(child);
+      }
+    });
+  }
+  const showMore = needsPopover;
+  const popoverContent = (
+    <>
+      {overflowChildren}
+      {more}
+    </>
+  );
 
   return (
-    <div className={cn("flex shrink-0 flex-col px-2 pb-1 pt-1.5", className)} style={{ minWidth: "max-content" }}>
+    <div className={cn("flex shrink-0 flex-col px-1.5 pb-1 pt-1", className)} style={{ minWidth: "max-content" }}>
       <div style={gridStyle} role="group" aria-label={label}>
         {visibleChildren}
         {showMore && (
@@ -60,21 +85,23 @@ export default function RibbonGroup({ label, icon, priority = 50, className, chi
                 onMouseDown={(event) => event.preventDefault()}
                 title={t("ribbon.more")}
                 aria-label={t("ribbon.more")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-card/60 transition hover:bg-accent hover:text-foreground"
+                style={{ gridRow: 2 }}
+                className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border border-transparent bg-card/60 transition hover:bg-accent hover:text-foreground"
               >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </PopoverTrigger>
             <PopoverContent
               align="start"
+              className="w-auto max-w-[240px] p-1"
               onOpenAutoFocus={(event) => event.preventDefault()}
               onCloseAutoFocus={(event) => event.preventDefault()}
             >
-              <div className="flex flex-col gap-1.5 p-0.5">
-                <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+              <div className="flex flex-col gap-1 p-0.5">
+                <div className="px-1 pt-0.5 font-mono text-[9px] tracking-normal text-muted-foreground/70">
                   {label}
                 </div>
-                {more}
+                <div className="flex flex-wrap items-center gap-1">{popoverContent}</div>
               </div>
             </PopoverContent>
           </Popover>

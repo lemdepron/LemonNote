@@ -233,7 +233,6 @@ export function RibbonTabLine({ tabs, tab, onTab, leading, trailing, afterTabs, 
       aria-label={t("ribbon.tabsAria")}
       className={cn(
         "scrollbar-none flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border",
-        "sticky top-0 z-30",
         className
       )}
       data-ribbon-tab-line
@@ -261,9 +260,9 @@ export function RibbonTabLine({ tabs, tab, onTab, leading, trailing, afterTabs, 
 }
 
 /**
- * The panel (auto-hide): the 72px row of groups.
+ * The panel (auto-hide): the 80px row of groups.
  * Hides on scroll down, shows on scroll up.
- * Wrapper always maintains 72px height to prevent content jump.
+ * Wrapper always maintains 80px height to prevent content jump.
  * Now uses ScrollContext for synchronized visibility with NoteTabs and Breadcrumb.
  */
 export function RibbonPanel({ children, trailing, className, isFirstTabActive }) {
@@ -284,21 +283,16 @@ export function RibbonPanel({ children, trailing, className, isFirstTabActive })
   // Provide wrapped register/unregister to children via context
   const popoverContextValue = { openCount: 0, register: wrappedRegister, unregister: wrappedUnregister };
 
-  const panelStyle = {
-    transform: visible ? "translateY(0)" : "translateY(-100%)",
-    opacity: visible ? 1 : 0,
-    transition: prefersReducedMotion
-      ? "none"
-      : "transform 180ms ease-out, opacity 120ms ease-out",
-  };
+  // The slide in/out is done by NoteTopStack (one sticky block), not here.
+  const panelStyle = {};
 
   return (
     <RibbonPanelPopoverContext.Provider value={popoverContextValue}>
-      {/* Wrapper that ALWAYS maintains 72px height in layout flow */}
+      {/* Wrapper that ALWAYS maintains 80px height in layout flow */}
       <div
         ref={panelRef}
         className={cn(
-          "flex h-[72px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
+          "flex h-[80px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
           "rounded-xl",
           isFirstTabActive ? "rounded-ss-none" : "",
           className

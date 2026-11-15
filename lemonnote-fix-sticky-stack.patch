@@ -1,0 +1,229 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 521e923..9b8ca6e 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -39,7 +39,7 @@ All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do
+ 15. **Layout is direction-safe.** Use logical CSS (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`) instead of `left`/`right`/`ml-`/`mr-` in anything you touch. Arabic, Persian and Urdu are right-to-left.
+ 16. **Colours come from theme tokens** (`bg-background`, `text-foreground`, `bg-primary`, ...). No hard-coded colours in components except inside theme data. Any new or changed theme must pass the contrast check: text on page and on card at least 4.5:1, button text on button at least 4.5:1, link on page at least 4.5:1.
+ 17. **Overlays.** Panels that open over the page (Find Tags, Backup, import options, anything similar) use `src/components/ui/dialog.jsx` (modal) or a Popover with a fixed max width and max height, a scrolling body and a solid background. Content must never overflow its box. Check at a narrow window width and in right-to-left.
+-18. **Tab line sticky, panel hides on scroll.** Only the ribbon tab line (undo/redo/star, file, tabs, goal, macros) is sticky at the top of the window, below the app header. The note tabs row and breadcrumb row scroll away normally. The panel (96 px row of groups) hides on scroll down, shows on scroll up, always shown at page top. Dead zone ~8 px, re-show threshold ~80 px. Clicking a tab or focusing the ribbon shows the panel. No content jump: wrapper keeps full height, panel slides over text. Animates with short transition; prefers-reduced-motion disables animation. Panel must not hide while a popover from it is open.
++18. **Top stack: sticky tab line, everything else slides.** Scrolling DOWN leaves ONLY the ribbon tab line (undo/redo/star, file, tabs, goal, macros) at the top of the window; the note tabs row, the breadcrumb row and the panel slide away. Scrolling UP (even ~8 px, anywhere in the page) brings ALL of it back: note tabs row, breadcrumb row, tab line, panel. At the top of the page everything is shown. Implementation: the note tabs row is `sticky top-0` (NoteContainer) and the breadcrumb + tab line + panel are ONE `position: sticky` block (`NoteTopStack` in src/lib/ScrollContext.jsx) moved with a transform; the block keeps its place in the page flow, so there is no content jump. Never move these rows with a transform inside the normal flow without a sticky parent: that cannot bring them back after the page has scrolled. Reduced motion disables the animation; an open popover or focus inside the ribbon keeps it visible.
+ 19. **Do not create planning, summary or throwaway files** in the repo (no `*_SUMMARY.md`, `*_PLAN.md`, `changes.txt`, `HAND-TEST.md`, no `fix-*.cjs`, `debug-*.mjs`, `check-*.cjs`, no backup copies like `original_*.jsx`). Run one-off helper scripts from a temporary folder outside the repo, or delete them when done. Reusable checks go in `scripts/` with a one-line comment at the top and an entry in package.json. Put the report in your reply. A design document goes in `docs/` only if the task asks for it.
+ 
+ ## Translation workflow
+@@ -107,7 +107,7 @@ npm ci --dry-run
+ 
+ ## UI design decisions (decided by the owner)
+ 
+-- The note ribbon tab line is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover and on keyboard focus, and it stays sticky at the top of the window below the app header. The panel (groups row) hides on scroll down, shows on scroll up, always shown at page top. Each group shows up to six buttons in two rows with the group name below; overflow goes into a "..." popover per group. No group collapses to a dropdown. In narrow windows the panel scrolls sideways.
++- The note ribbon tab line is compact: icon-only buttons, two icon rows high, the name appears as a tooltip on hover and on keyboard focus. See rule 18 for the sticky and hide/show behaviour (only the tab line stays; scroll up brings the whole top stack back). Each group shows up to six buttons in two rows with the group name below; overflow goes into a "..." popover per group. No group collapses to a dropdown. In narrow windows the panel scrolls sideways.
+ - The ink layer lives inside the note (no separate Ink page).
+ - The logo is the lemon notebook icon (`src-tauri/icons/icon.png`), not an emoji.
+ - The default theme is **lemon**: lemon-yellow buttons with dark text on a warm cream page. Themes must look clearly different from each other (different colour family and character), not the same layout recoloured.
+diff --git a/note-interface-spec.md b/docs/note-interface-spec.md
+similarity index 100%
+rename from note-interface-spec.md
+rename to docs/note-interface-spec.md
+diff --git a/src/components/notes/NoteContainer.jsx b/src/components/notes/NoteContainer.jsx
+index 466d496..9255a49 100644
+--- a/src/components/notes/NoteContainer.jsx
++++ b/src/components/notes/NoteContainer.jsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useCallback, useState } from "react";
++import { useEffect, useCallback, useRef, useState } from "react";
+ import { useNavigate, useLocation } from "react-router-dom";
+ import { PaneFocusProvider, usePaneFocus } from "@/context/PaneFocusContext";
+ import useNoteTabs from "@/hooks/useNoteTabs";
+@@ -161,11 +161,26 @@ function NoteContainerInner() {
+     );
+   };
+ 
++  const rootRef = useRef(null);
++  useEffect(() => {
++    // Publish the height of the tabs row as --nb-tabs-h (used by NoteTopStack).
++    const root = rootRef.current;
++    if (!root) return undefined;
++    const tabsArea = root.querySelector('[data-testid="note-tabs-area"]');
++    if (!tabsArea) return undefined;
++    const apply = () => root.style.setProperty("--nb-tabs-h", `${tabsArea.offsetHeight}px`);
++    apply();
++    if (typeof ResizeObserver === "undefined") return undefined;
++    const ro = new ResizeObserver(apply);
++    ro.observe(tabsArea);
++    return () => ro.disconnect();
++  }, []);
++
+   return (
+     <ScrollProvider>
+-      <div className="flex flex-col h-full min-h-0">
+-        {/* Tab strip - scroll aware */}
+-        <ScrollAwareTopArea className="flex-shrink-0" data-testid="note-tabs-area">
++      <div ref={rootRef} className="flex flex-col h-full min-h-0">
++        {/* Tab strip - sticky; slides away on scroll down, back on scroll up */}
++        <ScrollAwareTopArea className="flex-shrink-0 sticky top-0 z-40 bg-background" data-testid="note-tabs-area">
+           <NoteTabs
+             tabs={tabs}
+             activeTabIndex={activeTabIndex}
+diff --git a/src/components/notes/NotePane.jsx b/src/components/notes/NotePane.jsx
+index 9ed990d..c4b6379 100644
+--- a/src/components/notes/NotePane.jsx
++++ b/src/components/notes/NotePane.jsx
+@@ -36,7 +36,7 @@ import { usePaneFocus } from "@/context/PaneFocusContext";
+ import SplitDivider from "@/components/notes/SplitDivider";
+ import SpaceRail from "@/components/shell/SpaceRail";
+ import CommandPalette from "@/components/shell/CommandPalette";
+-import { ScrollAwareTopArea } from "@/lib/ScrollContext";
++import { NoteTopStack } from "@/lib/ScrollContext";
+ 
+ const MODES = [
+   { id: "write", label: "Write", icon: PenLine },
+@@ -1215,7 +1215,8 @@ export default function NotePane({
+         )}
+       >
+         {/* Slim top row (breadcrumb) - FIRST - scroll aware */}
+-        <ScrollAwareTopArea className="flex-shrink-0" data-testid="breadcrumb-area">
++        <NoteTopStack>
++          <div data-crumb data-testid="breadcrumb-area">
+           <div className="flex flex-wrap items-center gap-2 mb-1">
+           <Link
+             to="/"
+@@ -1333,9 +1334,9 @@ export default function NotePane({
+             <FocusToggle />
+           </div>
+         </div>
+-        </ScrollAwareTopArea>
++          </div>
+ 
+-        {/* Ribbon tab line + panel - AFTER breadcrumb */}
++        {/* Ribbon tab line + panel - AFTER breadcrumb (same sticky block) */}
+         {!loadingNote && !isLocked && (
+           <NoteRibbon
+             body={body}
+@@ -1382,6 +1383,7 @@ export default function NotePane({
+             clearWordGoal={clearWordGoal}
+           />
+         )}
++        </NoteTopStack>
+ 
+         {/* Main content area - centered with reading width, side panel only when open */}
+         <div className={cn(
+diff --git a/src/components/ribbon/RibbonKit.jsx b/src/components/ribbon/RibbonKit.jsx
+index 24a1bb3..4859902 100644
+--- a/src/components/ribbon/RibbonKit.jsx
++++ b/src/components/ribbon/RibbonKit.jsx
+@@ -233,7 +233,6 @@ export function RibbonTabLine({ tabs, tab, onTab, leading, trailing, afterTabs,
+       aria-label={t("ribbon.tabsAria")}
+       className={cn(
+         "scrollbar-none flex gap-0.5 overflow-x-auto px-1 bg-background border-b border-border",
+-        "sticky top-0 z-30",
+         className
+       )}
+       data-ribbon-tab-line
+@@ -261,9 +260,9 @@ export function RibbonTabLine({ tabs, tab, onTab, leading, trailing, afterTabs,
+ }
+ 
+ /**
+- * The panel (auto-hide): the 72px row of groups.
++ * The panel (auto-hide): the 80px row of groups.
+  * Hides on scroll down, shows on scroll up.
+- * Wrapper always maintains 72px height to prevent content jump.
++ * Wrapper always maintains 80px height to prevent content jump.
+  * Now uses ScrollContext for synchronized visibility with NoteTabs and Breadcrumb.
+  */
+ export function RibbonPanel({ children, trailing, className, isFirstTabActive }) {
+@@ -284,21 +283,16 @@ export function RibbonPanel({ children, trailing, className, isFirstTabActive })
+   // Provide wrapped register/unregister to children via context
+   const popoverContextValue = { openCount: 0, register: wrappedRegister, unregister: wrappedUnregister };
+ 
+-  const panelStyle = {
+-    transform: visible ? "translateY(0)" : "translateY(-100%)",
+-    opacity: visible ? 1 : 0,
+-    transition: prefersReducedMotion
+-      ? "none"
+-      : "transform 180ms ease-out, opacity 120ms ease-out",
+-  };
++  // The slide in/out is done by NoteTopStack (one sticky block), not here.
++  const panelStyle = {};
+ 
+   return (
+     <RibbonPanelPopoverContext.Provider value={popoverContextValue}>
+-      {/* Wrapper that ALWAYS maintains 72px height in layout flow */}
++      {/* Wrapper that ALWAYS maintains 80px height in layout flow */}
+       <div
+         ref={panelRef}
+         className={cn(
+-          "flex h-[72px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
++          "flex h-[80px] w-full min-w-0 items-stretch divide-x divide-border overflow-hidden border border-border bg-card",
+           "rounded-xl",
+           isFirstTabActive ? "rounded-ss-none" : "",
+           className
+diff --git a/src/lib/ScrollContext.jsx b/src/lib/ScrollContext.jsx
+index 5f1f215..65bb97d 100644
+--- a/src/lib/ScrollContext.jsx
++++ b/src/lib/ScrollContext.jsx
+@@ -1,4 +1,4 @@
+-import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
++import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+ import { calculateScrollState, initialScrollState, enterGraceMode } from "./scroll-direction";
+ 
+ /**
+@@ -152,4 +152,57 @@ export function ScrollAwareTopArea({ children, className, style, "data-testid":
+       </div>
+     </div>
+   );
+-}
+\ No newline at end of file
++}
++
++/**
++ * One sticky block for breadcrumb row + ribbon tab line + ribbon panel.
++ *
++ * Why one block: the note tabs row, the breadcrumb and the panel used to move
++ * themselves with transform inside the normal page flow. After the page had
++ * scrolled, "visible" moved nothing into the window, so scrolling up never
++ * brought them back. Here the whole block is position: sticky, so the same
++ * transform really slides it in and out of the window.
++ *
++ * Hidden: the block is moved up by (tabs row height + breadcrumb height), so the
++ * tab line lands exactly at the top of the window, and the panel (the last
++ * rows of the block) is clipped away. The block keeps its place in the page flow,
++ * so the text never jumps.
++ * Needs the CSS variable --nb-tabs-h (set by NoteContainer) = height of the note tabs row.
++ */
++export function NoteTopStack({ children, className }) {
++  const { visible, prefersReducedMotion } = useScrollVisibility();
++  const ref = useRef(null);
++  const [sizes, setSizes] = useState({ crumb: 0, panel: 0 });
++
++  useLayoutEffect(() => {
++    const el = ref.current;
++    if (!el) return undefined;
++    const measure = () => {
++      // "crumb" = distance from the top of the block to the tab line (breadcrumb row + its gap).
++      const tabLine = el.querySelector("[data-ribbon-tab-line]");
++      const panel = el.querySelector("[data-ribbon-panel]");
++      const lead = tabLine ? Math.round(tabLine.getBoundingClientRect().top - el.getBoundingClientRect().top) : 0;
++      const next = { crumb: lead, panel: panel ? panel.offsetHeight : 0 };
++      setSizes((prev) => (prev.crumb === next.crumb && prev.panel === next.panel ? prev : next));
++    };
++    measure();
++    if (typeof ResizeObserver === "undefined") return undefined;
++    const ro = new ResizeObserver(measure);
++    ro.observe(el);
++    return () => ro.disconnect();
++  }, []);
++
++  const hiddenShift = `calc(-1 * (var(--nb-tabs-h, 33px) + ${sizes.crumb}px))`;
++  const style = {
++    top: "var(--nb-tabs-h, 33px)",
++    transform: visible ? "translateY(0)" : `translateY(${hiddenShift})`,
++    clipPath: visible ? "none" : `inset(0 0 ${sizes.panel}px 0)`,
++    transition: prefersReducedMotion ? "none" : "transform 180ms ease-out",
++  };
++
++  return (
++    <div ref={ref} className={`sticky z-30 bg-background ${className || ""}`} style={style} data-top-stack data-top-area>
++      {children}
++    </div>
++  );
++}

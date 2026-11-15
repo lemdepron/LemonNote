@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PaneFocusProvider, usePaneFocus } from "@/context/PaneFocusContext";
 import useNoteTabs from "@/hooks/useNoteTabs";
@@ -161,11 +161,26 @@ function NoteContainerInner() {
     );
   };
 
+  const rootRef = useRef(null);
+  useEffect(() => {
+    // Publish the height of the tabs row as --nb-tabs-h (used by NoteTopStack).
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const tabsArea = root.querySelector('[data-testid="note-tabs-area"]');
+    if (!tabsArea) return undefined;
+    const apply = () => root.style.setProperty("--nb-tabs-h", `${tabsArea.offsetHeight}px`);
+    apply();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(apply);
+    ro.observe(tabsArea);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <ScrollProvider>
-      <div className="flex flex-col h-full min-h-0">
-        {/* Tab strip - scroll aware */}
-        <ScrollAwareTopArea className="flex-shrink-0" data-testid="note-tabs-area">
+      <div ref={rootRef} className="flex flex-col h-full min-h-0">
+        {/* Tab strip - sticky; slides away on scroll down, back on scroll up */}
+        <ScrollAwareTopArea className="flex-shrink-0 sticky top-0 z-40 bg-background" data-testid="note-tabs-area">
           <NoteTabs
             tabs={tabs}
             activeTabIndex={activeTabIndex}

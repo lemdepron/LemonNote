@@ -36,7 +36,7 @@ import { usePaneFocus } from "@/context/PaneFocusContext";
 import SplitDivider from "@/components/notes/SplitDivider";
 import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
-import { ScrollAwareTopArea } from "@/lib/ScrollContext";
+import { NoteTopStack } from "@/lib/ScrollContext";
 
 const MODES = [
   { id: "write", label: "Write", icon: PenLine },
@@ -1215,7 +1215,8 @@ export default function NotePane({
         )}
       >
         {/* Slim top row (breadcrumb) - FIRST - scroll aware */}
-        <ScrollAwareTopArea className="flex-shrink-0" data-testid="breadcrumb-area">
+        <NoteTopStack>
+          <div data-crumb data-testid="breadcrumb-area">
           <div className="flex flex-wrap items-center gap-2 mb-1">
           <Link
             to="/"
@@ -1333,9 +1334,9 @@ export default function NotePane({
             <FocusToggle />
           </div>
         </div>
-        </ScrollAwareTopArea>
+          </div>
 
-        {/* Ribbon tab line + panel - AFTER breadcrumb */}
+        {/* Ribbon tab line + panel - AFTER breadcrumb (same sticky block) */}
         {!loadingNote && !isLocked && (
           <NoteRibbon
             body={body}
@@ -1382,6 +1383,7 @@ export default function NotePane({
             clearWordGoal={clearWordGoal}
           />
         )}
+        </NoteTopStack>
 
         {/* Main content area - centered with reading width, side panel only when open */}
         <div className={cn(
