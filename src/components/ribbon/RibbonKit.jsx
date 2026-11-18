@@ -90,19 +90,24 @@ export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabled
   const ctx = useRibbon();
   const { register, unregister } = useRibbonPanelPopover();
 
+  // Handle missing RibbonContext (e.g., when used outside note ribbon like in CanvasPage)
+  const format = ctx?.format;
+  const markdown = ctx?.markdown ?? true;
+  const offReason = ctx?.offReason;
+
   let capabilityDisabled = false;
   let capabilityReason = null;
 
   if (id) {
     const action = getRibbonAction(id);
-    if (action?.capability && ctx.format && !can(ctx.format, action.capability)) {
+    if (action?.capability && format && !can(format, action.capability)) {
       capabilityDisabled = true;
-      capabilityReason = t(reasonKey(ctx.format, action.capability));
+      capabilityReason = t(reasonKey(format, action.capability));
     }
   }
 
-  const off = !ctx.markdown || Boolean(disabled) || capabilityDisabled;
-  const finalDisabledReason = capabilityReason || (!ctx.markdown ? ctx.offReason : disabledReason);
+  const off = !markdown || Boolean(disabled) || capabilityDisabled;
+  const finalDisabledReason = capabilityReason || (!markdown ? offReason : disabledReason);
 
   if (off) return <RibbonButton id={id} icon={icon} label={label} hint={hint} disabled disabledReason={finalDisabledReason} />;
   return (

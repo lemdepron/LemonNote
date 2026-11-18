@@ -229,7 +229,7 @@ export default function CanvasBoard({
     const engine = engineRef.current;
     if (!engine) return;
 
-    const mode = engine.tool.mode;
+    const mode = live.current.tool?.mode;
     const currentKind = live.current.kind;
 
     // Handle insertSpace mode (shared)
@@ -336,7 +336,7 @@ export default function CanvasBoard({
     const engine = engineRef.current;
     if (!engine) return;
     
-    const mode = engine.tool.mode;
+    const mode = live.current.tool?.mode;
     const currentKind = live.current.kind;
 
     // Handle insertSpace drag
@@ -382,7 +382,7 @@ export default function CanvasBoard({
   const endStroke = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    if (engine.tool.mode === "insertSpace") {
+    if (live.current.tool?.mode === "insertSpace") {
       endInsertSpace();
       return;
     }

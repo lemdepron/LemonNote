@@ -2,18 +2,20 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Box, Download, Upload, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react";
 import { db } from "@/api/localDb";
-import VaultHeader from "@/components/vault/VaultHeader";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
 import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { useI18n } from "@/lib/i18n";
 import { OBJECT_TYPES, FRAME_TYPES, createObject, getDefaultSize } from "@/lib/canvas/objects";
 import { exportCanvasDoc, triggerImport, exportCanvasToPdf, exportCanvasToPng } from "@/lib/canvas/export";
 import { toast } from "@/lib/toast";
+import RibbonGroup from "@/components/ribbon/RibbonGroup";
+import RibbonButton from "@/components/ribbon/RibbonButton";
+import { RibbonSelect, RibbonMenu, MenuItem, MenuLabel } from "@/components/ribbon/RibbonKit";
+import SpaceRail from "@/components/shell/SpaceRail";
+import CommandPalette from "@/components/shell/CommandPalette";
 
 const TOOL_GROUPS_INK = [
   {
@@ -67,17 +69,6 @@ const TOOL_GROUPS_CANVAS = [
     tools: [
       { id: "pan", label: "Pan", icon: Maximize2, hint: "Pan the canvas" },
       { id: "insertSpace", label: "Insert Space", icon: RotateCcw, hint: "Insert vertical space" },
-    ],
-  },
-  {
-    name: "ink",
-    label: "Ink",
-    icon: PenLine,
-    tools: [
-      { id: "draw", label: "Draw", icon: PenLine, hint: "Freehand drawing" },
-      { id: "erase", label: "Erase", icon: Minus, hint: "Erase strokes" },
-      { id: "lasso", label: "Lasso", icon: Square, hint: "Select strokes" },
-      { id: "shape", label: "Shapes", icon: Type, hint: "Draw shapes" },
     ],
   },
 ];
@@ -147,6 +138,7 @@ export default function CanvasPage() {
   const [tool, setTool] = useState({ mode: "select" });
   const [paper, setPaper] = useState({ template: "grid", size: "infinite", tone: "dark" });
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const dirty = useRef(false);
   const { focus } = useFocusMode();
   const engineRef = useRef(null);
@@ -194,6 +186,18 @@ export default function CanvasPage() {
       fittedRef.current = true;
     }
   }, [canvasDoc]);
+
+  // Ctrl+K palette
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Save canvas doc
   const saveCanvasDoc = useCallback(async (updates) => {
@@ -351,10 +355,15 @@ export default function CanvasPage() {
   // Current mode display
   const currentMode = currentKind;
 
+  // Reset tool to default when kind changes
+  useEffect(() => {
+    const defaultTool = currentKind === "ink" ? "draw" : "select";
+    setTool((prev) => ({ ...prev, mode: defaultTool }));
+  }, [currentKind]);
+
   if (loading) {
     return (
       <div className="nb-shell min-h-screen">
-        <VaultHeader />
         <div className="mx-auto max-w-[1400px] px-5 py-8">
           <div className="h-[60vh] animate-pulse rounded-xl border border-border/60 bg-card/30" />
         </div>
@@ -365,7 +374,6 @@ export default function CanvasPage() {
   if (!canvasDoc) {
     return (
       <div className="nb-shell min-h-screen">
-        <VaultHeader />
         <div className="mx-auto max-w-xl px-5 py-24 text-center">
           <p className="font-display text-[26px]">{t("vault.canvas.emptyState")}</p>
           <Link to="/canvas" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
@@ -394,7 +402,8 @@ export default function CanvasPage() {
 
   return (
     <div className="nb-shell min-h-screen">
-      <VaultHeader />
+      <SpaceRail />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
         {/* Top bar */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -458,253 +467,442 @@ export default function CanvasPage() {
           <FocusToggle />
         </div>
 
-        {/* Toolbar */}
-        <div className="mb-4 flex flex-wrap gap-1.5 p-2 rounded-lg border border-border/60 bg-card/50">
-          {toolbarItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={item.onClick}
-              disabled={item.id === "addConnector" && !pendingConnectorFrom && selectedIds.length === 0}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition",
-                item.active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              title={item.hint}
-              aria-pressed={item.active}
-            >
-              <item.icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{item.label}</span>
-            </button>
-          ))}
-          <Separator className="h-6 mx-1" />
-          {/* Paper controls */}
-          <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                  <Square className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{paper.template}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuLabel>{t("ink.paper.template") || "Template"}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {["blank", "ruled", "grid", "dots", "stave", "iso"].map((tmpl) => (
-                  <DropdownMenuItem
-                    key={tmpl}
-                    onSelect={() => handlePaperChange({ template: tmpl })}
-                    className={paper.template === tmpl ? "bg-accent" : ""}
-                  >
-                    {tmpl}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                  <Layers className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{paper.size}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuLabel>{t("ink.paper.size") || "Page Size"}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {["infinite", "a4", "letter", "3:4", "16:9", "free"].map((sz) => (
-                  <DropdownMenuItem
-                    key={sz}
-                    onSelect={() => handlePaperChange({ size: sz })}
-                    className={paper.size === sz ? "bg-accent" : ""}
-                  >
-                    {sz}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition">
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{paper.tone}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuLabel>{t("ink.paper.tone") || "Tone"}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {["dark", "light"].map((tone) => (
-                  <DropdownMenuItem
-                    key={tone}
-                    onSelect={() => handlePaperChange({ tone })}
-                    className={paper.tone === tone ? "bg-accent" : ""}
-                  >
-                    {tone}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          
-          {/* Add Frame dropdown (design mode) */}
-          {currentKind === "design" && (
-            <div className="flex items-center gap-1 ml-2 border-l border-border/60 pl-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button type="button" className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition" title={t("vault.canvas.addFrame") || "Add Frame"}>
-                    <Layout className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{t("vault.canvas.addFrame") || "Add Frame"}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>{t("vault.canvas.addFrame") || "Add Frame"}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {FRAME_TYPES.map((ft) => (
-                    <DropdownMenuItem
-                      key={ft.id}
-                      onSelect={() => {
-                        // Use the engine to add a frame at the center of the viewport
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
-                        }
-                      }}
-                    >
-                      {ft.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+        {/* Toolbar - redesigned with RibbonKit components */}
+        <div className="mb-4 flex flex-wrap items-stretch gap-1 p-1.5 rounded-lg border border-border/60 bg-card/50">
+          {/* Cards group */}
+          <RibbonGroup label="Cards" icon={Square} priority={70}>
+            <RibbonButton
+              id="select"
+              icon={MousePointer}
+              label="Select"
+              hint="Select and move cards"
+              active={tool.mode === "select"}
+              onClick={() => selectTool("select")}
+              keepFocus={false}
+            />
+            <RibbonButton
+              id="addCard"
+              icon={Plus}
+              label="Add Card"
+              hint="Add a new card"
+              onClick={() => {
+                if (engineRef.current) {
+                  const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                  const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                  const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                  const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                  handleAddCard(centerX, centerY);
+                }
+              }}
+              keepFocus={false}
+            />
+            <RibbonButton
+              id="addConnector"
+              icon={LinkIcon}
+              label="Connect"
+              hint="Connect two cards"
+              active={tool.mode === "addConnector"}
+              disabled={!pendingConnectorFrom && selectedIds.length === 0}
+              onClick={() => selectTool("addConnector")}
+              keepFocus={false}
+            />
+          </RibbonGroup>
+
+          {/* Navigate group */}
+          <RibbonGroup label="Navigate" icon={MousePointer} priority={65}>
+            <RibbonButton
+              id="pan"
+              icon={Maximize2}
+              label="Pan"
+              hint="Pan the canvas"
+              active={tool.mode === "pan"}
+              onClick={() => selectTool("pan")}
+              keepFocus={false}
+            />
+            <RibbonButton
+              id="insertSpace"
+              icon={RotateCcw}
+              label="Insert Space"
+              hint="Insert vertical space"
+              active={tool.mode === "insertSpace"}
+              onClick={() => selectTool("insertSpace")}
+              keepFocus={false}
+            />
+          </RibbonGroup>
+
+          {/* Draw group (ink mode only) */}
+          {currentKind === "ink" && (
+            <RibbonGroup label="Draw" icon={PenLine} priority={60}>
+              <RibbonButton
+                id="draw"
+                icon={PenLine}
+                label="Pen"
+                hint="Freehand drawing"
+                active={tool.mode === "draw"}
+                onClick={() => selectTool("draw")}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="erase"
+                icon={Minus}
+                label="Erase"
+                hint="Erase strokes"
+                active={tool.mode === "erase"}
+                onClick={() => selectTool("erase")}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="lasso"
+                icon={Square}
+                label="Lasso"
+                hint="Select strokes"
+                active={tool.mode === "lasso"}
+                onClick={() => selectTool("lasso")}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="shape"
+                icon={Type}
+                label="Shapes"
+                hint="Draw shapes"
+                active={tool.mode === "shape"}
+                onClick={() => selectTool("shape")}
+                keepFocus={false}
+              />
+            </RibbonGroup>
           )}
 
-          {/* View actions: Fit to page, Fit to width, Zoom controls */}
-          <div className="flex items-center gap-1 ml-2 border-l border-border/60 pl-2">
-            <button
-              type="button"
+          {/* Paper group (ink/design modes) */}
+          {(currentKind === "ink" || currentKind === "design") && (
+            <RibbonGroup label="Paper" icon={Layers} priority={55}>
+              <RibbonSelect
+                title={t("ink.paper.template") || "Template"}
+                value={paper.template || "grid"}
+                onChange={(template) => handlePaperChange({ template })}
+                options={[
+                  { value: "blank", label: "Blank" },
+                  { value: "ruled", label: "Ruled" },
+                  { value: "grid", label: "Grid" },
+                  { value: "dots", label: "Dots" },
+                  { value: "stave", label: "Stave" },
+                  { value: "iso", label: "Isometric" },
+                ]}
+              />
+              <RibbonSelect
+                title={t("ink.paper.size") || "Page Size"}
+                value={paper.size || "infinite"}
+                onChange={(size) => handlePaperChange({ size })}
+                options={[
+                  { value: "infinite", label: "Infinite" },
+                  { value: "a4", label: "A4" },
+                  { value: "letter", label: "Letter" },
+                  { value: "3:4", label: "3:4" },
+                  { value: "16:9", label: "16:9" },
+                  { value: "free", label: "Free" },
+                ]}
+              />
+              <RibbonSelect
+                title={t("ink.paper.tone") || "Tone"}
+                value={paper.tone || "dark"}
+                onChange={(tone) => handlePaperChange({ tone })}
+                options={[
+                  { value: "dark", label: "Dark" },
+                  { value: "light", label: "Light" },
+                ]}
+              />
+            </RibbonGroup>
+          )}
+
+          {/* Frames group (design mode only) */}
+          {currentKind === "design" && (
+            <RibbonGroup label="Frames" icon={Layout} priority={50}>
+              <RibbonMenu
+                icon={Layout}
+                label="Add Frame"
+                hint="Add a paper frame (A4, Letter, etc.)"
+                width={200}
+              >
+                {(close) => (
+                  <>
+                    <MenuLabel>{t("vault.canvas.addFrame") || "Add Frame"}</MenuLabel>
+                    {FRAME_TYPES.map((ft) => (
+                      <MenuItem
+                        key={ft.id}
+                        onClick={() => {
+                          if (engineRef.current) {
+                            const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                            const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                            const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                            const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                            handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
+                          }
+                          close();
+                        }}
+                      >
+                        {ft.label}
+                      </MenuItem>
+                    ))}
+                  </>
+                )}
+              </RibbonMenu>
+            </RibbonGroup>
+          )}
+
+          {/* Media group (design mode only) */}
+          {currentKind === "design" && (
+            <RibbonGroup label="Media" icon={Image} priority={45}>
+              <RibbonButton
+                id="addImage"
+                icon={Image}
+                label="Image"
+                hint="Add an image"
+                onClick={() => {
+                  if (engineRef.current) {
+                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                    handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
+                  }
+                }}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="addPdfPage"
+                icon={FileText}
+                label="PDF Page"
+                hint="Add a PDF page"
+                onClick={() => {
+                  if (engineRef.current) {
+                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                    handleAddDesignObject(OBJECT_TYPES.PDF_PAGE, centerX, centerY);
+                  }
+                }}
+                keepFocus={false}
+              />
+            </RibbonGroup>
+          )}
+
+          {/* Objects group (design mode only) */}
+          {currentKind === "design" && (
+            <RibbonGroup label="Objects" icon={Box} priority={40}>
+              <RibbonMenu
+                icon={Square}
+                label="Shapes"
+                hint="Add a shape"
+                width={200}
+              >
+                {(close) => (
+                  <>
+                    <MenuLabel>{t("ink.objects.shapes") || "Shapes"}</MenuLabel>
+                    {[
+                      { id: "rect", icon: Square, label: "Rectangle" },
+                      { id: "ellipse", icon: Type, label: "Circle/Ellipse" },
+                      { id: "line", icon: Minus, label: "Line" },
+                      { id: "arrow", icon: LinkIcon, label: "Arrow" },
+                      { id: "triangle", icon: RotateCcw, label: "Triangle" },
+                      { id: "polygon", icon: Layers, label: "Polygon" },
+                    ].map((shape) => {
+                      const Icon = shape.icon;
+                      return (
+                        <MenuItem
+                          key={shape.id}
+                          onClick={() => {
+                            if (engineRef.current) {
+                              const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                              const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                              const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                              const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                              handleAddDesignObject(OBJECT_TYPES.SHAPE, centerX, centerY, { shapeType: shape.id });
+                            }
+                            close();
+                          }}
+                        >
+                          <Icon className="h-4 w-4 mr-2" />
+                          {shape.label}
+                        </MenuItem>
+                      );
+                    })}
+                  </>
+                )}
+              </RibbonMenu>
+              <RibbonButton
+                id="addSticker"
+                icon={Image}
+                label="Sticker"
+                hint="Add a sticker"
+                onClick={() => {
+                  if (engineRef.current) {
+                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                    handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
+                  }
+                }}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="addTextBox"
+                icon={Type}
+                label="Text Box"
+                hint="Add a text box"
+                onClick={() => {
+                  if (engineRef.current) {
+                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                    handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
+                  }
+                }}
+                keepFocus={false}
+              />
+              <RibbonButton
+                id="addSticky"
+                icon={FileText}
+                label="Sticky Note"
+                hint="Add a sticky note"
+                onClick={() => {
+                  if (engineRef.current) {
+                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                    handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
+                  }
+                }}
+                keepFocus={false}
+              />
+            </RibbonGroup>
+          )}
+
+          {/* View group */}
+          <RibbonGroup label="View" icon={Maximize2} priority={30}>
+            <RibbonButton
+              icon={Maximize2}
+              label="Fit Page"
+              hint="Fit to page"
               onClick={() => engineRef.current?.fitView?.()}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.fitToPage") || "Fit to page"}
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("vault.canvas.fitToPage") || "Fit page"}</span>
-            </button>
-            <button
-              type="button"
+              keepFocus={false}
+            />
+            <RibbonButton
+              icon={Square}
+              label="Fit Width"
+              hint="Fit to width"
               onClick={() => engineRef.current?.fitWidth?.()}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.fitToWidth") || "Fit to width"}
-            >
-              <Square className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("vault.canvas.fitToWidth") || "Fit width"}</span>
-            </button>
-            <Separator className="h-6 mx-1" />
-            <button
-              type="button"
+              keepFocus={false}
+            />
+            <RibbonButton
+              icon={Minus}
+              label="Zoom Out"
+              hint="Zoom out"
               onClick={() => engineRef.current?.zoomBy?.(0.88)}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.zoomOut") || "Zoom out"}
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </button>
-            <span className="px-1 font-mono text-[10px] text-muted-foreground">
+              keepFocus={false}
+            />
+            <span className="self-center font-mono text-[10px] text-muted-foreground px-1">
               {camera ? Math.round(camera.scale * 100) : 100}%
             </span>
-            <button
-              type="button"
+            <RibbonButton
+              icon={Plus}
+              label="Zoom In"
+              hint="Zoom in"
               onClick={() => engineRef.current?.zoomBy?.(1.12)}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.zoomIn") || "Zoom in"}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
+              keepFocus={false}
+            />
+            <RibbonButton
+              icon={RotateCcw}
+              label="Reset View"
+              hint="Reset view"
               onClick={() => engineRef.current?.setCamera?.({ x: 0, y: 0, scale: 1 })}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.resetView") || "Reset view"}
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
-          </div>
+              keepFocus={false}
+            />
+          </RibbonGroup>
 
-          {/* Export/Import */}
-          <div className="flex items-center gap-1 ml-2 border-l border-border/60 pl-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-                  title={t("vault.canvas.exportTooltip") || "Export as .lemoncanvas"}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("vault.canvas.export") || "Export"}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>{t("vault.canvas.export") || "Export"}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => exportCanvasDoc(canvasDoc)}
-                >
-                  <FileTextIcon className="h-3.5 w-3.5 mr-2" />
-                  {t("vault.canvas.export") || "Export"} .lemoncanvas
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>{t("vault.canvas.exportPdf") || "Export as PDF"}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onSelect={() => exportCanvasToPdf(canvasDoc, { wholeCanvas: true })}
-                >
-                  <FileTextIcon className="h-3.5 w-3.5 mr-2" />
-                  {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PDF)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                    if (frames.length === 1) {
-                      exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                    } else if (frames.length > 1) {
-                      // Show frame picker
-                      toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                    } else {
+          {/* Export/Import group */}
+          <RibbonGroup label="File" icon={Download} priority={20}>
+            <RibbonMenu
+              icon={Download}
+              label="Export"
+              hint="Export canvas"
+              width={240}
+            >
+              {(close) => (
+                <>
+                  <MenuLabel>{t("vault.canvas.export") || "Export"}</MenuLabel>
+                  <MenuItem
+                    onClick={() => {
+                      exportCanvasDoc(canvasDoc);
+                      close();
+                    }}
+                  >
+                    <FileTextIcon className="h-4 w-4 mr-2" />
+                    {t("vault.canvas.export") || "Export"} .lemoncanvas
+                  </MenuItem>
+                  <hr className="my-1 border-border" />
+                  <MenuLabel>{t("vault.canvas.exportPdf") || "Export as PDF"}</MenuLabel>
+                  <MenuItem
+                    onClick={() => {
                       exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
-                    }
-                  }}
-                >
-                  <FileTextIcon className="h-3.5 w-3.5 mr-2" />
-                  {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PDF)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>{t("vault.canvas.exportPng") || "Export as PNG"}</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onSelect={() => exportCanvasToPng(canvasDoc, { wholeCanvas: true })}
-                >
-                  <ImageIcon className="h-3.5 w-3.5 mr-2" />
-                  {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PNG)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => {
-                    const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                    if (frames.length === 1) {
-                      exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                    } else if (frames.length > 1) {
-                      toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                    } else {
+                      close();
+                    }}
+                  >
+                    <FileTextIcon className="h-4 w-4 mr-2" />
+                    {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PDF)
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                      if (frames.length === 1) {
+                        exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                      } else if (frames.length > 1) {
+                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                      } else {
+                        exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
+                      }
+                      close();
+                    }}
+                  >
+                    <FileTextIcon className="h-4 w-4 mr-2" />
+                    {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PDF)
+                  </MenuItem>
+                  <hr className="my-1 border-border" />
+                  <MenuLabel>{t("vault.canvas.exportPng") || "Export as PNG"}</MenuLabel>
+                  <MenuItem
+                    onClick={() => {
                       exportCanvasToPng(canvasDoc, { wholeCanvas: true });
-                    }
-                  }}
-                >
-                  <ImageIcon className="h-3.5 w-3.5 mr-2" />
-                  {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PNG)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <button
-              type="button"
+                      close();
+                    }}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PNG)
+                  </MenuItem>
+                  <MenuItem
+                    onClick={() => {
+                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                      if (frames.length === 1) {
+                        exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                      } else if (frames.length > 1) {
+                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                      } else {
+                        exportCanvasToPng(canvasDoc, { wholeCanvas: true });
+                      }
+                      close();
+                    }}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PNG)
+                  </MenuItem>
+                </>
+              )}
+            </RibbonMenu>
+            <RibbonButton
+              icon={Upload}
+              label="Import"
+              hint="Import .lemoncanvas file"
               onClick={() => triggerImport(
                 (doc) => {
                   navigate(`/canvas/${doc.id}`);
@@ -712,13 +910,9 @@ export default function CanvasPage() {
                 },
                 (error) => toast.error(error.message)
               )}
-              className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition"
-              title={t("vault.canvas.importTooltip") || "Import .lemoncanvas file"}
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("vault.canvas.import") || "Import"}</span>
-            </button>
-          </div>
+              keepFocus={false}
+            />
+          </RibbonGroup>
         </div>
 
         {/* Canvas area */}
