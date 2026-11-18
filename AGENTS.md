@@ -5,7 +5,7 @@ Repo: https://github.com/lemdepron/LemonNote (public, GPL-3.0). Owner: GitHub us
 
 ## Current phase: STABILISATION (read this first)
 
-All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do not add new features** unless the task is explicitly a feature prompt (G6 styles, G7 tray). The work now is fixing bugs, polish, translation and design consistency, in the order given by the owner's prompts (G1, G2, ...). If a task needs a new feature, stop and say so.
+All 34 roadmap prompts (P1 to P34) were applied, then fix prompts F1 to F9. **Do not add new features** unless the task is explicitly a feature prompt (C1 to C18, G6 styles, G7 tray). The work now is fixing bugs, polish, translation and design consistency, in the order given by the owner's prompts (G1, G2, ...). If a task needs a new feature, stop and say so.
 
 ## The owner
 
