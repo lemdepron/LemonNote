@@ -3,8 +3,10 @@ import { Loader2, ScanText, Search, Sigma, Type } from "lucide-react";
 import { Section } from "@/components/ink/StudioSection";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { useI18n } from "@/lib/i18n";
 
 export default function SmartInkStudio({ recognition, onRecognize, onInsert, search, onSearch, matches, searching, onOpenPage }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(search || "");
   const busy = Boolean(recognition.busy);
   const result = recognition.mode === "math" ? recognition.latex : recognition.text;
@@ -15,21 +17,21 @@ export default function SmartInkStudio({ recognition, onRecognize, onInsert, sea
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
-            onClick={() => onRecognize("text")}
-            disabled={busy}
-            className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 px-2 py-1.5 font-mono text-[10px] text-foreground/90 transition hover:border-primary/50 hover:text-primary disabled:opacity-40"
+            disabled={true}
+            title={t("ink.comingSoon")}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 px-2 py-1.5 font-mono text-[10px] text-muted-foreground transition opacity-60"
           >
-            {recognition.busy === "text" ? <Loader2 className="h-3 w-3 animate-spin" /> : <ScanText className="h-3 w-3" />}
-            handwriting
+            <ScanText className="h-3 w-3" />
+            <span>{t("ink.smart.handwriting")}</span>
           </button>
           <button
             type="button"
-            onClick={() => onRecognize("math")}
-            disabled={busy}
-            className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 px-2 py-1.5 font-mono text-[10px] text-foreground/90 transition hover:border-primary/50 hover:text-primary disabled:opacity-40"
+            disabled={true}
+            title={t("ink.comingSoon")}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 px-2 py-1.5 font-mono text-[10px] text-muted-foreground transition opacity-60"
           >
-            {recognition.busy === "math" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sigma className="h-3 w-3" />}
-            equation
+            <Sigma className="h-3 w-3" />
+            <span>{t("ink.smart.equation")}</span>
           </button>
         </div>
 

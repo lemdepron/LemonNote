@@ -110,7 +110,10 @@ export function codeBlockInsert(body, language) {
   return next;
 }
 
-export function imageSnippet(url, alt = "image") {
+import { getAssetPath } from "@/lib/assets";
+
+export function imageSnippet(fileId, filename, alt = "image") {
+  const url = getAssetPath(fileId, filename);
   return `\n![${alt || "image"}](${url})\n\n`;
 }
 

@@ -2,28 +2,16 @@
 export const NOTE_FORMATS = [
   { id: "markdown", label: "Markdown" },
   { id: "plain", label: "Plain text" },
-  { id: "yaml", label: "YAML" },
-  { id: "xml", label: "XML" },
-  { id: "json", label: "JSON" },
-  { id: "toml", label: "TOML" },
-  { id: "csv", label: "CSV" },
-  { id: "ini", label: "INI" },
   { id: "html", label: "HTML" },
-  { id: "css", label: "CSS" },
-  { id: "javascript", label: "JavaScript" },
-  { id: "typescript", label: "TypeScript" },
-  { id: "python", label: "Python" },
-  { id: "rust", label: "Rust" },
-  { id: "bash", label: "Bash" },
-  { id: "sql", label: "SQL" },
+  { id: "pdf", label: "PDF" },
+  { id: "canvas", label: "Canvas" },
 ];
 
 /** The Format dropdown reads these groups, in this order — the only language list in the ribbon. */
 export const FORMAT_GROUPS = [
   { label: "Writing", ids: ["markdown", "plain"] },
-  { label: "Data and config", ids: ["yaml", "xml", "json", "toml", "csv", "ini"] },
-  { label: "Web", ids: ["html", "css"] },
-  { label: "Code", ids: ["javascript", "typescript", "python", "rust", "bash", "sql"] },
+  { label: "Export", ids: ["html", "pdf"] },
+  { label: "Canvas", ids: ["canvas"] },
 ];
 
 export const isMarkdown = (format) => !format || format === "markdown";

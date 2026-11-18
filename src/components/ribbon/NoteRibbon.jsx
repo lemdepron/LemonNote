@@ -15,7 +15,6 @@ import { useI18n } from "@/lib/i18n";
 import { RibbonContext, RibbonTabLine, RibbonPanel, RibbonPanelPopoverProvider } from "@/components/ribbon/RibbonKit";
 import { TabErrorBoundary } from "@/components/ribbon/TabErrorBoundary";
 import QuickAccess from "@/components/ribbon/QuickAccess";
-import { InkTab } from "@/components/ribbon/tabs/InkTabs";
 import { HomeTab } from "@/components/ribbon/tabs/HomeTab";
 import { InsertTab } from "@/components/ribbon/tabs/InsertTab";
 import { DesignTab } from "@/components/ribbon/tabs/DesignTab";
@@ -33,7 +32,6 @@ import MacroBar from "@/components/macros/MacroBar";
 
 const MAIN_TABS = [
   { id: "home", label: "Home" },
-  { id: "ink", label: "Ink" },
   { id: "insert", label: "Insert" },
   { id: "design", label: "Design" },
   { id: "layout", label: "Layout" },
@@ -200,6 +198,7 @@ export default function NoteRibbon({
     selection, value, body, onChange, run, markdown, offReason, noteId, noteTitle,
     typography, setTypography: (next) => onTypography?.(next),
     pickImage: () => fileRef.current?.click(),
+    format,
   };
 
   const handleFileOpen = () => {
@@ -394,13 +393,12 @@ export default function NoteRibbon({
             <TabErrorBoundary><HomeTab format={format} onFormat={onFormat} body={body} noteId={noteId} noteTitle={noteTitle} /></TabErrorBoundary>
           )}
           {activeTab === "insert" && (
-            <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} /></TabErrorBoundary>
+            <TabErrorBoundary><InsertTab onPickImage={() => fileRef.current?.click()} signals={signals} shortcuts={GLOBAL_SHORTCUTS} body={body} noteId={noteId} noteTitle={noteTitle} ink={noteInk?.ink} format={format} /></TabErrorBoundary>
           )}
           {activeTab === "design" && <TabErrorBoundary><DesignTab /></TabErrorBoundary>}
           {activeTab === "layout" && <TabErrorBoundary><LayoutTab ink={noteInk?.ink} /></TabErrorBoundary>}
           {activeTab === "view" && <TabErrorBoundary><ViewTab /></TabErrorBoundary>}
           {activeTab === "share" && <TabErrorBoundary><ShareTab /></TabErrorBoundary>}
-          {activeTab === "ink" && <TabErrorBoundary><InkTab noteInk={noteInk} /></TabErrorBoundary>}
           {activeTab === "table" && <TabErrorBoundary><TableContextTab signals={signals} shortcuts={GLOBAL_SHORTCUTS} /></TabErrorBoundary>}
           {activeTab === "code" && <TabErrorBoundary><CodeContextTab /></TabErrorBoundary>}
         </RibbonPanel>

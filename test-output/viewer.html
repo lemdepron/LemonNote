@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PDF Ink Test Viewer</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    h1 { color: #333; }
+    .pdf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+    .pdf-card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #fafafa; }
+    .pdf-card h3 { margin-top: 0; }
+    embed { width: 100%; height: 500px; border: 1px solid #ccc; border-radius: 4px; }
+    .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 8px; }
+    .status.works { background: #d4edda; color: #155724; }
+    .status.fails { background: #f8d7da; color: #721c24; }
+    .status.untested { background: #fff3cd; color: #856404; }
+  </style>
+</head>
+<body>
+  <h1>PDF Ink Annotation Test Results</h1>
+  <p>Open this page in Microsoft Edge and Adobe Reader to verify ink rendering.</p>
+  
+  <div class="pdf-grid">
+    <div class="pdf-card">
+      <h3>Method A: Real /Ink Annotations (Low-level)</h3>
+      <embed src="test-method-a-ink-annot.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+    <div class="pdf-card">
+      <h3>Method B: Vector Paths via pushOperators</h3>
+      <embed src="test-method-b-vector-paths.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+    <div class="pdf-card">
+      <h3>Method C: Built-in drawLine/drawSvgPath</h3>
+      <embed src="test-method-c-builtin.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+    <div class="pdf-card">
+      <h3>Method D: Realistic Strokes + Marker</h3>
+      <embed src="test-method-d-realistic.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+    <div class="pdf-card">
+      <h3>Method E: Ink Annotation + Appearance Stream</h3>
+      <embed src="test-method-e-ink-appearance.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+    <div class="pdf-card">
+      <h3>Method F: Pure Ink Annotation (No Appearance)</h3>
+      <embed src="test-method-f-pure-ink.pdf" type="application/pdf">
+      <div class="status untested">UNTESTED</div>
+    </div>
+  </div>
+</body>
+</html>

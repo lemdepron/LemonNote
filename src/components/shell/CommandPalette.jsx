@@ -14,6 +14,7 @@ import {
   Table2,
 } from "lucide-react";
 import { db } from "@/api/localDb";
+import { openNoteAsCanvas } from "@/lib/notes";
 import { cn } from "@/lib/utils";
 
 const ACTIONS = [
@@ -62,6 +63,8 @@ export default function CommandPalette({ open, onClose }) {
   const hit = (text) => !term || String(text || "").toLowerCase().includes(term);
 
   const notes = sources.notes.filter((note) => hit(`${note.title} ${note.body}`)).slice(0, 8);
+  const markdownNotes = sources.notes.filter((note) => note.format === "markdown" && hit(`${note.title} ${note.body}`)).slice(0, 8);
+
   const groups = [
     {
       label: "Actions",
@@ -117,6 +120,20 @@ export default function CommandPalette({ open, onClose }) {
         .slice(0, 5)
         .map((item) => ({ id: `code-${item.id}`, label: item.name, hint: "file", icon: Code2, run: () => navigate(`/code/${item.id}`) })),
     },
+    // Open as canvas - only for markdown notes
+    ...(markdownNotes.length > 0 ? [{
+      label: "Open as canvas",
+      entries: markdownNotes.map((note) => ({
+        id: `canvas-from-note-${note.id}`,
+        label: note.title || "Untitled note",
+        hint: "canvas from note",
+        icon: LayoutGrid,
+        run: async () => {
+          const canvas = await openNoteAsCanvas(note);
+          navigate(`/canvas/${canvas.id}`);
+        },
+      })),
+    }] : []),
   ].filter((group) => group.entries.length);
 
   const rows = groups.flatMap((group) => group.entries);

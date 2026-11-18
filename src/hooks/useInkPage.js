@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { db } from "@/api/localDb";
-import { rememberColor } from "@/lib/ink/palette";
-import { loadPage, savePage } from "@/lib/ink/store";
+import { rememberColor } from "@/lib/canvas/ink/palette";
+import { loadPage, savePage } from "@/lib/canvas/ink/store";
 import { tokenColor, useTheme } from "@/lib/theme";
 import { escapeRegExp } from "@/lib/vault";
 import { toast } from "@/lib/toast";
-import { createObject, getDefaultSize, OBJECT_TYPES, SHAPE_TYPES, STICKERS } from "@/lib/ink/objects";
+import { createObject, getDefaultSize, OBJECT_TYPES, SHAPE_TYPES, STICKERS } from "@/lib/canvas/objects";
 import { confirm } from "@/components/ui/use-dialog";
 
 const DEFAULT_TOOL = {

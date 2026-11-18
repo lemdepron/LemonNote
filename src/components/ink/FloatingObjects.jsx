@@ -4,6 +4,7 @@ import {
   renderSticker,
   renderTextBox,
   renderSticky,
+  renderTextFrame,
   hitTestObject,
   getHandleAt,
   transformObject,
@@ -11,8 +12,11 @@ import {
   getGroupedObjects,
   getGroupBounds,
   OBJECT_TYPES,
-} from "@/lib/ink/objects";
+} from "@/lib/canvas/objects";
 import { cn } from "@/lib/utils";
+import { Unlock } from "lucide-react";
+import { t } from "@/lib/i18n";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 const HANDLE_SIZE = 10;
 const ROTATE_HANDLE_OFFSET = 30;
@@ -43,6 +47,8 @@ export default function FloatingObjects({
   const hoverHandleRef = useRef(null);
   const [cursor, setCursor] = useState("default");
   const [editState, setEditState] = useState({ text: "", caretPos: 0 });
+  const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
+  const [lockedTextFrameId, setLockedTextFrameId] = useState(null);
 
   // Resize canvas when viewport changes
   useEffect(() => {
@@ -176,6 +182,9 @@ export default function FloatingObjects({
         case OBJECT_TYPES.STICKY:
           renderSticky(ctx, object, scale, isEditing);
           break;
+        case OBJECT_TYPES.TEXT_FRAME:
+          renderTextFrame(ctx, object, scale, isEditing);
+          break;
       }
 
       // Draw selection handles
@@ -187,7 +196,7 @@ export default function FloatingObjects({
 
   // Draw selection handles for an object
   const drawHandles = (ctx, object, scale) => {
-    const { x, y, width, height, rotation } = object;
+    const { x, y, width, height, rotation, frameType, locked } = object;
     const cx = x + width / 2;
     const cy = y + height / 2;
     const cos = Math.cos(rotation);
@@ -199,25 +208,31 @@ export default function FloatingObjects({
     ctx.lineWidth = 1.5 / scale;
     ctx.setLineDash([]);
 
-    // Corner handles
-    const corners = [
-      { x, y, id: "tl" },
-      { x: x + width, y, id: "tr" },
-      { x: x + width, y: y + height, id: "br" },
-      { x, y: y + height, id: "bl" },
-    ];
+    // Only show corner handles for non-frame objects or Free frames
+    const isFreeFrame = object.type === OBJECT_TYPES.FRAME && frameType === "free";
+    const showCornerHandles = object.type !== OBJECT_TYPES.FRAME || isFreeFrame;
 
-    corners.forEach((corner) => {
-      const dx = corner.x - cx;
-      const dy = corner.y - cy;
-      const rx = cx + dx * cos - dy * sin;
-      const ry = cy + dx * sin + dy * cos;
-      const hs = HANDLE_SIZE / scale;
-      ctx.fillRect(rx - hs / 2, ry - hs / 2, hs, hs);
-      ctx.strokeRect(rx - hs / 2, ry - hs / 2, hs, hs);
-    });
+    if (showCornerHandles) {
+      // Corner handles
+      const corners = [
+        { x, y, id: "tl" },
+        { x: x + width, y, id: "tr" },
+        { x: x + width, y: y + height, id: "br" },
+        { x, y: y + height, id: "bl" },
+      ];
 
-    // Rotation handle
+      corners.forEach((corner) => {
+        const dx = corner.x - cx;
+        const dy = corner.y - cy;
+        const rx = cx + dx * cos - dy * sin;
+        const ry = cy + dx * sin + dy * cos;
+        const hs = HANDLE_SIZE / scale;
+        ctx.fillRect(rx - hs / 2, ry - hs / 2, hs, hs);
+        ctx.strokeRect(rx - hs / 2, ry - hs / 2, hs, hs);
+      });
+    }
+
+    // Rotation handle (always shown for selected objects)
     const rotX = cx;
     const rotY = y - ROTATE_HANDLE_OFFSET;
     const dx = rotX - cx;
@@ -229,6 +244,43 @@ export default function FloatingObjects({
     ctx.arc(rotRx, rotRy, hs / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+
+    // Lock icon for locked text frames
+    if (object.type === OBJECT_TYPES.TEXT_FRAME && locked) {
+      const lockSize = 14 / scale;
+      const lockX = rotRx; // Near rotation handle
+      const lockY = rotRy - 20 / scale;
+      
+      ctx.save();
+      ctx.strokeStyle = "#e5b567";
+      ctx.fillStyle = "#e5b567";
+      ctx.lineWidth = 2 / scale;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      
+      // Lock body
+      ctx.beginPath();
+      ctx.roundRect(lockX - lockSize / 2, lockY, lockSize, lockSize * 0.8, 2 / scale);
+      ctx.stroke();
+      
+      // Lock shackle
+      ctx.beginPath();
+      ctx.moveTo(lockX - lockSize * 0.25, lockY);
+      ctx.lineTo(lockX - lockSize * 0.25, lockY - lockSize * 0.5);
+      ctx.lineTo(lockX + lockSize * 0.25, lockY - lockSize * 0.5);
+      ctx.lineTo(lockX + lockSize * 0.25, lockY);
+      ctx.stroke();
+      
+      // Keyhole
+      ctx.beginPath();
+      ctx.arc(lockX, lockY + lockSize * 0.35, lockSize * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.rect(lockX - lockSize * 0.08, lockY + lockSize * 0.35, lockSize * 0.16, lockSize * 0.2);
+      ctx.fill();
+      
+      ctx.restore();
+    }
 
     ctx.restore();
   };
@@ -262,7 +314,10 @@ export default function FloatingObjects({
     if (selectedObject && !editingObjectId) {
       const world = screenToWorld(screenX, screenY);
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
-      if (handle) {
+      // Ignore corner handles for non-Free frames
+      const isFreeFrame = selectedObject.type === OBJECT_TYPES.FRAME && selectedObject.frameType === "free";
+      const showCornerHandles = selectedObject.type !== OBJECT_TYPES.FRAME || isFreeFrame;
+      if (handle && (handle.type !== "corner" || showCornerHandles)) {
         dragStateRef.current = {
           type: handle.type === "corner" ? "resize" : "rotate",
           objectId: selectedObject.id,
@@ -311,8 +366,11 @@ export default function FloatingObjects({
     // Update hover handle cursor
     const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
     if (selectedObject && !editingObjectId && !dragStateRef.current) {
+      const isFreeFrame = selectedObject.type === OBJECT_TYPES.FRAME && selectedObject.frameType === "free";
+      const showCornerHandles = selectedObject.type !== OBJECT_TYPES.FRAME || isFreeFrame;
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
-      if (handle) {
+      // Ignore corner handles for non-Free frames
+      if (handle && (handle.type !== "corner" || showCornerHandles)) {
         hoverHandleRef.current = handle;
         if (handle.type === "rotate") {
           setCursor("grab");
@@ -425,9 +483,12 @@ export default function FloatingObjects({
     const screenX = event.clientX - rect.left;
     const screenY = event.clientY - rect.top;
     const object = getObjectAt(screenX, screenY);
-    if (object && (object.type === OBJECT_TYPES.TEXTBOX || object.type === OBJECT_TYPES.STICKY)) {
+    if (object && (object.type === OBJECT_TYPES.TEXTBOX || object.type === OBJECT_TYPES.STICKY || object.type === OBJECT_TYPES.TEXT_FRAME)) {
+      // Prevent editing if locked
+      if (object.locked) return;
       setEditingObjectId(object.id);
-      setEditState({ text: object.text || "", caretPos: (object.text || "").length });
+      const content = object.type === OBJECT_TYPES.TEXT_FRAME ? (object.markdown || "") : (object.text || "");
+      setEditState({ text: content, caretPos: content.length });
       // Focus the overlay after state update
       setTimeout(() => overlayRef.current?.focus(), 0);
     }
@@ -437,8 +498,10 @@ export default function FloatingObjects({
   const onOverlayChange = useCallback((event) => {
     const text = event.target.value;
     setEditState((prev) => ({ ...prev, text, caretPos: event.target.selectionStart }));
-    onUpdateObject?.(editingObjectId, { text });
-  }, [editingObjectId, onUpdateObject]);
+    const object = objects.find((o) => o.id === editingObjectId);
+    const prop = object?.type === OBJECT_TYPES.TEXT_FRAME ? 'markdown' : 'text';
+    onUpdateObject?.(editingObjectId, { [prop]: text });
+  }, [editingObjectId, onUpdateObject, objects]);
 
   // Handle overlay blur (save and exit edit)
   const onOverlayBlur = useCallback(() => {
@@ -455,7 +518,8 @@ export default function FloatingObjects({
       // Revert to original text
       const object = objects.find((o) => o.id === editingObjectId);
       if (object) {
-        onUpdateObject?.(editingObjectId, { text: object.text || "" });
+        const prop = object.type === OBJECT_TYPES.TEXT_FRAME ? 'markdown' : 'text';
+        onUpdateObject?.(editingObjectId, { [prop]: object[prop] || "" });
       }
       setEditingObjectId(null);
     }
@@ -511,6 +575,78 @@ export default function FloatingObjects({
           autoFocus
         />
       )}
+      
+      {/* Unlock button for locked text frames */}
+      {selectedObjectIds.length === 1 && (() => {
+        const selectedObj = objects.find(o => o.id === selectedObjectIds[0]);
+        if (selectedObj?.type === OBJECT_TYPES.TEXT_FRAME && selectedObj.locked) {
+          const canvas = canvasRef.current;
+          if (!canvas) return null;
+          const rect = canvas.getBoundingClientRect();
+          const { x, y, width, height, rotation } = selectedObj;
+          const cx = x + width / 2;
+          const cy = y + height / 2;
+          const cos = Math.cos(rotation);
+          const sin = Math.sin(rotation);
+          
+          // Position near the lock icon (above rotation handle)
+          const rotX = cx;
+          const rotY = y - ROTATE_HANDLE_OFFSET;
+          const dx = rotX - cx;
+          const dy = rotY - cy;
+          const rotRx = cx + dx * cos - dy * sin;
+          const rotRy = cy + dx * sin + dy * cos;
+          
+          const screenX = rotRx * camera.scale + camera.x;
+          const screenY = (rotRy - 35) * camera.scale + camera.y; // Above lock icon
+          
+          return (
+            <div
+              key={selectedObj.id}
+              className="absolute pointer-events-auto z-50"
+              style={{
+                left: `${screenX}px`,
+                top: `${screenY}px`,
+                transform: 'translate(-50%, -100%)',
+              }}
+            >
+              <AlertDialog open={unlockDialogOpen} onOpenChange={setUnlockDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-background/90 border border-border/50 text-foreground shadow-lg backdrop-blur hover:bg-accent transition-colors"
+                    aria-label={t("vault.canvas.textFrame.unlock")}
+                    title={t("vault.canvas.textFrame.locked")}
+                  >
+                    <Unlock className="h-3.5 w-3.5" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="max-w-sm">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("vault.canvas.textFrame.unlock")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("vault.canvas.textFrame.unlockWarning")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        onUpdateObject?.(selectedObj.id, { locked: false });
+                        setUnlockDialogOpen(false);
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t("vault.canvas.textFrame.unlock")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          );
+        }
+        return null;
+      })()}
     </div>
   );
 }

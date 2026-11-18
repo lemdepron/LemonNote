@@ -1,5 +1,5 @@
 import { Chip, Section, Slider } from "@/components/ink/StudioSection";
-import { BRUSHES } from "@/lib/ink/brushes";
+import { BRUSHES } from "@/lib/canvas/ink/brushes";
 
 /** What each pen does to the stroke — the panel explains behaviour instead of repeating the toolbar's pen picker. */
 const BEHAVIOUR = {

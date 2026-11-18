@@ -185,7 +185,7 @@ export default function SettingsPage() {
   // Fonts (local bundled)
   const [fontsBundled, setFontsBundled] = useState(false);
 
-  // Check if font files exist locally
+  // Check if font files exist locally and are valid woff2 files
   const checkFontsBundled = async () => {
     const fontFiles = [
       "/fonts/Inter-VariableFont_wght.woff2",
@@ -195,7 +195,18 @@ export default function SettingsPage() {
     ];
     try {
       const results = await Promise.all(
-        fontFiles.map((url) => fetch(url, { method: "HEAD", cache: "no-cache" }).then((r) => r.ok).catch(() => false))
+        fontFiles.map(async (url) => {
+          try {
+            const res = await fetch(url, { method: "HEAD", cache: "no-cache" });
+            if (!res.ok) return false;
+            // Also verify the file header starts with wOF2 (0x77 0x4F 0x46 0x32)
+            const arrayBuffer = await fetch(url, { cache: "no-cache" }).then((r) => r.arrayBuffer());
+            const bytes = new Uint8Array(arrayBuffer.slice(0, 4));
+            return bytes[0] === 0x77 && bytes[1] === 0x4f && bytes[2] === 0x46 && bytes[3] === 0x32;
+          } catch {
+            return false;
+          }
+        })
       );
       setFontsBundled(results.every((ok) => ok));
     } catch {

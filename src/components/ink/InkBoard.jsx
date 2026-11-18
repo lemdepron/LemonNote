@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import InkEngine from "@/lib/ink/engine";
+import InkEngine from "@/lib/canvas/engine";
 import FloatingObjects from "@/components/ink/FloatingObjects";
 import { useThemeRevision } from "@/lib/theme";
 import { cn } from "@/lib/utils";

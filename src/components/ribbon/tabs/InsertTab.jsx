@@ -1,10 +1,13 @@
 import { useState, useRef } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import {
   ImagePlus, Link2, FileImage, Film, Paperclip, Mic2, Bookmark, Link, Mail, Hash,
   Minus, MessageSquareQuote, ChevronsDownUp, Footprints, CornerDownLeft, ListTree, Quote, BarChart,
   Omega, SquareCode, Braces, Square, SquareDashed, Circle, ArrowRight, Triangle, Star, Smile,
   SquarePen, StickyNote, CalendarPlus, CalendarClock, CalendarCheck, CalendarRange, CalendarDays, Clock, ListOrdered,
   BookOpenCheck, ArrowLeft, ArrowRight as ArrowRightIcon, Layers, FileCode, Database, Terminal, FileJson, FileText, Code, Box,
+  Sigma,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import TablePicker from "@/components/ribbon/TablePicker";
@@ -27,6 +30,7 @@ import { JOURNAL_TEMPLATE, dateKey } from "@/lib/journal";
 import { db } from "@/api/localDb";
 import { useNavigate } from "react-router-dom";
 import { addAttachment } from "@/lib/attachments";
+import { getAssetPath } from "@/lib/assets";
 import { toast } from "@/lib/toast";
 import { prompt } from "@/components/ui/use-dialog";
 import { setPendingFigureCaption } from "@/lib/dialog-state";
@@ -72,7 +76,7 @@ const CALLOUTS = [
 
 /* --------------------------------- Insert --------------------------------- */
 
-export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteTitle, ink }) {
+export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteTitle, ink, format }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { selection, run, value } = useRibbon();
@@ -108,6 +112,23 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
     run(insertBlock(selection, snippet, id.length + 4));
   };
 
+  // Insert KaTeX math for HTML format - renders math to HTML+CSS and inserts the markup
+  const insertHtmlMath = () => {
+    const latex = selection.value.slice(selection.start, selection.end) || "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}";
+    try {
+      // Render KaTeX to HTML (throwOnError: false to handle invalid LaTeX gracefully)
+      const katexHtml = katex.renderToString(latex, { throwOnError: false, displayMode: false });
+      // Wrap in a span with a marker class so we know it's KaTeX-rendered
+      const wrappedHtml = `<span class="katex-rendered">${katexHtml}</span>`;
+      run(insertText(selection, wrappedHtml));
+    } catch (err) {
+      console.error("Failed to render KaTeX:", err);
+      // Fallback: insert raw LaTeX
+      const fallbackHtml = `<span class="katex-rendered" data-katex-error="true">${latex}</span>`;
+      run(insertText(selection, fallbackHtml));
+    }
+  };
+
   const matches = (label, id) => !filter || `${label} ${id}`.toLowerCase().includes(filter.toLowerCase());
   const snippets = LANGUAGES.filter((item) => item.template);
 
@@ -141,7 +162,8 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
 
     try {
       const attachment = await addAttachment(file);
-      const snippet = `\n![${file.name.replace(/\.[^.]+$/, "")}](${attachment.ref})\n\n`;
+      const fileId = attachment.ref.replace(/^local:/, "");
+      const snippet = `\n![${file.name.replace(/\.[^.]+$/, "")}](${getAssetPath(fileId, file.name)})\n\n`;
       const at = selection;
       const start = Math.min(at.start ?? value.length, value.length);
       const end = Math.min(at.end ?? start, value.length);
@@ -172,7 +194,8 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
 
     try {
       const attachment = await addAttachment(file);
-      const snippet = `\n[${file.name} (${formatSize(file.size)})](${attachment.ref})\n\n`;
+      const fileId = attachment.ref.replace(/^local:/, "");
+      const snippet = `\n[${file.name} (${formatSize(file.size)})](${getAssetPath(fileId, file.name)})\n\n`;
       const at = selection;
       const start = Math.min(at.start ?? value.length, value.length);
       const end = Math.min(at.end ?? start, value.length);
@@ -216,7 +239,8 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
         try {
           const file = new File([blob], `recording-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
           const attachment = await addAttachment(file);
-          const snippet = `\n![audio](${attachment.ref})\n\n`;
+          const fileId = attachment.ref.replace(/^local:/, "");
+          const snippet = `\n![audio](${getAssetPath(fileId, file.name)})\n\n`;
           const at = selection;
           const start = Math.min(at.start ?? value.length, value.length);
           const end = Math.min(at.end ?? start, value.length);
@@ -458,6 +482,10 @@ export function InsertTab({ onPickImage, signals, shortcuts, body, noteId, noteT
             </>
           )}
         </RibbonMenu>
+        <Btn id="insert.mathBlock" icon={Sigma} label={t("ribbon.insert.mathBlock")} hint={t("ribbon.insert.mathBlockHint")} shortcut="Ctrl+Alt+M" edit={(s) => insertBlock(s, "$$\n\n$$", 3)} />
+        {format === "html" && (
+          <Btn id="insert.htmlMath" icon={Sigma} label={t("ribbon.insert.htmlMath")} hint={t("ribbon.insert.htmlMathHint")} onClick={insertHtmlMath} />
+        )}
         <Btn id="insert.inlineCode" icon={Braces} label={t("ribbon.insert.inlineCode")} hint={t("ribbon.insert.inlineCodeHint")} shortcut="Ctrl+E" edit={(s) => toggleWrap(s, "`")} />
         <TablePicker
           id="insert.table"

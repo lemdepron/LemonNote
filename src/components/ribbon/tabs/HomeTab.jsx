@@ -425,7 +425,7 @@ export function HomeTab({ format, onFormat, body, noteId, noteTitle }) {
 
       {/* AI Actions - only shown when AI is enabled and note is markdown */}
       {markdown && isAIEnabled() && (
-        <RibbonGroup label={tr("ribbon.home.ai")} icon={Wand2} priority={20}>
+        <RibbonGroup label={tr("ribbon.home.ai.label")} icon={Wand2} priority={20}>
           <Btn
             id="home.ai.translate"
             icon={Globe}

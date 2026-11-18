@@ -9,7 +9,7 @@ import { getPendingFigureCaption } from "@/lib/dialog-state";
  * it, then writes a plain markdown image at the caret. The note stores the
  * markdown, so the uploaded file needs a permanent URL to keep rendering.
  * Images are stored as attachments in the _files store and referenced as
- * ![name](local:<id>) in the markdown.
+ * ![name](./assets/<id>.<ext>) in the markdown.
  */
 export default function useNoteImages({ body, onChange }) {
   const bodyRef = useRef(body);
@@ -37,10 +37,12 @@ export default function useNoteImages({ body, onChange }) {
       const parts = [];
       for (const file of list) {
         const attachment = await addAttachment(file);
+        // attachment.ref is "local:<id>", we need the id and filename
+        const fileId = attachment.ref.replace(/^local:/, "");
         if (pendingCaption !== undefined) {
           parts.push(figureSnippet(attachment.ref, pendingCaption));
         } else {
-          parts.push(imageSnippet(attachment.ref, file.name.replace(/\.[^.]+$/, "")));
+          parts.push(imageSnippet(fileId, file.name));
         }
       }
       const value = at.value || bodyRef.current || "";

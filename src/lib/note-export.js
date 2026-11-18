@@ -238,10 +238,62 @@ export function markdownToHtmlWithInlineStyles(markdown = "", style = {}) {
   return out.join("\n");
 }
 
+const LANG_TO_EXTENSION = {
+  "yaml": "yaml",
+  "yml": "yaml",
+  "xml": "xml",
+  "json": "json",
+  "toml": "toml",
+  "csv": "csv",
+  "ini": "ini",
+  "css": "css",
+  "javascript": "js",
+  "typescript": "ts",
+  "python": "py",
+  "rust": "rs",
+  "bash": "sh",
+  "sql": "sql",
+};
+
+/**
+ * Check if markdown body is exactly one fenced code block.
+ * Returns { isSingleBlock: true, lang: string, content: string } or { isSingleBlock: false }
+ */
+function detectSingleFencedBlock(body) {
+  if (!body || typeof body !== "string") return { isSingleBlock: false };
+  
+  const trimmed = body.trim();
+  // Match fenced code block with optional language
+  const match = trimmed.match(/^(`{3,})(\w+)?\n([\s\S]*?)\n\1\s*$/);
+  if (match) {
+    const fence = match[1];
+    const lang = (match[2] || "").toLowerCase();
+    const content = match[3];
+    // Ensure there's no other content outside the fence
+    const beforeFence = trimmed.slice(0, trimmed.indexOf(fence));
+    const afterFence = trimmed.slice(trimmed.lastIndexOf(fence) + fence.length);
+    if (!beforeFence.trim() && !afterFence.trim()) {
+      return { isSingleBlock: true, lang, content };
+    }
+  }
+  return { isSingleBlock: false };
+}
+
 export function exportMarkdown(note) {
   checkLocked(note);
   const title = (note?.title || "Untitled note").trim();
-  download(`# ${title}\n\n${note?.body || ""}\n`, `${slug(title)}.md`, "text/markdown;charset=utf-8");
+  const body = note?.body || "";
+  
+  // Check if it's a single fenced code block - export with matching extension
+  const detection = detectSingleFencedBlock(body);
+  if (detection.isSingleBlock && detection.lang) {
+    const ext = LANG_TO_EXTENSION[detection.lang] || detection.lang;
+    const filename = `${slug(title)}.${ext}`;
+    download(detection.content + "\n", filename, "text/plain;charset=utf-8");
+    return;
+  }
+  
+  download(`# ${title}\n\n${body}\n`, `${slug(title)}.md`, "text/markdown;charset=utf-8");
 }
 
 export function exportHtml(note) {
@@ -282,6 +334,109 @@ ${body}
 </html>
 `;
   download(page, `${slug(title)}.html`, "text/html;charset=utf-8");
+}
+
+/**
+ * Export HTML with images embedded as data URLs (single self-contained file).
+ * This fetches all local image references and converts them to base64 data URLs.
+ */
+export async function exportHtmlEmbedded(note) {
+  checkLocked(note);
+  const title = (note?.title || "Untitled note").trim();
+  const body = markdownToHtml(note?.body || "");
+  
+  // Find all image references in the HTML body
+  const imgRegex = /<img[^>]+src=["']((?:\.\/)?assets\/[a-f0-9]{24}\.[a-zA-Z0-9]+)["'][^>]*>/g;
+  const matches = [...body.matchAll(imgRegex)];
+  
+  // Also check for local: refs in markdown that might have been converted
+  const localRegex = /<img[^>]+src=["']local:[^"']+["'][^>]*>/g;
+  const localMatches = [...body.matchAll(localRegex)];
+  
+  let processedBody = body;
+  const processedRefs = new Set();
+  
+  // Process asset paths
+  for (const match of matches) {
+    const fullMatch = match[0];
+    const src = match[1];
+    
+    if (processedRefs.has(src)) continue;
+    processedRefs.add(src);
+    
+    try {
+      const { getFile } = await import("@/api/localDb");
+      const id = src.replace(/^.*assets\/([a-f0-9]{24})\..*$/, "$1");
+      const file = await getFile(id);
+      if (file && file.data) {
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(file.data)));
+        const mimeType = file.type || "image/png";
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        processedBody = processedBody.replace(new RegExp(escapeHtml(src), "g"), dataUrl);
+      }
+    } catch (err) {
+      console.warn("Failed to embed image:", src, err);
+    }
+  }
+  
+  // Process local: refs
+  for (const match of localMatches) {
+    const fullMatch = match[0];
+    const srcMatch = fullMatch.match(/src=["']local:([^"']+)["']/);
+    if (!srcMatch) continue;
+    const src = srcMatch[1];
+    
+    if (processedRefs.has(src)) continue;
+    processedRefs.add(src);
+    
+    try {
+      const { getFile } = await import("@/api/localDb");
+      const file = await getFile(src);
+      if (file && file.data) {
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(file.data)));
+        const mimeType = file.type || "image/png";
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        processedBody = processedBody.replace(new RegExp(`src=["']local:${escapeHtml(src)}["']`, "g"), `src="${dataUrl}"`);
+      }
+    } catch (err) {
+      console.warn("Failed to embed image:", src, err);
+    }
+  }
+  
+  const page = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(title)}</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #f7f3ec; color: #241d16; font: 16px/1.75 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 44rem; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+  h1 { font-size: 2.1rem; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 2rem; }
+  h2 { font-size: 1.35rem; margin: 2.2rem 0 0.6rem; }
+  h3 { font-size: 1.1rem; margin: 1.8rem 0 0.4rem; }
+  p { margin: 0.9rem 0; }
+  ul, ol { padding-left: 1.3rem; }
+  blockquote { margin: 1.2rem 0; padding-left: 1rem; border-left: 2px solid #b1703a; color: #5a4a3a; font-style: italic; }
+  code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 0.86em; background: #efe7db; border-radius: 4px; padding: 0.1em 0.35em; }
+  pre { background: #efe7db; border-radius: 10px; padding: 1rem; overflow-x: auto; }
+  pre code { background: transparent; padding: 0; }
+  hr { border: 0; border-top: 1px solid #d9cdbc; margin: 2rem 0; }
+  .wikilink { color: #146c62; border-bottom: 1px dashed #146c62aa; }
+  a { color: #146c62; }
+  @media print { body { background: #fff; } main { padding: 0; max-width: none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>${escapeHtml(title)}</h1>
+${processedBody}
+</main>
+</body>
+</html>
+`;
+  download(page, `${slug(title)}-embedded.html`, "text/html;charset=utf-8");
 }
 
 /** Get page dimensions in points (1pt = 1/72 inch) from note style */

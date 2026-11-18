@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import {
   groupObjects,
   ungroupObjects,
-} from "@/lib/ink/objects";
+} from "@/lib/canvas/objects";
 
 function pageSizeLabel(size) {
   const found = PAGE_SIZES.find((s) => s.id === size);
@@ -583,6 +583,7 @@ export function LayoutTab({ ink }) {
       }>
         <Stepper
           id="layout.indentLeft"
+          label="Indent left"
           title="Indent left (em) — 0.5em steps"
           value={indentLeft}
           min={0}
@@ -594,6 +595,7 @@ export function LayoutTab({ ink }) {
         />
         <Stepper
           id="layout.indentRight"
+          label="Indent right"
           title="Indent right (em) — 0.5em steps"
           value={indentRight}
           min={0}
@@ -605,6 +607,7 @@ export function LayoutTab({ ink }) {
         />
         <Stepper
           id="layout.spacingBefore"
+          label="Spacing before"
           title="Spacing before (em) — 0.5em steps"
           value={spacingBefore}
           min={0}
@@ -616,6 +619,7 @@ export function LayoutTab({ ink }) {
         />
         <Stepper
           id="layout.spacingAfter"
+          label="Spacing after"
           title="Spacing after (em) — 0.5em steps"
           value={spacingAfter}
           min={0}

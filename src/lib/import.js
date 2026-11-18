@@ -16,6 +16,48 @@ const WIKILINK_REGEX = /\[\[([^\]]+)\]\]/g;
 const EMBED_REGEX = /!\[\[([^\]]+)\]\]/g;
 const INLINE_TAG_REGEX = /(^|[\s(])#([A-Za-z0-9_][A-Za-z0-9_/-]*)/g;
 
+// Old format extensions that should be imported as markdown with fenced code blocks
+const OLD_FORMAT_EXTENSIONS = new Set([
+  "yaml", "yml", "xml", "json", "toml", "csv", "ini",
+  "css", "js", "jsx", "ts", "tsx", "py", "rs", "sh", "bash", "sql"
+]);
+
+const EXTENSION_TO_LANG = {
+  "yaml": "yaml",
+  "yml": "yaml",
+  "xml": "xml",
+  "json": "json",
+  "toml": "toml",
+  "csv": "csv",
+  "ini": "ini",
+  "css": "css",
+  "js": "javascript",
+  "jsx": "javascript",
+  "ts": "typescript",
+  "tsx": "typescript",
+  "py": "python",
+  "rs": "rust",
+  "sh": "bash",
+  "bash": "bash",
+  "sql": "sql",
+};
+
+/**
+ * Get language from file extension for fenced code block.
+ */
+function getLangFromExtension(filename) {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  return ext ? EXTENSION_TO_LANG[ext] : null;
+}
+
+/**
+ * Check if file should be imported as fenced code block in markdown.
+ */
+function isOldFormatFile(filename) {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  return ext ? OLD_FORMAT_EXTENSIONS.has(ext) : false;
+}
+
 /**
  * Check for existing notes that would be duplicates.
  * Duplicates are matched by title (and folder if folders exist).
@@ -326,13 +368,24 @@ export async function importFile(file, options = {}) {
   
   // Use folder from front matter if present, otherwise use provided folder
   const noteFolder = frontMatter.folder || folder;
+
+  // Handle old format files: wrap in fenced code block as markdown
+  let finalBody = body;
+  let finalFormat = frontMatter.format || "markdown";
+  
+  if (isOldFormatFile(file.name)) {
+    const lang = getLangFromExtension(file.name);
+    const fence = text.includes("```") ? "````" : "```";
+    finalBody = `${fence}${lang}\n${text}\n${fence}`;
+    finalFormat = "markdown";
+  }
   
   const note = await createNote({
     title,
-    body,
+    body: finalBody,
     folder: noteFolder,
     tags,
-    format: frontMatter.format || "markdown",
+    format: finalFormat,
   });
 
   if (onProgress) onProgress({ type: "note", title: note.title, folder: noteFolder });
@@ -381,7 +434,7 @@ export async function importFiles(files, options = {}) {
       const text = await file.text();
       const { frontMatter, body } = parseFrontMatter(text);
       
-      // Process embeds
+      // Process embeds (for markdown files)
       const { body: processedBody, attachments } = await processEmbeds(body, fileMap);
       
       const title = frontMatter.title || file.name.replace(/\.(md|markdown|txt)$/i, "");
@@ -392,13 +445,24 @@ export async function importFiles(files, options = {}) {
       }
       
       const noteFolderFinal = frontMatter.folder || noteFolder;
+
+      // Handle old format files: wrap in fenced code block as markdown
+      let finalBody = processedBody;
+      let finalFormat = frontMatter.format || "markdown";
+      
+      if (isOldFormatFile(file.name)) {
+        const lang = getLangFromExtension(file.name);
+        const fence = text.includes("```") ? "````" : "```";
+        finalBody = `${fence}${lang}\n${text}\n${fence}`;
+        finalFormat = "markdown";
+      }
       
       const note = await createNote({
         title,
-        body: processedBody,
+        body: finalBody,
         folder: noteFolderFinal,
         tags,
-        format: frontMatter.format || "markdown",
+        format: finalFormat,
       });
 
       results.notes.push(note);
@@ -505,12 +569,18 @@ export async function previewImport(files, options = {}) {
       
       const noteFolderFinal = frontMatter.folder || noteFolder;
       if (noteFolderFinal) preview.folders.add(noteFolderFinal);
+
+      // Handle old format files: show as markdown in preview
+      let previewFormat = frontMatter.format || "markdown";
+      if (isOldFormatFile(file.name)) {
+        previewFormat = "markdown";
+      }
       
       preview.notes.push({
         title,
         folder: noteFolderFinal,
         tags: allTags,
-        format: frontMatter.format || "markdown",
+        format: previewFormat,
         embedCount: imageEmbeds.length,
         embedFilenames: imageEmbeds,
         size: text.length,

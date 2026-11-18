@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { Chip, Section } from "@/components/ink/StudioSection";
-import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/ink/paper";
+import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/canvas/paper";
 
 export default function PaperStudio({ paper, onPaper, pageIndex = 0, onPage, onClear }) {
   return (

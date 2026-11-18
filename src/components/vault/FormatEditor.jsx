@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { TOKEN_CLASS, tokenize } from "@/lib/code-languages";
 import { autoIndent, indentUnit } from "@/lib/note-formats";
+import HtmlEditor from "./HtmlEditor";
 
 /**
  * Note body editor for non-Markdown formats: a transparent textarea over a
@@ -11,6 +12,11 @@ export default function FormatEditor({ value, onChange, format }) {
   const areaRef = useRef(null);
   const preRef = useRef(null);
   const unit = indentUnit(format);
+
+  // Use HtmlEditor for HTML format
+  if (format === "html") {
+    return <HtmlEditor value={value} onChange={onChange} format={format} />;
+  }
 
   const syncScroll = () => {
     const area = areaRef.current;

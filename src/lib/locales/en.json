@@ -8,7 +8,12 @@
       "queries": "Queries",
       "extensions": "Plugins",
       "sync": "Sync",
-      "settings": "Settings"
+      "settings": "Settings",
+      "journal": "Journal",
+      "tasks": "Tasks",
+      "cards": "Cards",
+      "tables": "Tables",
+      "code": "Code"
     },
     "syncTitle": "Sync is planned",
     "soon": "soon",
@@ -31,7 +36,22 @@
       "color": "Color",
       "history": "History",
       "view": "View",
-      "more": "More"
+      "more": "More",
+      "select": "Select",
+      "object": "Object",
+      "strokes": "Strokes",
+      "transform": "Transform",
+      "template": "Template",
+      "pageSize": "Page size",
+      "pages": "Pages",
+      "paperStudio": "Paper studio",
+      "recognise": "Recognise",
+      "results": "Results",
+      "record": "Record",
+      "playback": "Playback",
+      "manage": "Manage",
+      "shapes": "Shapes",
+      "overlay": "Overlay"
     },
     "more": {
       "label": "More",
@@ -85,26 +105,6 @@
       "pan": "Pan",
       "pick": "Pick",
       "insertSpace": "Insert space"
-    },
-    "groups": {
-      "draw": "Draw",
-      "color": "Color",
-      "history": "History",
-      "view": "View",
-      "more": "More",
-      "select": "Select",
-      "object": "Object",
-      "strokes": "Strokes",
-      "transform": "Transform",
-      "template": "Template",
-      "pageSize": "Page size",
-      "pages": "Pages",
-      "paperStudio": "Paper studio",
-      "recognise": "Recognise",
-      "results": "Results",
-      "record": "Record",
-      "playback": "Playback",
-      "manage": "Manage"
     },
     "history": {
       "undo": "Undo",
@@ -211,7 +211,28 @@
       "statusSaved": "saved",
       "statusAutosave": "autosave on",
       "removeInk": "Remove ink",
-      "removeInkHint": "Delete all handwriting in this note"
+      "removeInkHint": "Delete all handwriting in this note",
+      "collapse": "Collapse",
+      "expand": "Expand"
+    },
+    "frames": {
+      "template": "Template",
+      "pages": "Pages",
+      "shapes": "Shapes"
+    },
+    "objects": {
+      "select": "Select",
+      "lasso": "Lasso",
+      "delete": "Delete",
+      "front": "Front",
+      "back": "Back",
+      "apply": "Apply",
+      "recolor": "Recolor",
+      "deselect": "Deselect",
+      "shapes": "Shapes",
+      "stickers": "Stickers",
+      "textbox": "Textbox",
+      "sticky": "Sticky"
     }
   },
   "ribbon": {
@@ -323,16 +344,16 @@
       "ai": {
         "label": "AI",
         "translate": "Translate",
-        "translateHint": "Translate selected text or the whole note to another language",
+        "translateHint": "Translate the selection or the whole note to another language",
         "summarize": "Summarize",
-        "summarizeHint": "Create a concise summary of the selected text or note",
+        "summarizeHint": "Create a concise summary of the selection or note",
         "fixGrammar": "Fix grammar",
         "fixGrammarHint": "Fix grammar, spelling, and punctuation",
         "continue": "Continue writing",
         "continueHint": "Continue writing from the cursor position",
         "arabicEnglish": "Arabic ↔ English",
         "arabicEnglishHint": "Quick translate between Arabic and English",
-        "preview": "AI Result",
+        "preview": "AI preview",
         "replace": "Replace selection",
         "insertBelow": "Insert below",
         "copy": "Copy",
@@ -570,6 +591,20 @@
       "attachFileHint": "Attach any file (PDF, Word, zip, etc.) — opens in viewer or downloads",
       "attachImage": "Insert image",
       "attachImageHint": "Insert an image from your computer",
+      "importPdf": "Import PDF",
+      "importPdfHint": "Import a PDF file as a new note",
+      "importPdfPrompt": "Import this PDF as a new note?",
+      "pdfImported": "PDF imported as note",
+      "pdfImportError": "Failed to import PDF",
+      "prevPage": "Previous page",
+      "nextPage": "Next page",
+      "page": "Page {current} of {total}",
+      "resetZoom": "Reset zoom",
+      "print": "Print",
+      "download": "Download",
+      "loadingPdf": "Loading PDF…",
+      "pdfLoadError": "Failed to load PDF",
+      "noPdf": "No PDF loaded",
       "table": "Table",
       "insertTable": "Insert table",
       "insertTableHint": "Insert a markdown table",
@@ -589,7 +624,24 @@
       "lines": "lines",
       "read": "read",
       "selected": "selected",
-      "attach": "Attach"
+      "attach": "Attach",
+      "annotate": {
+        "enter": "Annotate",
+        "enterHint": "Draw on this PDF page",
+        "exit": "Exit Annotate",
+        "exitHint": "Stop drawing and return to viewing",
+        "save": "Save to PDF",
+        "saveHint": "Save annotations into the PDF file",
+        "saved": "Annotations saved to PDF",
+        "export": "Export PDF",
+        "exportHint": "Download a copy with or without editable annotations",
+        "exportAnnotated": "Export Annotated",
+        "exportAnnotatedHint": "Download with annotations (editable when reopened)",
+        "exportFlattened": "Export Flattened",
+        "exportFlattenedHint": "Download with annotations baked in (not editable)",
+        "exported": "Exported PDF",
+        "exportedFlattened": "Exported flattened PDF"
+      }
     },
     "table": {
       "insert": "Insert",
@@ -676,6 +728,10 @@
       "blocks": "Blocks",
       "symbols": "Symbols",
       "codeBlock": "Code block",
+      "mathBlock": "Math block",
+      "mathBlockHint": "Insert a math block ($$ … $$)",
+      "htmlMath": "Math (KaTeX)",
+      "htmlMathHint": "Insert rendered KaTeX math markup with local CSS reference (HTML format only)",
       "table": "Table",
       "shapes": "Shapes",
       "stickers": "Stickers",
@@ -807,75 +863,20 @@
     },
     "ink": {
       "draw": {
-        "mode": "Mode",
-        "pens": "Pens",
-        "favouritePens": "Favourite pens",
-        "stroke": "Stroke",
+        "pen": "Pen",
+        "penHint": "Choose a pen",
         "eraser": "Eraser",
-        "history": "History",
-        "view": "View",
-        "shapes": "Shapes",
-        "drawMode": "Draw",
-        "drawModeHint": "Draw with the current pen",
-        "shapeMode": "Shapes",
-        "shapeModeHint": "Draw lines, boxes, circles and coordinate graphs",
-        "selectMode": "Select",
-        "selectModeHint": "Select, move, resize and rotate objects",
-        "lassoMode": "Lasso",
-        "lassoModeHint": "Select marks by circling them",
-        "eraseMode": "Eraser",
-        "eraseModeHint": "Erase marks",
-        "panMode": "Pan",
-        "panModeHint": "Move the page around",
-        "eyedropperMode": "Pick",
-        "eyedropperModeHint": "Pick a colour from the page",
-        "insertSpaceMode": "Insert space",
-        "insertSpaceModeHint": "Drag to insert or remove vertical space between ink marks",
-        "brushEngine": "Brush engine",
-        "brushEngineHint": "Pen behaviour, eraser engine, shape and ruler assists",
-        "eraseStroke": "Stroke",
-        "eraseStrokeHint": "Erase entire strokes",
-        "erasePrecision": "Point",
-        "erasePrecisionHint": "Precision eraser",
-        "eraserSmall": "Small eraser (12px)",
-        "eraserMedium": "Medium eraser (26px)",
-        "eraserLarge": "Large eraser (50px)",
-        "eraserRadius": "radius",
-        "undo": "Undo",
-        "undoHint": "Undo the last mark",
-        "redo": "Redo",
-        "redoHint": "Redo",
-        "zoomOut": "Zoom out",
-        "zoomIn": "Zoom in",
-        "fit": "Fit",
-        "fitHint": "Fit the page to the ink",
-        "clearPage": "Clear page",
-        "clearPageHint": "Remove every mark on this page",
-        "coordinateGraph": "Coordinate graph",
-        "coordinateGraphHint": "Insert a coordinate graph with axes, grid and tick marks",
-        "addCoordinateGraph": "Add coordinate graph",
-        "insertSpaceToast": "Text does not move. Ink below the line moves away from the text it was written on.",
+        "eraserHint": "Erase marks",
+        "lasso": "Lasso",
+        "lassoHint": "Select marks by circling them",
+        "width": "Width",
         "saveFavPen": "Save current pen as favourite",
         "removeFavPen": "Remove favourite pen",
-        "favPenEmpty": "save your favourite pen setups here (max 8)",
-        "strokeWidth": "width",
-        "strokeOpacity": "opacity"
+        "noFavPens": "save your favourite pen setups here (max 8)"
       },
       "color": {
-        "current": "Current",
-        "hexPlaceholder": "#RRGGBB",
-        "hexAriaLabel": "Hex colour",
-        "hexHelpValid": "3 or 6 digit hex, with or without #",
-        "hexHelpInvalid": "Invalid hex — press Escape to revert",
-        "quickInks": "Quick inks",
-        "recent": "Recent",
-        "recentEmpty": "colours you use appear here",
-        "studio": "Studio",
-        "colorStudio": "Colour studio",
-        "colorStudioHint": "Mixer, palettes, opacity and custom colours",
-        "pick": "Pick",
-        "pickHint": "Pick a colour from the page",
-        "opacity": "opacity"
+        "picker": "Colour",
+        "pickerHint": "Open colour mixer, palettes and history"
       },
       "select": {
         "select": "Select",
@@ -914,6 +915,57 @@
         "clearPage": "Clear page",
         "clearPageHint": "Remove every mark on this page"
       },
+      "frames": {
+        "template": "Template",
+        "paperTemplate": "Paper template",
+        "paperTone": "Paper tone",
+        "pageSize": "Page size",
+        "pages": "Pages",
+        "previousPage": "Previous page",
+        "nextPage": "Next page",
+        "pageNumber": "page {num}",
+        "studio": "Studio",
+        "paperStudio": "Paper studio",
+        "paperStudioHint": "All paper options in one place",
+        "coordinateGraph": "Coordinate graph",
+        "coordinateGraphHint": "Insert a coordinate graph with axes, grid and tick marks",
+        "addCoordinateGraph": "Add coordinate graph",
+        "clearPage": "Clear page",
+        "clearPageHint": "Remove every mark on this page",
+        "shapes": "Shapes"
+      },
+      "objects": {
+        "select": "Select",
+        "selectHint": "Select, move, resize and rotate objects",
+        "lasso": "Lasso",
+        "lassoHint": "Select marks by circling them",
+        "shapes": "Shapes",
+        "shapesHint": "Insert rectangles, circles, lines, arrows and polygons",
+        "stickers": "Stickers",
+        "stickersHint": "Insert decorative stickers",
+        "textbox": "Textbox",
+        "textboxHint": "Insert a text box",
+        "sticky": "Sticky",
+        "stickyHint": "Insert a sticky note",
+        "selectionInfo": "Object: {type}",
+        "strokesSelected": "{count} strokes",
+        "nothingSelected": "nothing selected",
+        "apply": "Apply",
+        "applyHint": "Commit the move, scale or rotation",
+        "recolor": "Recolor",
+        "recolorHint": "Paint the selection with the current ink",
+        "delete": "Delete",
+        "deleteHint": "Delete the selected object",
+        "deselect": "Deselect",
+        "deselectHint": "Clear the selection",
+        "transform": "Transform",
+        "selectionStudio": "Selection studio",
+        "selectionStudioHint": "Move, scale and rotate the selection precisely",
+        "selectFirst": "Select marks with the lasso first",
+        "selectObjectFirst": "Select an object with the Select tool first",
+        "front": "Front",
+        "back": "Back"
+      },
       "smart": {
         "recognise": "Recognise",
         "handwriting": "Handwriting",
@@ -944,32 +996,27 @@
         "recordFirst": "Record some audio first"
       },
       "tab": {
-        "ink": "Ink",
         "handwriting": "Handwriting",
         "startInking": "Start inking",
         "startInkingHint": "Add a handwriting page to this note",
         "attachOldPage": "Attach old page",
         "attachOldPageHint": "Bring in a handwriting page from before Ink moved inside notes",
-        "noUnattachedPages": "No unattached ink pages.",
-        "about": "About",
-        "aboutText": "Every note can carry its own handwriting page. Pens, colours, selection, paper, smart ink and audio appear here once you start.",
-        "subtabDraw": "Draw",
-        "subtabColor": "Color",
-        "subtabSelect": "Select",
-        "subtabPaper": "Paper",
-        "subtabSmart": "Smart ink",
-        "subtabAudio": "Audio",
+        "noAttachable": "No unattached ink pages.",
+        "ink": "Ink",
         "overlay": "Overlay",
         "fullPage": "Full page",
         "inkOverText": "Ink over text",
         "fullPageHint": "Switch to full-page ink surface",
         "inkOverTextHint": "Show ink over note text in Read view",
+        "handwritingPage": "Handwriting page",
         "marks": "{count} marks",
         "statusSaving": "saving…",
         "statusSaved": "saved",
         "statusAutosave": "autosave on",
         "removeInk": "Remove ink",
-        "removeInkHint": "Delete all handwriting in this note"
+        "removeInkHint": "Delete all handwriting in this note",
+        "collapse": "Collapse",
+        "expand": "Expand"
       },
       "eraserModes": {
         "stroke": "Stroke",
@@ -977,10 +1024,12 @@
       },
       "groups": {
         "draw": "Draw",
-        "color": "Color",
-        "history": "History",
+        "frames": "Frames",
+        "objects": "Objects",
         "view": "View",
-        "more": "More"
+        "more": "More",
+        "shapes": "Shapes",
+        "overlay": "Overlay"
       },
       "more": {
         "label": "More",
@@ -1011,43 +1060,6 @@
         "removeInk": "Remove ink",
         "attachOld": "Attach old page",
         "disabled": "Select marks with the lasso first"
-      },
-      "draw": {
-        "pen": "Pen",
-        "penHint": "Choose a pen",
-        "eraser": "Eraser",
-        "eraserHint": "Erase marks",
-        "lasso": "Lasso",
-        "lassoHint": "Select marks by circling them",
-        "width": "Width",
-        "saveFavPen": "Save current pen as favourite",
-        "removeFavPen": "Remove favourite pen",
-        "noFavPens": "save your favourite pen setups here (max 8)"
-      },
-      "color": {
-        "picker": "Colour",
-        "pickerHint": "Open colour mixer, palettes and history"
-      },
-      "tab": {
-        "handwriting": "Handwriting",
-        "startInking": "Start inking",
-        "startInkingHint": "Add a handwriting page to this note",
-        "attachOldPage": "Attach old page",
-        "attachOldPageHint": "Bring in a handwriting page from before Ink moved inside notes",
-        "noAttachable": "No unattached ink pages.",
-        "ink": "Ink",
-        "overlay": "Overlay",
-        "fullPage": "Full page",
-        "inkOverText": "Ink over text",
-        "fullPageHint": "Switch to full-page ink surface",
-        "inkOverTextHint": "Show ink over note text in Read view",
-        "handwritingPage": "Handwriting page",
-        "marks": "{count} marks",
-        "statusSaving": "saving…",
-        "statusSaved": "saved",
-        "statusAutosave": "autosave on",
-        "removeInk": "Remove ink",
-        "removeInkHint": "Delete all handwriting in this note"
       }
     },
     "wordGoal": {
@@ -1117,10 +1129,14 @@
       "print": "Print (clean style)",
       "md": "Export as Markdown (.md)",
       "html": "Export as HTML (.html)",
+      "htmlEmbedded": "Single file (images embedded)",
       "pdf": "Export as PDF (.pdf)",
       "table": "Table (cursor in table)",
       "tableXlsx": "Export table as Excel (.xlsx)",
       "tableCsv": "Export table as CSV (.csv)",
+      "openAsCanvas": "Open as canvas",
+      "openAsCanvasHint": "Create a canvas with this note's content in an A4 frame",
+      "canvasCreated": "Canvas created: {name}",
       "app": "App",
       "openSettings": "Open Settings",
       "exported": "Exported as {format}.",
@@ -1174,7 +1190,19 @@
     "back": "Back",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "next": "Next"
+    "next": "Next",
+    "migration": {
+      "title": "Note format migration",
+      "message": "This version of LemonNote simplifies note formats. Notes in YAML, XML, JSON, TOML, CSV, INI, CSS, JavaScript, TypeScript, Python, Rust, Bash, and SQL formats will be converted to Markdown with fenced code blocks, preserving their exact content.",
+      "backupTitle": "Create backup before migration",
+      "backupMessage": "Before the migration runs, a full backup of your vault will be created. This is strongly recommended so you can restore if anything goes wrong.",
+      "backupButton": "Create backup and migrate",
+      "skipButton": "Skip backup (not recommended)",
+      "backupSuccess": "Backup created successfully. Starting migration…",
+      "backupFailed": "Backup failed: {error}. Migration aborted to protect your data.",
+      "migrationComplete": "Migration complete. {count} note(s) converted.",
+      "migrationFailed": "Migration failed: {error}"
+    }
   },
   "backup": {
     "size": "Size",
@@ -1235,7 +1263,7 @@
   },
   "digits": {
     "latin": "Latin digits (123)",
-    "arabicind": "Arabic-Indic digits (١٢٣)"
+    "arabicind": "Arabic-Indic digits (٠١٢٣)"
   },
   "lang": {
     "en": "English",
@@ -1277,7 +1305,7 @@
     "defaultsReset": "Writing defaults reset.",
     "appearance": {
       "title": "Appearance",
-      "desc": "Choose a theme preset, light/dark mode, background texture, interface density, animation level, and glass effects.",
+      "desc": "Choose theme preset, light/dark mode, background texture, and interface density.",
       "themeMode": "Theme mode",
       "light": "Light",
       "dark": "Dark",
@@ -1290,22 +1318,22 @@
       "compact": "Compact",
       "comfortable": "Comfortable",
       "spacious": "Spacious",
+      "preview": "Preview",
+      "previewDesc": "Preview the selected theme preset",
       "animationLevel": "Animation level",
+      "animationsExpressive": "Expressive",
       "animationsOff": "Off",
       "animationsSubtle": "Subtle",
-      "animationsExpressive": "Expressive",
-      "followSystem": "Follow system light/dark",
-      "followSystemLabel": "Automatically switch themes with system",
-      "followSystemDesc": "When enabled, the app follows your system light/dark preference.",
-      "scheduleLabel": "Custom day/night schedule",
-      "scheduleDesc": "Set specific times for light and dark mode instead of following system.",
-      "dayTime": "Day mode starts at",
-      "nightTime": "Night mode starts at",
+      "dayTime": "Day time",
+      "followSystem": "Follow system",
+      "followSystemDesc": "Automatically switch theme based on system preference",
+      "followSystemLabel": "Follow system theme",
       "glassEffects": "Glass effects",
-      "glassEffectsLabel": "Enable backdrop blur and glass surfaces",
-      "glassEffectsDesc": "When disabled, removes all backdrop blur for better performance.",
-      "preview": "Preview",
-      "previewDesc": "Current theme applied to this page."
+      "glassEffectsDesc": "Enable frosted glass backgrounds",
+      "glassEffectsLabel": "Glass effects",
+      "nightTime": "Night time",
+      "scheduleDesc": "Schedule automatic theme changes",
+      "scheduleLabel": "Theme schedule"
     },
     "writing": {
       "title": "Writing defaults",
@@ -1735,9 +1763,46 @@
       "autosaveOn": "autosave on",
       "canvasName": "Canvas name",
       "status": {
-        "saving": "saving…",
+        "saving": "saving",
         "saved": "saved",
-        "autosaveOn": "autosave on"
+        "autosaveOn": "autosave on",
+        "idle": "idle"
+      },
+      "addFrame": "Add Frame",
+      "fitToPage": "Fit to page",
+      "fitToWidth": "Fit to width",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetView": "Reset view",
+      "export": "Export",
+      "import": "Import",
+      "exportTooltip": "Export as .lemoncanvas",
+      "importTooltip": "Import .lemoncanvas file",
+      "importSuccess": "Canvas imported successfully",
+      "exportPdf": "Export as PDF",
+      "exportPng": "Export as PNG",
+      "exportWholeCanvas": "Whole canvas",
+      "exportSelectedFrame": "Selected frame",
+      "exportPdfTooltip": "Export canvas to PDF",
+      "exportPngTooltip": "Export canvas to PNG",
+      "selectFrameFirst": "Select a frame first to export it individually",
+      "newDesign": "New Design",
+      "modeDesign": "Design",
+      "kindDesign": "Design",
+      "frameTypes": {
+        "a4": "A4 Portrait",
+        "a4-landscape": "A4 Landscape",
+        "letter": "Letter",
+        "3:4": "3:4",
+        "4:3": "4:3",
+        "16:9": "16:9",
+        "square": "Square",
+        "free": "Free"
+      },
+      "textFrame": {
+        "locked": "Text is locked because ink is drawn over it",
+        "unlock": "Unlock",
+        "unlockWarning": "Unlocking will allow editing, but ink strokes may no longer match the text content."
       }
     },
     "tables": {
@@ -1758,9 +1823,10 @@
       "tablePickerPlaceholder": "Choose a table…",
       "addButton": "Add",
       "status": {
-        "saving": "saving…",
+        "saving": "saving",
         "saved": "saved",
-        "autosaveOn": "autosave on"
+        "autosaveOn": "autosave on",
+        "idle": "idle"
       },
       "stats": "{rows} rows · {fields} fields",
       "tableName": "Table name",
@@ -1811,9 +1877,10 @@
       "findButton": "find",
       "newFile": "New file",
       "status": {
-        "saving": "saving…",
+        "saving": "saving",
         "saved": "saved",
-        "autosaveOn": "autosave on"
+        "autosaveOn": "autosave on",
+        "idle": "idle"
       }
     },
     "queries": {
@@ -1968,5 +2035,54 @@
     "hideCompleted": "Hide completed",
     "createSummary": "Create summary note",
     "noTaggedLines": "No tagged lines match"
+  },
+  "format": {
+    "capability": {
+      "markdown": {
+        "ink": "Not available in Markdown",
+        "shapes": "Not available in Markdown"
+      },
+      "plain": {
+        "richFormat": "Not available in plain text",
+        "codeBlocks": "Not available in plain text",
+        "math": "Not available in plain text",
+        "images": "Not available in plain text",
+        "tables": "Not available in plain text",
+        "ink": "Not available in plain text",
+        "shapes": "Not available in plain text",
+        "insert": "Not available in plain text",
+        "design": "Not available in plain text",
+        "layout": "Not available in plain text",
+        "exportPdf": "Not available in plain text"
+      },
+      "html": {
+        "ink": "Not available in HTML",
+        "shapes": "Not available in HTML",
+        "design": "HTML styling lives in the source",
+        "layout": "HTML styling lives in the source"
+      },
+      "pdf": {
+        "editText": "Not available in PDF",
+        "richFormat": "Not available in PDF",
+        "codeBlocks": "Not available in PDF",
+        "math": "Not available in PDF",
+        "images": "Not available in PDF",
+        "tables": "Not available in PDF",
+        "links": "Not available in PDF",
+        "insert": "Not available in PDF",
+        "design": "Not available in PDF",
+        "layout": "Not available in PDF"
+      },
+      "canvas": {}
+    }
+  },
+  "pdf": {
+    "annotate": {
+      "saved": "Saved",
+      "exit": "Exit",
+      "enter": "Enter",
+      "save": "Save",
+      "export": "Export"
+    }
   }
 }

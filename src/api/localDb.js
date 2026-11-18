@@ -11,7 +11,7 @@
  */
 
 const DB_NAME = "notecraft";
-const DB_VERSION = 5;
+const DB_VERSION = 8;
 const FILE_STORE = "_files";
 const USER_KEY = "notecraft:user";
 
@@ -27,9 +27,27 @@ const DEFAULTS = {
     title_encrypted: false
   },
   Canvas: {},
+  CanvasDoc: {
+    kind: "canvas",           // "canvas" | "ink"
+    name: "Untitled canvas",
+    version: 2,
+    paper: { template: "grid", size: "infinite", tone: "dark" },
+    strokes: [],
+    objects: [],
+    camera: { x: 0, y: 0, scale: 1 },
+  },
   DataTable: {},
   CodeFile: {},
-  InkPage: {},
+  InkPage: {
+    version: 2,
+    kind: "ink",
+    name: "Untitled page",
+    paper: { template: "grid", size: "infinite", tone: "dark" },
+    objects: [],
+    camera: { x: 0, y: 0, scale: 1 },
+    audio: null,
+    ocrText: "",
+  },
   InkChunk: {},
   Flashcard: {},
   Template: {},
@@ -45,13 +63,158 @@ function openDb() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const database = request.result;
+        const oldVersion = event.oldVersion;
+
+        // Create missing stores
         [...Object.keys(DEFAULTS), FILE_STORE].forEach((name) => {
           if (!database.objectStoreNames.contains(name)) {
             database.createObjectStore(name, { keyPath: "id" });
           }
         });
+
+        // Migration from v5 to v6: convert old note formats to markdown with fenced code blocks
+        if (oldVersion < 6 && database.objectStoreNames.contains("Note")) {
+          const tx = event.target.transaction;
+          const noteStore = tx.objectStore("Note");
+          const getAllRequest = noteStore.getAll();
+          getAllRequest.onsuccess = () => {
+            const notes = getAllRequest.result;
+            const oldFormats = new Set([
+              "yaml", "xml", "json", "toml", "csv", "ini",
+              "css", "javascript", "typescript", "python", "rust", "bash", "sql"
+            ]);
+            const formatToLang = {
+              "yaml": "yaml",
+              "xml": "xml",
+              "json": "json",
+              "toml": "toml",
+              "csv": "csv",
+              "ini": "ini",
+              "css": "css",
+              "javascript": "javascript",
+              "typescript": "typescript",
+              "python": "python",
+              "rust": "rust",
+              "bash": "bash",
+              "sql": "sql",
+            };
+
+            notes.forEach((note) => {
+              if (note.format && oldFormats.has(note.format)) {
+                const lang = formatToLang[note.format] || note.format;
+                let body = note.body || "";
+                // Check if body already contains triple backticks
+                const fence = body.includes("```") ? "````" : "```";
+                const newBody = `${fence}${lang}\n${body}\n${fence}`;
+                note.format = "markdown";
+                note.body = newBody;
+                note.updated_date = new Date().toISOString();
+                noteStore.put(note);
+              }
+            });
+          };
+        }
+
+        // Migration from v6 to v7: create CanvasDoc store and migrate Canvas records
+        if (oldVersion < 7 && database.objectStoreNames.contains("Canvas")) {
+          const tx = event.target.transaction;
+          const canvasStore = tx.objectStore("Canvas");
+          const canvasDocStore = tx.objectStore("CanvasDoc");
+          const getAllRequest = canvasStore.getAll();
+          getAllRequest.onsuccess = () => {
+            const canvases = getAllRequest.result;
+            canvases.forEach((canvas) => {
+              const nodes = canvas.nodes ?? [];
+              const edges = canvas.edges ?? [];
+              const objects = [];
+
+              // Convert nodes to card objects
+              nodes.forEach((node) => {
+                objects.push({
+                  id: node.id,
+                  type: "card",
+                  x: node.x ?? 0,
+                  y: node.y ?? 0,
+                  width: 240,
+                  height: 154,
+                  rotation: 0,
+                  zOrder: Date.now() + Math.random(),
+                  title: node.title ?? "New card",
+                  body: node.body ?? "",
+                  visible: true,
+                  locked: false,
+                  groupId: null,
+                });
+              });
+
+              // Convert edges to connector objects
+              edges.forEach((edge) => {
+                objects.push({
+                  id: edge.id,
+                  type: "connector",
+                  from: edge.from,
+                  to: edge.to,
+                  style: "straight",
+                  points: [],
+                  visible: true,
+                  locked: false,
+                  groupId: null,
+                });
+              });
+
+              const canvasDoc = {
+                id: canvas.id,
+                kind: "canvas",
+                name: canvas.name ?? "Untitled canvas",
+                version: 2,
+                paper: { template: "grid", size: "free", width: 9000, height: 6500, tone: "dark" },
+                strokes: [],
+                objects,
+                camera: { x: 0, y: 0, scale: 1 },
+                created_date: canvas.created_date ?? new Date().toISOString(),
+                updated_date: canvas.updated_date ?? new Date().toISOString(),
+              };
+
+              canvasDocStore.put(canvasDoc);
+            });
+          };
+        }
+
+        // Migration from v7 to v8: add version and kind to InkPage records
+        if (oldVersion < 8 && database.objectStoreNames.contains("InkPage")) {
+          const tx = event.target.transaction;
+          const inkPageStore = tx.objectStore("InkPage");
+          const getAllRequest = inkPageStore.getAll();
+          getAllRequest.onsuccess = () => {
+            const inkPages = getAllRequest.result;
+            inkPages.forEach((page) => {
+              // Only migrate if version is not already set (v1 pages)
+              if (page.version === undefined) {
+                const updatedPage = {
+                  ...page,
+                  version: 2,
+                  kind: "ink",
+                  // Ensure paper has all required fields
+                  paper: {
+                    template: "grid",
+                    size: "infinite",
+                    tone: "dark",
+                    ...(page.paper || {}),
+                  },
+                  // Ensure camera exists
+                  camera: page.camera || { x: 0, y: 0, scale: 1 },
+                  // Ensure objects array exists
+                  objects: page.objects || [],
+                  // Ensure strokes array exists (may be empty if chunked)
+                  strokes: Array.isArray(page.strokes) ? page.strokes : [],
+                };
+                inkPageStore.put(updatedPage);
+              }
+            });
+          };
+        }
       };
       request.onsuccess = () => {
         dbInstance = request.result;

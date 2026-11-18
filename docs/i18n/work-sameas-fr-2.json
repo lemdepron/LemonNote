@@ -1,0 +1,15 @@
+{
+  "vault.notes": "notes",
+  "vault.shortcuts.extensions.label": "Extensions",
+  "vault.stats.notes": "{count} note{plural}",
+  "vault.stats.notesTagsLinks": "{notes} · {tags} · {links}",
+  "vault.tables.columnTypes.date": "Date",
+  "vault.tables.columnTypes.relation": "Relation",
+  "vault.tables.tableGrid.numberPlaceholder": "0",
+  "vault.tables.tableGrid.placeholder": "—",
+  "vault.tables.typeBadge.date": "date",
+  "vault.tables.typeBadge.number": "num",
+  "vault.tables.typeBadge.relation": "rel",
+  "vault.tables.typeBadge.text": "txt",
+  "vault.tables.typePlaceholder": "Type"
+}

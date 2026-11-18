@@ -1,0 +1,10 @@
+import fs from 'fs';
+const content = fs.readFileSync('src/lib/locales/zh.json', 'utf8');
+const idx1 = content.indexOf('"ink": {');
+const idx2 = content.indexOf('"ink": {', idx1 + 1);
+const idx3 = content.indexOf('"ink": {', idx2 + 1);
+console.log('First ink at:', idx1);
+console.log('Second ink at:', idx2);
+console.log('Third ink at:', idx3);
+console.log('---');
+console.log('Second ink context:', content.substring(idx2 - 50, idx2 + 200));

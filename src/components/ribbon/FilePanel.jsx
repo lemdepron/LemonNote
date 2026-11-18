@@ -22,6 +22,7 @@ import {
   Unlock,
   Key,
   ChevronLeft,
+  LayoutGrid,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -36,10 +37,11 @@ import {
 import { db } from "@/api/localDb";
 import { toast } from "@/lib/toast";
 import { backlinksFor, plainText, isNoteLocked } from "@/lib/vault";
-import { exportMarkdown, exportHtml, exportPdf } from "@/lib/note-export";
+import { exportMarkdown, exportHtml, exportPdf, exportHtmlEmbedded } from "@/lib/note-export";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { tableAt } from "@/lib/ribbon-actions";
 import { exportTableToXlsx, exportTableToCsv, downloadBlob } from "@/lib/table-import-export";
+import { openNoteAsCanvas } from "@/lib/notes";
 import { cn } from "@/lib/utils";
 import { t, useI18n, formatNumber } from "@/lib/i18n";
 
@@ -245,10 +247,11 @@ export function FilePanel({ note, onClose, isNew, selection, noteBody, onApplyTe
     window.print();
   };
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     try {
       if (format === "markdown") exportMarkdown(note);
       else if (format === "html") exportHtml(note);
+      else if (format === "html-embedded") await exportHtmlEmbedded(note);
       else if (format === "pdf") exportPdf(note);
       toast.success(t("fileMenu.printExport.exported", { format: format.toUpperCase() }));
     } catch (err) {
@@ -769,8 +772,9 @@ function TemplatesSection({
   );
 }
 
-function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody }) {
+function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody, note }) {
   const inTable = selection && tableAt(noteBody, selection.start);
+  const isMarkdown = note?.format === "markdown";
 
   const handleExportTable = async (format) => {
     try {
@@ -785,6 +789,18 @@ function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody
       }
     } catch (err) {
       toast.error(`Export failed: ${err.message}`);
+    }
+  };
+
+  const handleOpenAsCanvas = async () => {
+    if (!note) return;
+    try {
+      const canvas = await openNoteAsCanvas(note);
+      toast.success(t("fileMenu.printExport.canvasCreated", { name: canvas.name }));
+      // Navigate to the new canvas
+      window.location.href = `/canvas/${canvas.id}`;
+    } catch (err) {
+      toast.error(err.message || "Failed to create canvas");
     }
   };
 
@@ -824,6 +840,16 @@ function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody
         </button>
         <button
           type="button"
+          onClick={() => onExport("html-embedded")}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
+          )}
+        >
+          <Download className="h-4 w-4 shrink-0" />
+          <span>{t("fileMenu.printExport.htmlEmbedded")}</span>
+        </button>
+        <button
+          type="button"
           onClick={() => onExport("pdf")}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
@@ -832,6 +858,18 @@ function PrintExportSection({ onPrint, onExport, onSettings, selection, noteBody
           <Download className="h-4 w-4 shrink-0" />
           <span>{t("fileMenu.printExport.pdf")}</span>
         </button>
+        {isMarkdown && (
+          <button
+            type="button"
+            onClick={handleOpenAsCanvas}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-accent/60"
+            )}
+          >
+            <LayoutGrid className="h-4 w-4 shrink-0" />
+            <span>{t("fileMenu.printExport.openAsCanvas")}</span>
+          </button>
+        )}
       </div>
       {inTable && (
         <div className="space-y-2 pt-2 border-t border-border/60">

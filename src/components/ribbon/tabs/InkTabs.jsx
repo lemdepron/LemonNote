@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  Brush, History, Layers, Maximize, Mic, MicOff, Palette, Pause, PenLine, Play, Redo2,
+  Brush, History, Layers, Maximize, Mic, MicOff, Pause, PenLine, Play, Redo2,
   ScanText, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
   Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus, PenTool, LassoSelect,
+  Image, StickyNote, Type, Circle, ArrowRight, Triangle, Hexagon,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
@@ -12,14 +13,11 @@ import { toast } from "@/lib/toast";
 import { Slider } from "@/components/ink/StudioSection";
 import BrushStudio from "@/components/ink/BrushStudio";
 import AssistStudio from "@/components/ink/AssistStudio";
-import ColorStudio from "@/components/ink/ColorStudio";
 import SelectionStudio from "@/components/ink/SelectionStudio";
 import PaperStudio from "@/components/ink/PaperStudio";
-import SmartInkStudio from "@/components/ink/SmartInkStudio";
-import AudioStudio from "@/components/ink/AudioStudio";
-import { BRUSHES, brushPreviewStyle } from "@/lib/ink/brushes";
-import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/ink/paper";
-import { createCoordinateGraph } from "@/lib/ink/shapes";
+import { BRUSHES, brushPreviewStyle } from "@/lib/canvas/ink/brushes";
+import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/canvas/ink/paper";
+import { createCoordinateGraph } from "@/lib/canvas/ink/shapes";
 import { relativeTime } from "@/lib/vault";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -30,6 +28,7 @@ import {
   InsertSpaceIcon, MousePointerIcon,
 } from "@/components/ink/icons";
 import { Popover, PopoverTrigger, PopoverContent, CompactPopoverIconButton, CompactPopoverGrid } from "@/components/ui/compact-popover";
+import { Switch } from "@/components/ui/switch";
 
 function getModes(tool) {
   return [
@@ -305,46 +304,38 @@ function MoreToolsPopover({ ink, onClose }) {
         </Popover>
       </CompactPopoverIconButton>
 
-      {/* Smart ink */}
+      {/* Smart ink - disabled with Coming soon */}
       <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
         {t("ink.more.smartInk")}
       </div>
       <CompactPopoverGrid columns={2}>
         <CompactPopoverIconButton
-          icon={recognition.busy === "text" ? Loader2 : ScanText}
-          spinning={recognition.busy === "text"}
+          icon={ScanText}
           label={t("ink.more.handwriting")}
-          disabled={busy}
-          onClick={() => { ink.onRecognize("text"); onClose(); }}
+          disabled={true}
+          title={t("ink.comingSoon")}
         />
         <CompactPopoverIconButton
-          icon={recognition.busy === "math" ? Loader2 : Sigma}
-          spinning={recognition.busy === "math"}
+          icon={Sigma}
           label={t("ink.more.equation")}
-          disabled={busy}
-          onClick={() => { ink.onRecognize("math"); onClose(); }}
+          disabled={true}
+          title={t("ink.comingSoon")}
         />
       </CompactPopoverGrid>
       <CompactPopoverIconButton
         icon={BookOpen}
         label={t("ink.more.resultsSearch")}
-        onClick={() => onClose()}
+        disabled={true}
+        title={t("ink.comingSoon")}
       >
         <Popover>
           <PopoverTrigger asChild>
             <button type="button" className="w-full" onClick={() => {}} />
           </PopoverTrigger>
           <PopoverContent align="start" style={{ width: 300 }} className="max-h-[70vh] overflow-y-auto p-1">
-            <SmartInkStudio
-              recognition={recognition}
-              onRecognize={ink.onRecognize}
-              onInsert={ink.onInsertText}
-              search={ink.handwriting.query}
-              onSearch={ink.onSearch}
-              matches={ink.handwriting.matches}
-              searching={ink.handwriting.searching}
-              onOpenPage={(pageId) => ink.onOpenPage?.(pageId)}
-            />
+            <div className="px-2 py-3 font-mono text-[11px] text-muted-foreground">
+              {t("ink.comingSoon")}
+            </div>
           </PopoverContent>
         </Popover>
       </CompactPopoverIconButton>
@@ -431,13 +422,16 @@ function MoreToolsPopover({ ink, onClose }) {
   );
 }
 
-export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
+/* ============================== Canvas Ribbon Tabs ============================== */
+
+export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
   const { t } = useI18n();
   const { tool, onTool, engine } = ink;
   const [favPens, setFavPens] = useState(() => readFavPens());
   const [penPickerOpen, setPenPickerOpen] = useState(false);
   const [eraserPopoverOpen, setEraserPopoverOpen] = useState(false);
   const [morePopoverOpen, setMorePopoverOpen] = useState(false);
+  const [snapShapes, setSnapShapes] = useState(() => readPref("inkSnapShapes", "true") === "true");
 
   useEffect(() => {
     setFavPens(readFavPens());
@@ -504,6 +498,12 @@ export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
     handleToolChange(changes);
   }, [onAutoStart, handleToolChange]);
 
+  const handleSnapShapesChange = useCallback((checked) => {
+    setSnapShapes(checked);
+    writePref("inkSnapShapes", checked ? "true" : "false");
+    onTool({ shapeRecognition: checked });
+  }, [onTool]);
+
   // Show max 4 favourite pens in the panel, rest accessible via popover if needed
   const visibleFavPens = favPens.slice(0, 4);
 
@@ -551,6 +551,24 @@ export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
           onClick={() => wrapToolChange({ mode: "lasso" })}
         />
 
+        {/* Shape mode */}
+        <RibbonButton
+          icon={ShapesIcon}
+          label={t("ink.draw.shapeMode")}
+          hint={t("ink.draw.shapeModeHint")}
+          active={tool.mode === "shape"}
+          onClick={() => wrapToolChange({ mode: "shape" })}
+        />
+
+        {/* Snap shapes toggle */}
+        <div style={{ gridRow: "span 2", minWidth: 100, display: "flex", alignItems: "center", gap: 8 }}>
+          <Switch
+            checked={snapShapes}
+            onCheckedChange={handleSnapShapesChange}
+            aria-label={t("ink.draw.snapShapes")}
+          />
+          <span className="font-mono text-[10px] text-muted-foreground">{t("ink.draw.snapShapes")}</span>
+        </div>
       </RibbonGroup>
       {afterDraw}
       <RibbonGroup label={t("ink.draw.width")} priority={65} icon={PenLine}>
@@ -645,62 +663,61 @@ export function InkDrawTab({ ink, onAutoStart, afterDraw }) {
   );
 }
 
-/* ---------------------------------- Color ---------------------------------- */
-
-export function InkColorTab({ ink, onAutoStart }) {
+export function CanvasFramesTab({ ink }) {
   const { t } = useI18n();
-  const { tool, onTool } = ink;
-  const [colorPopoverOpen, setColorPopoverOpen] = useState(false);
-
-  const wrapToolChange = useCallback((changes) => {
-    if (onAutoStart && changes && changes.color) {
-      onAutoStart();
-    }
-    onTool(changes);
-  }, [onAutoStart, onTool]);
+  const { page, pageIndex } = ink;
+  const paper = page.paper || {};
 
   return (
     <>
-      <RibbonGroup label={t("ink.groups.color")} priority={60} icon={Palette}>
-        {/* Single color button opening full ColorStudio */}
-        <Popover open={colorPopoverOpen} onOpenChange={setColorPopoverOpen}>
-          <PopoverTrigger asChild>
-            <RibbonButton
-              icon={Palette}
-              label={t("ink.color.picker")}
-              hint={t("ink.color.pickerHint")}
-              onClick={() => {}}
-            />
-          </PopoverTrigger>
-          <PopoverContent align="start" style={{ width: 320 }} className="max-h-[70vh] overflow-y-auto p-1">
-            <ColorStudio
-              color={tool.color}
-              alpha={tool.alpha}
-              eyedropper={tool.mode === "eyedropper"}
-              onEyedropper={() => wrapToolChange({ mode: tool.mode === "eyedropper" ? "draw" : "eyedropper" })}
-              onChange={({ color, alpha }) => wrapToolChange({ color, alpha })}
-            />
-          </PopoverContent>
-        </Popover>
+      <RibbonGroup label={t("ink.frames.template")} priority={70} icon={BookOpen}>
+        <RibbonSelect title={t("ink.frames.paperTemplate")} value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
+        <RibbonSelect title={t("ink.frames.paperTone")} value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.frames.pageSize")} priority={60} icon={Maximize}>
+        <RibbonSelect title={t("ink.frames.pageSize")} value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.frames.pages")} priority={50} icon={ChevronRight}>
+        <RibbonButton icon={ChevronLeft} hint={t("ink.frames.previousPage")} disabled={pageIndex <= 0} onClick={() => ink.onPage(-1)} />
+        <RibbonButton icon={ChevronRight} hint={t("ink.frames.nextPage")} onClick={() => ink.onPage(1)} />
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{t("ink.frames.pageNumber", { num: pageIndex + 1 })}</span>
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.frames.paperStudio")} priority={40} icon={Layers}>
+        <RibbonMenu icon={Layers} label={t("ink.frames.paperStudio")} hint={t("ink.frames.paperStudioHint")} width={300}>
+          {() => <PaperStudio paper={paper} onPaper={ink.onPaper} pageIndex={pageIndex} onPage={ink.onPage} onClear={ink.onClear} />}
+        </RibbonMenu>
+        <RibbonButton icon={Trash2} label={t("ink.frames.clearPage")} hint={t("ink.frames.clearPageHint")} onClick={ink.onClear} />
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.frames.shapes")} priority={30} icon={CoordinateGraphIcon}>
+        <RibbonButton icon={CoordinateGraphIcon} label={t("ink.frames.coordinateGraph")} hint={t("ink.frames.coordinateGraphHint")} onClick={() => {
+          const eng = ink.engine();
+          if (!eng) return;
+          const center = eng.centerWorld();
+          const strokes = createCoordinateGraph(center.x, center.y, 400, 300, 50);
+          eng.cb.onCommit?.(strokes);
+        }} />
       </RibbonGroup>
     </>
   );
 }
 
-/* --------------------------------- Select ---------------------------------- */
-
-export function InkSelectTab({ ink }) {
+export function CanvasObjectsTab({ ink }) {
   const { t } = useI18n();
   const { tool, selection, engine, objectSelection, selectedObjectId, objects, deleteObject, bringToFront, sendToBack } = ink;
   const strokeCount = selection.ids.length;
   const obj = selectedObjectId ? objects.find((o) => o.id === selectedObjectId) : null;
-  const objNone = { disabled: !obj, disabledReason: "Select an object with the Select tool first" };
-  const strokeNone = { disabled: strokeCount === 0, disabledReason: "Select marks with the lasso first" };
+  const objNone = { disabled: !obj, disabledReason: t("ink.objects.selectObjectFirst") };
+  const strokeNone = { disabled: strokeCount === 0, disabledReason: t("ink.objects.selectFirst") };
+
   return (
     <>
       <RibbonGroup label={t("ink.groups.select")} priority={70} icon={MousePointer2}>
-        <RibbonButton icon={MousePointerIcon} label={t("ink.select.select")} hint={t("ink.select.selectHint")} active={tool.mode === "select"} onClick={() => ink.onTool({ mode: "select" })} />
-        <RibbonButton icon={LassoIcon} label={t("ink.select.lasso")} hint={t("ink.select.lassoHint")} active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
+        <RibbonButton icon={MousePointerIcon} label={t("ink.objects.select")} hint={t("ink.objects.selectHint")} active={tool.mode === "select"} onClick={() => ink.onTool({ mode: "select" })} />
+        <RibbonButton icon={LassoIcon} label={t("ink.objects.lasso")} hint={t("ink.objects.lassoHint")} active={tool.mode === "lasso"} onClick={() => ink.onTool({ mode: "lasso" })} />
         <span className="self-center font-mono text-[10.5px] text-muted-foreground min-w-[5rem] text-center">
           {obj ? `Object: ${obj.type}` : strokeCount ? `${strokeCount} strokes` : "nothing selected"}
         </span>
@@ -708,24 +725,24 @@ export function InkSelectTab({ ink }) {
 
       {obj && (
         <RibbonGroup label={t("ink.groups.object")} priority={60} icon={Layers}>
-          <RibbonButton icon={Trash2} label={t("ink.object.delete")} hint={t("ink.object.deleteHint")} shortcut="Del" {...objNone} onClick={() => deleteObject(obj.id)} />
-          <RibbonButton icon={Layers} label={t("ink.object.front")} hint={t("ink.object.frontHint")} {...objNone} onClick={() => bringToFront(obj.id)} />
-          <RibbonButton icon={Layers} label={t("ink.object.back")} hint={t("ink.object.backHint")} {...objNone} onClick={() => sendToBack(obj.id)} />
+          <RibbonButton icon={Trash2} label={t("ink.objects.delete")} hint={t("ink.objects.deleteHint")} shortcut="Del" {...objNone} onClick={() => deleteObject(obj.id)} />
+          <RibbonButton icon={Layers} label={t("ink.objects.front")} hint={t("ink.objects.frontHint")} {...objNone} onClick={() => bringToFront(obj.id)} />
+          <RibbonButton icon={Layers} label={t("ink.objects.back")} hint={t("ink.objects.backHint")} {...objNone} onClick={() => sendToBack(obj.id)} />
         </RibbonGroup>
       )}
 
       {strokeCount > 0 && (
         <RibbonGroup label={t("ink.groups.strokes")} priority={50} icon={Check}>
-          <RibbonButton icon={Check} label={t("ink.strokes.apply")} hint={t("ink.strokes.applyHint")} {...strokeNone} onClick={() => engine()?.commitSelection()} />
-          <RibbonButton icon={Droplets} label={t("ink.strokes.recolor")} hint={t("ink.strokes.recolorHint")} {...strokeNone} onClick={() => engine()?.recolorSelection(tool.color, tool.alpha)} />
-          <RibbonButton icon={Trash2} label={t("ink.strokes.delete")} hint={t("ink.strokes.deleteHint")} shortcut="Del" {...strokeNone} onClick={() => engine()?.deleteSelection()} />
-          <RibbonButton icon={X} label={t("ink.strokes.deselect")} hint={t("ink.strokes.deselectHint")} {...strokeNone} onClick={() => engine()?.setSelection([])} />
+          <RibbonButton icon={Check} label={t("ink.objects.apply")} hint={t("ink.objects.applyHint")} {...strokeNone} onClick={() => engine()?.commitSelection()} />
+          <RibbonButton icon={Droplets} label={t("ink.objects.recolor")} hint={t("ink.objects.recolorHint")} {...strokeNone} onClick={() => engine()?.recolorSelection(tool.color, tool.alpha)} />
+          <RibbonButton icon={Trash2} label={t("ink.objects.delete")} hint={t("ink.objects.deleteHint")} shortcut="Del" {...strokeNone} onClick={() => engine()?.deleteSelection()} />
+          <RibbonButton icon={X} label={t("ink.objects.deselect")} hint={t("ink.objects.deselectHint")} {...strokeNone} onClick={() => engine()?.setSelection([])} />
         </RibbonGroup>
       )}
 
       {strokeCount > 0 && (
         <RibbonGroup label={t("ink.groups.transform")} priority={40} icon={SquareDashedMousePointer}>
-          <RibbonMenu icon={SquareDashedMousePointer} label={t("ink.transform.studio")} hint={t("ink.transform.studioHint")} width={300} disabled={strokeCount === 0} disabledReason={t("ink.transform.disabled")}>
+          <RibbonMenu icon={SquareDashedMousePointer} label={t("ink.objects.selectionStudio")} hint={t("ink.objects.selectionStudioHint")} width={300} disabled={strokeCount === 0} disabledReason={t("ink.objects.selectFirst")}>
             {() => (
               <SelectionStudio
                 selection={selection}
@@ -741,131 +758,128 @@ export function InkSelectTab({ ink }) {
           </RibbonMenu>
         </RibbonGroup>
       )}
-    </>
-  );
-}
 
-/* ---------------------------------- Paper ---------------------------------- */
-
-export function InkPaperTab({ ink }) {
-  const { t } = useI18n();
-  const { page, pageIndex } = ink;
-  const paper = page.paper || {};
-  return (
-    <>
-      <RibbonGroup label={t("ink.groups.template")} priority={70} icon={BookOpen}>
-        <RibbonSelect title={t("ink.paper.template")} value={paper.template || "grid"} onChange={(template) => ink.onPaper({ template })} options={PAPER_TEMPLATES.map((item) => ({ value: item.id, label: item.label }))} />
-        <RibbonSelect title={t("ink.paper.tone")} value={paper.tone || "dark"} onChange={(tone) => ink.onPaper({ tone })} options={PAPER_TONES.map((item) => ({ value: item.id, label: item.label }))} />
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.pageSize")} priority={60} icon={Maximize}>
-        <RibbonSelect title={t("ink.paper.size")} value={paper.size || "a4"} onChange={(size) => ink.onPaper({ size })} options={PAPER_SIZES.map((item) => ({ value: item.id, label: item.label }))} />
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.pages")} priority={50} icon={ChevronRight}>
-        <RibbonButton icon={ChevronLeft} hint={t("ink.pages.prev")} disabled={pageIndex <= 0} onClick={() => ink.onPage(-1)} />
-        <RibbonButton icon={ChevronRight} hint={t("ink.pages.next")} onClick={() => ink.onPage(1)} />
-        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{t("ink.pages.page", { num: pageIndex + 1 })}</span>
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.paperStudio")} priority={40} icon={Layers}>
-        <RibbonMenu icon={Layers} label={t("ink.paper.studio")} hint={t("ink.paper.studioHint")} width={300}>
-          {() => <PaperStudio paper={paper} onPaper={ink.onPaper} pageIndex={pageIndex} onPage={ink.onPage} onClear={ink.onClear} />}
-        </RibbonMenu>
-        <RibbonButton icon={Trash2} label={t("ink.paper.clear")} hint={t("ink.paper.clearHint")} onClick={ink.onClear} />
-      </RibbonGroup>
-    </>
-  );
-}
-
-/* -------------------------------- Smart ink -------------------------------- */
-
-export function InkSmartTab({ ink }) {
-  const { t } = useI18n();
-  const { recognition } = ink;
-  const busy = Boolean(recognition.busy);
-  return (
-    <>
-      <RibbonGroup label={t("ink.groups.recognise")} priority={70} icon={ScanText}>
-        <RibbonButton icon={recognition.busy === "text" ? Loader2 : ScanText} spinning={recognition.busy === "text"} label={t("ink.smart.handwriting")} hint={t("ink.smart.handwritingHint")} disabled={busy} onClick={() => ink.onRecognize("text")} />
-        <RibbonButton icon={recognition.busy === "math" ? Loader2 : Sigma} spinning={recognition.busy === "math"} label={t("ink.smart.equation")} hint={t("ink.smart.equationHint")} disabled={busy} onClick={() => ink.onRecognize("math")} />
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.results")} priority={60} icon={BookOpen}>
-        <RibbonMenu icon={BookOpen} label={t("ink.smart.results")} hint={t("ink.smart.resultsHint")} width={300}>
+      {/* Object insertion tools */}
+      <RibbonGroup label={t("ink.groups.shapes")} priority={30} icon={ShapesIcon}>
+        <RibbonMenu icon={ShapesIcon} label={t("ink.objects.shapes")} hint={t("ink.objects.shapesHint")} width={220}>
           {() => (
-            <SmartInkStudio
-              recognition={recognition}
-              onRecognize={ink.onRecognize}
-              onInsert={ink.onInsertText}
-              search={ink.handwriting.query}
-              onSearch={ink.onSearch}
-              matches={ink.handwriting.matches}
-              searching={ink.handwriting.searching}
-              onOpenPage={(pageId) => ink.onOpenPage?.(pageId)}
-            />
+            <div className="p-1 space-y-2">
+              <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                {t("ink.objects.shapes")}
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { id: "rect", icon: Square, label: "Rectangle" },
+                  { id: "ellipse", icon: Circle, label: "Circle/Ellipse" },
+                  { id: "line", icon: Minus, label: "Line" },
+                  { id: "arrow", icon: ArrowRight, label: "Arrow" },
+                  { id: "triangle", icon: Triangle, label: "Triangle" },
+                  { id: "polygon", icon: Hexagon, label: "Polygon" },
+                ].map((shape) => {
+                  const Icon = shape.icon;
+                  return (
+                    <button
+                      key={shape.id}
+                      type="button"
+                      onClick={() => {
+                        const eng = ink.engine();
+                        if (!eng) return;
+                        const center = eng.centerWorld();
+                        ink.addObject("shape", center.x, center.y, { shapeType: shape.id });
+                      }}
+                      className="flex flex-col items-center gap-1 p-2 rounded-md border border-border/60 hover:bg-accent hover:border-primary/50 transition"
+                    >
+                      <Icon className="h-5 w-5 text-foreground" />
+                      <span className="font-mono text-[9px] text-muted-foreground">{shape.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </RibbonMenu>
-        {recognition.error && <span className="self-center truncate max-w-[16rem] font-mono text-[10px] text-destructive" title={recognition.error}>{recognition.error}</span>}
-      </RibbonGroup>
-    </>
-  );
-}
-
-/* ---------------------------------- Audio ---------------------------------- */
-
-const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
-
-export function InkAudioTab({ ink }) {
-  const { t } = useI18n();
-  const { page, recording, replay } = ink;
-  const audio = page.audio;
-  return (
-    <>
-      <RibbonGroup label={t("ink.groups.record")} priority={70} icon={Mic}>
-        <RibbonButton icon={recording ? Square : Mic} label={recording ? t("ink.audio.stop") : t("ink.audio.record")} hint={t("ink.audio.recordHint")} active={recording} onClick={recording ? ink.onStop : ink.onRecord} />
-        {recording && <span className="self-center font-mono text-[10.5px] text-destructive">{t("ink.audio.recording")}</span>}
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.playback")} priority={60} icon={Play}>
-        <RibbonButton icon={replay.syncing ? Loader2 : replay.playing ? Pause : Play} spinning={replay.syncing} label={replay.playing ? t("ink.audio.pause") : t("ink.audio.play")} hint={t("ink.audio.playHint")} disabled={!audio?.file_uri} disabledReason={t("ink.audio.noRecording")} onClick={ink.onPlay} />
-        <RibbonButton icon={History} label={t("ink.audio.replayInk")} hint={t("ink.audio.replayInkHint")} onClick={ink.onReplayInk} />
-        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{audio ? `${clock(replay.time || 0)} / ${clock(audio.duration || 0)}` : t("ink.audio.noRecording")}</span>
-      </RibbonGroup>
-
-      <RibbonGroup label={t("ink.groups.manage")} priority={50} icon={Mic}>
-        <RibbonMenu icon={Mic} label={t("ink.audio.studio")} hint={t("ink.audio.studioHint")} width={300}>
+        <RibbonMenu icon={Image} label={t("ink.objects.stickers")} hint={t("ink.objects.stickersHint")} width={220}>
           {() => (
-            <AudioStudio
-              recording={recording}
-              audio={audio}
-              playing={replay.playing}
-              time={replay.time}
-              syncing={replay.syncing}
-              onRecord={ink.onRecord}
-              onStop={ink.onStop}
-              onPlay={ink.onPlay}
-              onReplayInk={ink.onReplayInk}
-              onScrub={ink.onScrub}
-              onClear={ink.onClearAudio}
-            />
+            <div className="p-1 space-y-2">
+              <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+                {t("ink.objects.stickers")}
+              </div>
+              <div className="grid grid-cols-4 gap-1 max-h-60 overflow-y-auto">
+                {[
+                  "star-1", "heart", "smile", "thumbs-up", "lightning", "cloud", "sun", "moon",
+                  "flower", "music", "camera", "bookmark", "flag", "tag", "paperclip", "bell",
+                  "gift", "cake", "rocket", "leaf", "fire", "diamond", "sparkles", "check"
+                ].map((stickerId) => (
+                  <button
+                    key={stickerId}
+                    type="button"
+                    onClick={() => {
+                      const eng = ink.engine();
+                      if (!eng) return;
+                      const center = eng.centerWorld();
+                      ink.addObject("sticker", center.x, center.y, { stickerId });
+                    }}
+                    className="flex flex-col items-center gap-1 p-2 rounded-md border border-border/60 hover:bg-accent hover:border-primary/50 transition"
+                  >
+                    <span className="h-8 w-8 text-foreground">{stickerId}</span>
+                    <span className="font-mono text-[8px] text-muted-foreground">{stickerId}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </RibbonMenu>
-        <RibbonButton icon={MicOff} label={t("ink.audio.remove")} hint={t("ink.audio.removeHint")} disabled={!audio} disabledReason={t("ink.audio.noRecording")} onClick={ink.onClearAudio} />
+        <RibbonButton icon={Type} label={t("ink.objects.textbox")} hint={t("ink.objects.textboxHint")} onClick={() => {
+          const eng = ink.engine();
+          if (!eng) return;
+          const center = eng.centerWorld();
+          ink.addObject("textbox", center.x, center.y);
+        }} />
+        <RibbonButton icon={StickyNote} label={t("ink.objects.sticky")} hint={t("ink.objects.stickyHint")} onClick={() => {
+          const eng = ink.engine();
+          if (!eng) return;
+          const center = eng.centerWorld();
+          ink.addObject("sticky", center.x, center.y);
+        }} />
       </RibbonGroup>
     </>
   );
 }
 
-/* ------------------- Ink tab inside the NOTE ribbon (pages) ---------------- */
+export function CanvasViewTab({ ink }) {
+  const { t } = useI18n();
+  const { overlayMode } = ink;
+
+  return (
+    <>
+      <RibbonGroup label={t("ink.groups.view")} priority={70} icon={Maximize}>
+        <RibbonButton icon={ZoomOut} hint={t("ink.view.zoomOut")} onClick={() => ink.onZoom(0.85)} />
+        <RibbonButton icon={ZoomIn} hint={t("ink.view.zoomIn")} onClick={() => ink.onZoom(1.18)} />
+        <RibbonButton icon={Maximize} label={t("ink.view.fit")} hint={t("ink.view.fitHint")} onClick={ink.onFit} />
+        <span className="self-center font-mono text-[10.5px] text-muted-foreground">{Math.round((ink.zoom || 1) * 100)}%</span>
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.groups.overlay")} priority={60} icon={Layers}>
+        <RibbonButton
+          icon={overlayMode ? Maximize : Square}
+          label={overlayMode ? t("ink.overlay.fullPage") : t("ink.overlay.inkOverText")}
+          hint={overlayMode ? t("ink.overlay.fullPageHint") : t("ink.overlay.inkOverTextHint")}
+          active={Boolean(overlayMode)}
+          onClick={ink.onToggleOverlayMode}
+        />
+      </RibbonGroup>
+
+      <RibbonGroup label={t("ink.groups.history")} priority={30} icon={History}>
+        <RibbonButton icon={Undo2} label={t("ink.history.undo")} hint={t("ink.history.undoHint")} shortcut="Ctrl+Z" disabled={!ink.canUndo} onClick={ink.onUndo} />
+        <RibbonButton icon={Redo2} label={t("ink.history.redo")} hint={t("ink.history.redoHint")} shortcut="Ctrl+Shift+Z" disabled={!ink.canRedo} onClick={ink.onRedo} />
+      </RibbonGroup>
+    </>
+  );
+}
+
+/* ============================== Legacy InkTab (for note ribbon) ============================== */
 
 /** Lets a note jump to ink: create a page, reopen a recent one, or browse them all. */
-/* ----------------------------- The Ink tab itself ----------------------------- */
-
-/**
- * The Ink tab of the note ribbon. `noteInk` is the note's own handwriting page
- * (see useInkPage in NotePage): until it exists the tab offers to start one.
- */
 export function InkTab({ noteInk }) {
   const { t } = useI18n();
   const [legacy, setLegacy] = useState([]);
@@ -929,10 +943,10 @@ export function InkTab({ noteInk }) {
   return (
     <>
       {noteInk.ink && (
-        <InkDrawTab
+        <CanvasDrawTab
           ink={noteInk.ink}
           onAutoStart={handleAutoStart}
-          afterDraw={<InkColorTab ink={noteInk.ink} onAutoStart={handleAutoStart} />}
+          afterDraw={<CanvasFramesTab ink={noteInk.ink} />}
         />
       )}
       <RibbonGroup label={t("ink.tab.handwritingPage")} priority={50} icon={BookOpen}>

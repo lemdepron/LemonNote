@@ -17,7 +17,7 @@ import NoteRibbon, { initialRibbonTab } from "@/components/ribbon/NoteRibbon";
 import NoteInkSurface from "@/components/ink/NoteInkSurface";
 import NoteInkOverlay from "@/components/ink/NoteInkOverlay";
 import useInkPage from "@/hooks/useInkPage";
-import { deletePage } from "@/lib/ink/store";
+import { deletePage } from "@/lib/canvas/ink/store";
 import useNoteImages from "@/hooks/useNoteImages";
 import EdgeDock from "@/components/shell/EdgeDock";
 import FocusToggle from "@/components/shell/FocusToggle";
@@ -1522,7 +1522,15 @@ export default function NotePane({
                                 onCreateNote={(newTitle) => insertLink(newTitle, true)}
                               />
                             ) : (
-                              <FormatPreview value={body} format={format} />
+                              <FormatPreview
+                                value={body}
+                                format={format}
+                                linkIndex={linkIndex}
+                                onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                                onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                                typography={typography}
+                                hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                              />
                             )}
                             {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
                               <NoteInkOverlay
@@ -1658,7 +1666,15 @@ export default function NotePane({
                                   onCreateNote={(newTitle) => insertLink(newTitle, true)}
                                 />
                               ) : (
-                                <FormatPreview value={body} format={format} />
+                                <FormatPreview
+                                  value={body}
+                                  format={format}
+                                  linkIndex={linkIndex}
+                                  onOpenNote={(noteId) => navigate(`/note/${noteId}`)}
+                                  onCreateNote={(newTitle) => insertLink(newTitle, true)}
+                                  typography={typography}
+                                  hasInk={noteInk.hasPage && noteInk.markCount > 0}
+                                />
                               )}
                               {noteInk.hasPage && noteInk.markCount > 0 && inkOverlayMode && readContentRect && (
                                 <NoteInkOverlay

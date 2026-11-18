@@ -10,6 +10,7 @@
  *     (font, size, line spacing, width ...). It affects the whole note.
  */
 import { defaultSchema } from "rehype-sanitize";
+import { parseFrontMatter } from "@/lib/import";
 
 /* ------------------------------- fonts ------------------------------------ */
 
@@ -136,6 +137,7 @@ export function blockStyle(data = {}) {
 /**
  * Markdown notes may contain a few HTML tags. Everything else is stripped, and
  * only the data-attributes below survive (no style, no class, no scripts).
+ * KaTeX and highlight.js classes are explicitly whitelisted.
  */
 export const SANITIZE_SCHEMA = {
   ...defaultSchema,
@@ -143,10 +145,41 @@ export const SANITIZE_SCHEMA = {
   attributes: {
     ...defaultSchema.attributes,
     // hast stores data-x attributes as camelCase properties (data-f -> dataF).
-    span: ["dataF", "dataC", "dataS", "dataSc", "dataLs", "id"],
+    span: ["dataF", "dataC", "dataS", "dataSc", "dataLs", "id", "className"],
     mark: ["dataH"],
-    div: ["dataA", "dataDir", "dataIl", "dataIr", "dataSb", "dataSa", "dataColumnBreak", "dataPageBreak"],
+    div: ["dataA", "dataDir", "dataIl", "dataIr", "dataSb", "dataSa", "dataColumnBreak", "dataPageBreak", "className"],
     details: ["open"],
+    // Allow className on code and pre for highlight.js, and on math/annotation/semantics/mrow/mi/mo/mn/ms/mtext/mglyph/mspace/mstyle for KaTeX
+    code: ["className"],
+    pre: ["className"],
+    math: ["className", "display"],
+    annotation: ["className", "encoding"],
+    semantics: ["className"],
+    mrow: ["className"],
+    mi: ["className"],
+    mo: ["className"],
+    mn: ["className"],
+    ms: ["className"],
+    mtext: ["className"],
+    mglyph: ["className"],
+    mspace: ["className", "width", "height", "depth", "lspace", "rspace"],
+    mstyle: ["className", "mathcolor", "mathbackground"],
+    mphantom: ["className"],
+    merror: ["className"],
+    mfrac: ["className"],
+    msqrt: ["className"],
+    mroot: ["className"],
+    msub: ["className"],
+    msup: ["className"],
+    msubsup: ["className"],
+    munder: ["className"],
+    mover: ["className"],
+    munderover: ["className"],
+    mmultiscripts: ["className"],
+    mtable: ["className"],
+    mtr: ["className"],
+    mtd: ["className"],
+    maction: ["className", "actiontype", "selection"],
   },
 };
 
@@ -394,6 +427,49 @@ export function normalizeStyle(raw) {
   // Per-note language (for spelling and hyphenation)
   if (["en", "ar", "es", "fr", "de", "zh", "ja", "ko", "pt", "ru", "it", "nl", "tr", "pl", "hi"].includes(raw.language)) out.language = raw.language;
   return out;
+}
+
+/** Keys that should be serialized to front matter (in order). */
+const FRONT_MATTER_KEYS = [
+  "font", "headingFont", "editorFont", "size", "editorSize", "lineHeight", "gap", "spacing", "width", "align", "dir", "indent", "dropCap", "spell",
+  "pageWidth", "pageHeight", "pageLineHeight", "pageStyle", "pageGridSize",
+  "styleSet", "themePreset", "themeAccent", "themeHeadingFont", "themeBodyFont",
+  "paragraphPreset", "pageColor", "pageBorder", "pageBorderColor",
+  "watermarkText", "watermarkColor", "watermarkOpacity", "watermarkAngle",
+  "pageSize", "pageOrientation", "pageMargins", "marginTop", "marginRight", "marginBottom", "marginLeft",
+  "columnCount", "columnGap", "showLineNumbers", "hyphens", "language",
+];
+
+/** Serialize a style object to YAML front matter string. */
+export function serializeFrontMatter(style) {
+  const s = normalizeStyle(style);
+  const lines = [];
+  for (const key of FRONT_MATTER_KEYS) {
+    const value = s[key];
+    if (value === undefined || value === null || value === "") continue;
+    if (typeof value === "boolean") {
+      lines.push(`${key}: ${value}`);
+    } else if (typeof value === "number") {
+      lines.push(`${key}: ${value}`);
+    } else if (typeof value === "string") {
+      // Quote strings that contain special characters or look like YAML booleans/numbers
+      const needsQuotes = /[:"'\[\]{},]|^(true|false|null|yes|no|on|off)$/i.test(value);
+      if (needsQuotes) {
+        lines.push(`${key}: "${value.replace(/"/g, '\\"')}"`);
+      } else {
+        lines.push(`${key}: ${value}`);
+      }
+    }
+  }
+  if (lines.length === 0) return "";
+  return `---\n${lines.join("\n")}\n---\n`;
+}
+
+/** Parse front matter from body and merge with note.style (front matter takes precedence). */
+export function parseAndMergeFrontMatter(body, noteStyle = {}) {
+  const { frontMatter, body: cleanBody } = parseFrontMatter(body || "");
+  const merged = { ...normalizeStyle(noteStyle), ...normalizeStyle(frontMatter) };
+  return { style: merged, body: cleanBody };
 }
 
 /** Inline style + class names for the reading view of a note. */

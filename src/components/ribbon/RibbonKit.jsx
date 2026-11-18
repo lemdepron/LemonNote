@@ -14,6 +14,8 @@ import RibbonButton from "@/components/ribbon/RibbonButton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useScrollVisibility } from "@/lib/ScrollContext";
+import { getRibbonAction } from "@/lib/ribbon-registry";
+import { can, reasonKey } from "@/lib/format-capabilities";
 
 /**
  * Shared state for every ribbon tab: the live selection, a `run` that applies an
@@ -25,11 +27,26 @@ export const useRibbon = () => useContext(RibbonContext);
 /** A ribbon button that disables itself on non-Markdown notes and runs an edit builder on click. */
 export function Btn({ edit, onClick, ...props }) {
   const ctx = useRibbon();
+  const id = props.id;
+  let capabilityDisabled = false;
+  let capabilityReason = null;
+
+  if (id) {
+    const action = getRibbonAction(id);
+    if (action?.capability && ctx.format && !can(ctx.format, action.capability)) {
+      capabilityDisabled = true;
+      capabilityReason = t(reasonKey(ctx.format, action.capability));
+    }
+  }
+
+  const disabled = !ctx.markdown || Boolean(props.disabled) || capabilityDisabled;
+  const disabledReason = capabilityReason || (!ctx.markdown ? ctx.offReason : props.disabledReason);
+
   return (
     <RibbonButton
       {...props}
-      disabled={!ctx.markdown || Boolean(props.disabled)}
-      disabledReason={!ctx.markdown ? ctx.offReason : props.disabledReason}
+      disabled={disabled}
+      disabledReason={disabledReason}
       onClick={() => (edit ? ctx.run(edit(ctx.selection)) : onClick?.())}
     />
   );
@@ -72,8 +89,22 @@ export function RibbonMenu({ id, icon, label, hint, shortcut, disabled, disabled
   const [open, setOpen] = useState(false);
   const ctx = useRibbon();
   const { register, unregister } = useRibbonPanelPopover();
-  const off = !ctx.markdown || Boolean(disabled);
-  if (off) return <RibbonButton id={id} icon={icon} label={label} hint={hint} disabled disabledReason={!ctx.markdown ? ctx.offReason : disabledReason} />;
+
+  let capabilityDisabled = false;
+  let capabilityReason = null;
+
+  if (id) {
+    const action = getRibbonAction(id);
+    if (action?.capability && ctx.format && !can(ctx.format, action.capability)) {
+      capabilityDisabled = true;
+      capabilityReason = t(reasonKey(ctx.format, action.capability));
+    }
+  }
+
+  const off = !ctx.markdown || Boolean(disabled) || capabilityDisabled;
+  const finalDisabledReason = capabilityReason || (!ctx.markdown ? ctx.offReason : disabledReason);
+
+  if (off) return <RibbonButton id={id} icon={icon} label={label} hint={hint} disabled disabledReason={finalDisabledReason} />;
   return (
     <Popover
       open={open}
@@ -171,30 +202,45 @@ export function TextGrid({ items, onPick, columns = 8 }) {
 
 export const Caret = () => <ChevronDown className="h-3 w-3 opacity-60" />;
 
-/** Stepper: − value +. */
-export function Stepper({ value, onChange, min, max, step = 1, title, format = String }) {
+/** Stepper: − value +. Supports optional label displayed above the control. */
+export function Stepper({ value, onChange, min, max, step = 1, title, format = String, label }) {
   const clamp = (n) => Math.min(max, Math.max(min, n));
+  const hasLabel = Boolean(label);
   return (
-    <div className="flex h-8 items-center rounded-md border border-border/70 bg-card/60" title={title}>
-      <button
-        type="button"
-        aria-label={`Decrease ${title}`}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => onChange(clamp(Math.round((value - step) * 100) / 100))}
-        className="h-full px-2 text-[13px] text-muted-foreground hover:text-foreground"
-      >
-        −
-      </button>
-      <span className="min-w-[2.4rem] text-center font-mono text-[10.5px]">{format(value)}</span>
-      <button
-        type="button"
-        aria-label={`Increase ${title}`}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => onChange(clamp(Math.round((value + step) * 100) / 100))}
-        className="h-full px-2 text-[13px] text-muted-foreground hover:text-foreground"
-      >
-        +
-      </button>
+    <div
+      className={cn(
+        "flex rounded-md border border-border/70 bg-card/60",
+        hasLabel ? "flex-col h-[52px] justify-center p-1" : "flex h-8 items-center"
+      )}
+      title={title}
+      style={{ gridRow: hasLabel ? "span 2" : undefined }}
+    >
+      {hasLabel && (
+        <span className="font-mono text-[9px] text-muted-foreground/70 text-center mb-0.5 leading-none">
+          {label}
+        </span>
+      )}
+      <div className="flex h-8 items-center">
+        <button
+          type="button"
+          aria-label={`Decrease ${title || label || "value"}`}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onChange(clamp(Math.round((value - step) * 100) / 100))}
+          className="h-full px-2 text-[13px] text-muted-foreground hover:text-foreground"
+        >
+          −
+        </button>
+        <span className="min-w-[2.4rem] text-center font-mono text-[10.5px]">{format(value)}</span>
+        <button
+          type="button"
+          aria-label={`Increase ${title || label || "value"}`}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onChange(clamp(Math.round((value + step) * 100) / 100))}
+          className="h-full px-2 text-[13px] text-muted-foreground hover:text-foreground"
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

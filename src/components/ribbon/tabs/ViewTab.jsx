@@ -21,7 +21,9 @@ import {
   Image,
   SpellCheck,
   Sidebar,
+  FilePlus,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import { RibbonSelect, Stepper, Btn, useRibbon } from "@/components/ribbon/RibbonKit";
 import { useI18n } from "@/lib/i18n";
@@ -31,6 +33,8 @@ import { runAccessibilityChecks } from "@/lib/accessibility";
 import { addAttachment } from "@/lib/attachments";
 import { tableInsert } from "@/lib/ribbon-actions";
 import { useState } from "react";
+import { db } from "@/api/localDb";
+import { toast } from "@/lib/toast";
 
 const VIEW_MODES = [
   { id: "read", label: "ribbon.view.readMode", icon: Eye, hint: "ribbon.view.readModeHint" },
@@ -71,6 +75,7 @@ function StatRow({ label, text }) {
 
 export function ViewTab() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const { value, selection, typography: typo, setTypography, body, markdown, run } = useRibbon();
   const patch = (next) => setTypography({ ...typo, ...next });
   const drop = (key) => {
@@ -132,6 +137,22 @@ export function ViewTab() {
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
+      
+      // Check if it's a PDF and offer to import as PDF note
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      
+      if (isPdf) {
+        const shouldImport = window.confirm(
+          `${t("ribbon.view.importPdfPrompt") || "Import this PDF as a new note?"}\n\n${file.name}`
+        );
+        
+        if (shouldImport) {
+          await handleImportPdf(file);
+          return;
+        }
+      }
+      
+      // Regular file attachment
       try {
         const attachment = await addAttachment(file);
         const snippet = `\n[${file.name}](${attachment.ref})\n\n`;
@@ -146,6 +167,30 @@ export function ViewTab() {
       }
     };
     input.click();
+  };
+
+  const handleImportPdf = async (file) => {
+    try {
+      // Store the PDF file
+      const attachment = await addAttachment(file);
+      
+      // Create a new note with format "pdf" that references the file
+      const noteTitle = file.name.replace(/\.pdf$/i, "");
+      const created = await db.entities.Note.create({
+        title: noteTitle,
+        body: attachment.ref, // Store the file reference in the body
+        format: "pdf",
+        tags: [],
+      });
+      
+      toast.success(`${t("ribbon.view.pdfImported") || "PDF imported as note"}: ${noteTitle}`);
+      
+      // Navigate to the new note
+      navigate(`/note/${created.id}`);
+    } catch (err) {
+      console.error("Failed to import PDF:", err);
+      toast.error(`${t("ribbon.view.pdfImportError") || "Failed to import PDF"}: ${err.message}`);
+    }
   };
 
   const handleAttachImage = async () => {
@@ -306,6 +351,22 @@ export function ViewTab() {
 
       {/* ─── Attach & Table ─── */}
       <RibbonGroup label={t("ribbon.view.attachTable")} icon={Paperclip} priority={50}>
+        <Btn
+          id="view.importPdf"
+          icon={FilePlus}
+          label={t("ribbon.view.importPdf")}
+          hint={t("ribbon.view.importPdfHint")}
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "application/pdf,.pdf";
+            input.onchange = async (event) => {
+              const file = event.target.files?.[0];
+              if (file) await handleImportPdf(file);
+            };
+            input.click();
+          }}
+        />
         <Btn
           id="view.attachFile"
           icon={Paperclip}

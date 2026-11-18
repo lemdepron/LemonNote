@@ -1,6 +1,7 @@
 import { db } from "@/api/localDb";
-import { deletePage } from "@/lib/ink/store";
+import { deletePage } from "@/lib/canvas/ink/store";
 import { findAttachmentRefs, deleteUnusedAttachments } from "@/lib/attachments";
+import { createObject, getDefaultSize, OBJECT_TYPES, FRAME_TYPES } from "@/lib/canvas/objects";
 
 /** Soft-delete lifecycle for notes: trash → restore, or permanent delete. */
 export const TRASH_RETENTION_DAYS = 60;
@@ -29,7 +30,20 @@ export function restoreNote(id) {
 
 /** The handwriting of a note goes with it; a missing ink page is not an error. */
 const dropInk = async (note) => {
-  if (note?.ink_page_id) await deletePage(note.ink_page_id).catch(() => {});
+  if (!note?.ink_page_id) return;
+  
+  // Check if other notes use this ink page
+  const otherNotes = await listNotesWithInkPage();
+  const sharedNotes = otherNotes.filter((n) => n.ink_page_id === note.ink_page_id && n.id !== note.id);
+  
+  if (sharedNotes.length > 0) {
+    // Other notes share this ink page - don't delete it, just unlink from this note
+    console.warn(`Ink page ${note.ink_page_id} is shared with ${sharedNotes.length} other note(s). Not deleting.`);
+    return;
+  }
+  
+  // No other notes use this ink page - safe to delete
+  await deletePage(note.ink_page_id).catch(() => {});
 };
 
 /**
@@ -152,4 +166,80 @@ export async function flushAutosave() {
   // This is a no-op in the current implementation since autosave is handled by the editor
   // but we keep it for the interface
   return Promise.resolve();
+}
+
+/**
+ * Create a canvas from a Markdown note.
+ * Creates a CanvasDoc with one A4 frame and a text frame containing the note's markdown.
+ * @param {Object} note - The note object (must have format === "markdown")
+ * @returns {Promise<Object>} - The created CanvasDoc
+ */
+export async function openNoteAsCanvas(note) {
+  if (!note || note.format !== "markdown") {
+    throw new Error("Only Markdown notes can be opened as canvas");
+  }
+
+  const now = new Date().toISOString();
+  const canvasName = note.title ? `${note.title} (canvas)` : "Untitled canvas";
+
+  // A4 frame dimensions at 96 DPI: 794 x 1123 pixels
+  const a4Frame = FRAME_TYPES.find((f) => f.id === "a4");
+  const frameWidth = a4Frame?.width || 794;
+  const frameHeight = a4Frame?.height || 1123;
+  const margin = 72; // 1 inch = 72px at 96 DPI
+  const textFrameWidth = frameWidth - margin * 2;
+  const textFrameHeight = frameHeight - margin * 2;
+
+  // Position the frame at a reasonable offset on the infinite canvas
+  const frameX = 200;
+  const frameY = 200;
+
+  // Create the A4 frame object
+  const frame = createObject(OBJECT_TYPES.FRAME, frameX, frameY, frameWidth, frameHeight, {
+    frameType: "a4",
+    paper: { template: "grid", tone: "dark" },
+  });
+
+  // Create the text frame inside the A4 frame (with margins)
+  const textFrame = createObject(
+    OBJECT_TYPES.TEXT_FRAME,
+    frameX + margin,
+    frameY + margin,
+    textFrameWidth,
+    textFrameHeight,
+    {
+      markdown: note.body || "",
+      fontSize: 16,
+      color: "#e9e2d0",
+      background: "transparent",
+      padding: 16,
+    }
+  );
+
+  // Create the canvas document
+  const canvasDoc = {
+    kind: "canvas",
+    name: canvasName,
+    version: 2,
+    paper: { template: "grid", size: "infinite", tone: "dark" },
+    strokes: [],
+    objects: [frame, textFrame],
+    camera: { x: 0, y: 0, scale: 1 },
+    created_date: now,
+    updated_date: now,
+    // Store reference to source note for "link back" functionality
+    sourceNoteId: note.id,
+  };
+
+  const created = await db.entities.CanvasDoc.create(canvasDoc);
+  return created;
+}
+
+/**
+ * List all notes that have an ink_page_id set (for cleanup before removing ink pages).
+ * @returns {Promise<Array>} - Array of notes with ink_page_id
+ */
+export async function listNotesWithInkPage() {
+  const allNotes = await db.entities.Note.list({ limit: 10000 });
+  return (allNotes?.items ?? []).filter((note) => note.ink_page_id);
 }

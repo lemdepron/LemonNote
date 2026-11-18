@@ -1,18 +1,67 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
+import rehypeKatex from "rehype-katex";
+import rehypeHighlight from "rehype-highlight";
 import { useMemo, useCallback, useState, useEffect, useRef } from "react";
 import { NOTE_LINK_PREFIX, preprocessMarkdown, titleKey } from "@/lib/vault";
 import { SANITIZE_SCHEMA, blockStyle, highlightStyle, normalizeStyle, readerProps, spanStyle } from "@/lib/text-style";
 import { getAttachmentUrl } from "@/lib/attachments";
+import { isAssetPath, resolveAssetPath, revokeAssetUrl, extractAssetId } from "@/lib/assets";
 import { renderChart } from "@/lib/charts";
 import { Paperclip, FileText, AudioWaveform, Play, Pause, Loader2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 
-const REMARK = [remarkGfm];
-const REHYPE = [rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]];
+// Import KaTeX CSS for offline rendering
+import "katex/dist/katex.min.css";
+
+// Import highlight.js core and only the languages we need
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import rust from "highlight.js/lib/languages/rust";
+import bash from "highlight.js/lib/languages/bash";
+import sql from "highlight.js/lib/languages/sql";
+import json from "highlight.js/lib/languages/json";
+import yaml from "highlight.js/lib/languages/yaml";
+import xml from "highlight.js/lib/languages/xml";
+import css from "highlight.js/lib/languages/css";
+import plaintext from "highlight.js/lib/languages/plaintext";
+import properties from "highlight.js/lib/languages/properties";
+// Register only the needed languages
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("yaml", yaml);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("plaintext", plaintext);
+hljs.registerLanguage("ini", properties);
+// Also register common aliases
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("py", python);
+hljs.registerLanguage("rs", rust);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("shell", bash);
+hljs.registerLanguage("yml", yaml);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("txt", plaintext);
+// Note: TOML is not available in highlight.js; use yaml for similar syntax
+// Import highlight.js theme
+import "highlight.js/styles/atom-one-light.css";
+
+const REMARK = [remarkGfm, [remarkMath, { singleDollarTextMath: false }]];
+// Pass the custom hljs instance to rehype-highlight
+const REHYPE = [rehypeRaw, rehypeKatex, [rehypeHighlight, { hljs }], [rehypeSanitize, SANITIZE_SCHEMA]];
 
 /** react-markdown hands data-attributes over as `data-x` props; the tables in text-style read them by that name. */
 const dataOf = (props) => Object.fromEntries(Object.entries(props).filter(([key]) => key.startsWith("data-")));
@@ -42,9 +91,12 @@ function useAttachmentResolver() {
   return resolve;
 }
 
-/** Check if a link is a file attachment: [name (size)](local:<id>) */
+/** Check if a link is a file attachment: [name (size)](local:<id>) or [name (size)](./assets/...) */
 function isFileAttachment(href, children) {
-  if (typeof href !== "string" || !href.startsWith("local:")) return false;
+  if (typeof href !== "string") return false;
+  const isLocal = href.startsWith("local:");
+  const isAsset = isAssetPath(href);
+  if (!isLocal && !isAsset) return false;
   // Children should be text like "name (size)"
   return typeof children === "string" && /\([\d.]+ [KMGT]?B\)$/.test(children.trim());
 }
@@ -55,33 +107,46 @@ function MarkdownFileAttachment({ href, children }) {
   const [resolvedUrl, setResolvedUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fileInfo, setFileInfo] = useState(null);
+  const [isAssetRef, setIsAssetRef] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    const id = String(href || "").replace(/^local:/, "");
-    if (!id) {
-      setLoading(false);
-      return;
-    }
+    let objectUrl = null;
 
-    // Get file metadata
-    getAttachmentUrl(href).then((url) => {
-      if (!mounted) return;
-      setResolvedUrl(url);
-      setLoading(false);
-    }).catch(() => {
-      if (!mounted) return;
-      setLoading(false);
-    });
+    const loadFile = async () => {
+      try {
+        if (isAssetPath(href)) {
+          setIsAssetRef(true);
+          objectUrl = await resolveAssetPath(href);
+        } else {
+          objectUrl = await getAttachmentUrl(href);
+        }
+        if (!mounted) return;
+        setResolvedUrl(objectUrl);
+        setLoading(false);
 
-    // Try to get file info from the database
-    import("@/api/localDb").then(({ getFile }) => {
-      getFile(id).then((row) => {
-        if (mounted && row) setFileInfo({ name: row.name, type: row.type, size: row.size });
-      }).catch(() => {});
-    });
+        // Get file info from database
+        const id = isAssetPath(href) ? extractAssetId(href) : String(href || "").replace(/^local:/, "");
+        if (id) {
+          const { getFile } = await import("@/api/localDb");
+          const row = await getFile(id);
+          if (mounted && row) setFileInfo({ name: row.name, type: row.type, size: row.size });
+        }
+      } catch {
+        if (!mounted) return;
+        setLoading(false);
+      }
+    };
 
-    return () => { mounted = false; };
+    loadFile();
+
+    return () => {
+      mounted = false;
+      // Revoke object URL if we created one for an asset
+      if (objectUrl && isAssetRef) {
+        revokeAssetUrl(href);
+      }
+    };
   }, [href, resolveSrc]);
 
   const handleClick = async (event) => {
@@ -149,29 +214,49 @@ function MarkdownFileAttachment({ href, children }) {
   );
 }
 
-/** Audio player component for ![audio](local:<id>) */
+/** Audio player component for ![audio](local:<id>) or ![audio](./assets/...) */
 function MarkdownAudio({ src, alt }) {
   const resolveSrc = useAttachmentResolver();
   const [resolvedSrc, setResolvedSrc] = useState(src);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isAssetRef, setIsAssetRef] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
-    resolveSrc(src).then((url) => {
-      if (mounted) {
-        setResolvedSrc(url);
-        setLoading(false);
+    let objectUrl = null;
+
+    const loadAudio = async () => {
+      try {
+        if (isAssetPath(src)) {
+          setIsAssetRef(true);
+          objectUrl = await resolveAssetPath(src);
+        } else {
+          objectUrl = await resolveSrc(src);
+        }
+        if (mounted) {
+          setResolvedSrc(objectUrl);
+          setLoading(false);
+        }
+      } catch {
+        if (mounted) {
+          setLoading(false);
+          setError(true);
+        }
       }
-    }).catch(() => {
-      if (mounted) {
-        setLoading(false);
-        setError(true);
+    };
+
+    loadAudio();
+
+    return () => {
+      mounted = false;
+      // Revoke object URL if we created one for an asset
+      if (objectUrl && isAssetRef) {
+        revokeAssetUrl(src);
       }
-    });
-    return () => { mounted = false; };
+    };
   }, [src, resolveSrc]);
 
   const togglePlay = () => {
@@ -247,24 +332,70 @@ function MarkdownAudio({ src, alt }) {
   );
 }
 
-/** Image component that resolves local: refs asynchronously. */
+/** Image component that resolves local: refs and ./assets/... paths asynchronously. */
 function MarkdownImage({ src, alt }) {
   const resolveSrc = useAttachmentResolver();
   const [resolvedSrc, setResolvedSrc] = useState(src);
+  const [error, setError] = useState(false);
+  const [isAsset, setIsAsset] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    resolveSrc(src).then((url) => {
-      if (mounted) setResolvedSrc(url);
-    });
+    let objectUrl = null;
+
+    const loadImage = async () => {
+      try {
+        if (isAssetPath(src)) {
+          setIsAsset(true);
+          objectUrl = await resolveAssetPath(src);
+        } else {
+          objectUrl = await resolveSrc(src);
+        }
+        if (mounted) {
+          setResolvedSrc(objectUrl);
+          setError(false);
+        }
+      } catch {
+        if (mounted) {
+          setError(true);
+        }
+      }
+    };
+
+    loadImage();
+
     return () => {
       mounted = false;
+      // Revoke object URL if we created one for an asset
+      if (objectUrl && isAssetPath(src)) {
+        revokeAssetUrl(src);
+      }
     };
   }, [src, resolveSrc]);
 
   // Check if this is an audio placeholder
   if (alt === "audio") {
     return <MarkdownAudio src={src} alt={alt} />;
+  }
+
+  // Extract filename from asset path for placeholder
+  const getFilename = (path) => {
+    const match = path.match(/\/([^/]+)$/);
+    return match ? match[1] : path;
+  };
+
+  if (error) {
+    return (
+      <div className="my-2 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-destructive">
+        <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+        <span className="font-mono text-[11px] truncate max-w-[300px]">{getFilename(src)}</span>
+        <span className="text-[11px] text-muted-foreground">(missing)</span>
+      </div>
+    );
   }
 
   return (
@@ -274,6 +405,7 @@ function MarkdownImage({ src, alt }) {
       loading="lazy"
       decoding="async"
       className="my-2 h-auto max-h-[520px] w-auto max-w-full rounded-lg border border-border/50"
+      onError={() => setError(true)}
     />
   );
 }

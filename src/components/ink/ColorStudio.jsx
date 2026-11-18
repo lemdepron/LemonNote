@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Pipette, Plus } from "lucide-react";
 import { Chip, Section, Slider, Swatch } from "@/components/ink/StudioSection";
-import { PRESET_PALETTES, hslToRgb, parseColor, rgbToHex, rgbToHsl, shade } from "@/lib/ink/color";
-import { readCustomPalette, readHistory, rememberColor, writeCustomPalette } from "@/lib/ink/palette";
+import { PRESET_PALETTES, hslToRgb, parseColor, rgbToHex, rgbToHsl, shade } from "@/lib/canvas/color";
+import { readCustomPalette, readHistory, rememberColor, writeCustomPalette } from "@/lib/canvas/palette";
 import { cn } from "@/lib/utils";
 
 const PALETTES = [
