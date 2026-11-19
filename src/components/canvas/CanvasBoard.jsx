@@ -197,7 +197,8 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
   useEffect(() => {
     if (transparent) return undefined;
     const canvas = overlayRef.current;
-    if (!canvas) return undefined;
+    const wheelTarget = wrapRef.current || canvas; // the wrapper also sees wheel events when the overlay is click-through (Select mode)
+    if (!canvas || !wheelTarget) return undefined;
     const onWheel = (event) => {
       event.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -218,10 +219,10 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
         }
       }
     };
-    canvas.addEventListener("wheel", onWheel, { passive: false });
+    wheelTarget.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
     return () => {
-      canvas.removeEventListener("wheel", onWheel);
+      wheelTarget.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     };
   }, [transparent]);
@@ -498,7 +499,9 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
   }), []);
 
   // Determine pointer events for overlay - all tools active for all kinds
-  const isToolActive = ALL_TOOL_MODES.includes(effectiveTool?.mode);
+  // In Select mode the objects layer underneath must receive the pointer (click, move, resize, delete).
+  // The ink overlay on top only takes the pointer for tools that draw, place or pan.
+  const isToolActive = ALL_TOOL_MODES.includes(effectiveTool?.mode) && effectiveTool?.mode !== "select";
   const overlayPointerEvents = isToolActive ? "auto" : "none";
 
   // Select object helper

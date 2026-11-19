@@ -59,12 +59,8 @@ export function toneOf(paper) {
   // Resolve "auto" tone from app theme (localStorage themeMode)
   let toneKey = paper?.tone;
   if (toneKey === "auto") {
-    try {
-      const themeMode = typeof localStorage !== "undefined" ? localStorage.getItem("themeMode") : "dark";
-      toneKey = themeMode === "light" ? "light" : "dark";
-    } catch {
-      toneKey = "dark";
-    }
+    // Follow the theme that is really applied (the app puts the "dark" class on <html>), including "System" mode.
+    toneKey = typeof document !== "undefined" && document.documentElement.classList.contains("dark") ? "dark" : "light";
   }
   const tone = TONES[toneKey === "light" ? "light" : "dark"];
   return {

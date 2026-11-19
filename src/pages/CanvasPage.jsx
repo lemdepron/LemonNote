@@ -50,7 +50,6 @@ import {
 } from "lucide-react";
 import { db } from "@/api/localDb";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
-import EdgeDock from "@/components/shell/EdgeDock";
 import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -67,7 +66,7 @@ import { t } from "@/lib/i18n";
 import { CANVAS_TOOLS, getToolById } from "@/lib/canvas/tool-defs";
 
 // Local t function that prefixes with vault.canvas
-const ct = (key, params) => t(`vault.canvas.${key}`, params);
+const ct = (key, params) => t(String(key).startsWith("vault.canvas.") ? key : `vault.canvas.${key}`, params);
 
 const PEN_COLORS = [
   { value: "#000000", label: "Black" },
@@ -86,13 +85,23 @@ export default function CanvasPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { focus } = useFocusMode();
+  // The canvas page has no note-tabs row, so the sticky toolbar must start at the very top of the window.
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.getPropertyValue("--nb-tabs-h");
+    root.style.setProperty("--nb-tabs-h", "0px");
+    return () => {
+      if (previous) root.style.setProperty("--nb-tabs-h", previous);
+      else root.style.removeProperty("--nb-tabs-h");
+    };
+  }, []);
   const [canvasDoc, setCanvasDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
   const [pendingConnectorFrom, setPendingConnectorFrom] = useState(null);
   const [status, setStatus] = useState("idle");
   const [tool, setTool] = useState({ mode: "select", color: "#000000", width: 3 });
-  const [paper, setPaper] = useState({ template: "grid", size: "infinite", tone: "dark" });
+  const [paper, setPaper] = useState({ template: "grid", size: "infinite", tone: "auto" });
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
@@ -109,7 +118,7 @@ export default function CanvasPage() {
       .then((record) => {
         if (!active) return;
         setCanvasDoc(record);
-        setPaper(record.paper || { template: "grid", size: "infinite", tone: "dark" });
+        setPaper(record.paper || { template: "grid", size: "infinite", tone: "auto" });
         setCamera(record.camera || { x: 0, y: 0, scale: 1 });
         setLoading(false);
       })
@@ -810,7 +819,7 @@ export default function CanvasPage() {
     <div className="nb-shell min-h-screen">
       <SpaceRail />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <main className={cn("mx-auto px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
+      <main className="m-0 p-0">
         {/* Compact toolbar - two rows inside NoteTopStack for sticky behavior */}
         <NoteTopStack>
           <div data-crumb data-testid="canvas-toolbar-area">
@@ -1240,7 +1249,7 @@ export default function CanvasPage() {
         <div
           className={cn(
             "relative min-h-0 flex-1",
-            focus ? "h-[calc(100vh-130px)]" : "h-[calc(100vh-80px)]"
+            "h-[calc(100vh-78px)]"
           )}
         >
           <CanvasBoard
@@ -1330,50 +1339,6 @@ export default function CanvasPage() {
           )}
         </div>
 
-        {/* Edge dock panels */}
-        <EdgeDock
-          panels={[
-            {
-              id: "canvas-inspector",
-              label: t("vault.canvas.cardInspector"),
-              icon: SlidersHorizontal,
-              content: (
-                <div className="space-y-4 p-2">
-                  {selectedObjects.length === 1 ? (
-                    <ObjectInspector
-                      object={selectedObjects[0]}
-                      objects={objects}
-                      onChange={handleUpdateObject}
-                      onDelete={handleDeleteObject}
-                      t={t}
-                    />
-                  ) : selectedObjects.length > 1 ? (
-                    <p className="text-sm text-muted-foreground">{selectedObjects.length} objects selected</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{t("vault.canvas.selectObject") || "Select an object to edit"}</p>
-                  )}
-                </div>
-              ),
-            },
-            {
-              id: "canvas-guide",
-              label: t("vault.canvas.canvasGuide"),
-              icon: Info,
-              content: (
-                <div className="rounded-xl border border-border/60 bg-card/30 p-3.5 text-[12.5px] leading-relaxed text-muted-foreground">
-                  <p>{t("vault.canvas.guideText1")}</p>
-                  <p className="mt-2">{t("vault.canvas.guideText2")}</p>
-                  <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70" dir="auto">
-                    {t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}
-                  </p>
-                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70" dir="auto">
-                    {strokes.length} {t("ink.tab.marks", { count: strokes.length }) || "strokes"} · {objects.length} objects
-                  </p>
-                </div>
-              ),
-            },
-          ]}
-        />
       </main>
     </div>
   );
