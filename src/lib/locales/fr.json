@@ -1507,7 +1507,10 @@
         "autosaveOn": "sauvegarde auto activée",
         "saved": "enregistré",
         "saving": "enregistrement…",
-        "idle": "inactif"
+        "idle": "inactif",
+        "cards": "{count} cartes",
+        "marks_short": "{count} traits",
+        "objects_short": "{count} objets"
       },
       "subtitle": "{cards} cartes · {connections} connexions",
       "addFrame": "Ajouter cadre",
@@ -1545,6 +1548,17 @@
         "locked": "Texte verrouillé car encre dessinée dessus",
         "unlock": "Déverrouiller",
         "unlockWarning": "Le déverrouillage permettra l'édition, mais traits encre peuvent ne plus correspondre au contenu texte."
+      },
+      "textTools": {
+        "fontFamily": "Police",
+        "fontSize": "Taille",
+        "bold": "Gras",
+        "italic": "Italique",
+        "alignLeft": "Aligner à gauche",
+        "alignCenter": "Centrer",
+        "alignRight": "Aligner à droite",
+        "textColor": "Couleur du texte",
+        "stickyColor": "Couleur du pense-bête"
       }
     },
     "cards": {
@@ -1907,6 +1921,21 @@
       "saveFavPen": "Enregistrer le stylo actuel comme favori",
       "removeFavPen": "Supprimer stylo favori",
       "noFavPens": "enregistrez vos configurations de stylos préférées ici (max 8)"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "Trait entier",
+        "precision": "Partie du trait"
+      },
+      "size": "Taille",
+      "sizeSmall": "Petit (4px)",
+      "sizeMedium": "Moyen (16px)",
+      "sizeLarge": "Grand (32px)",
+      "sizeMax": "Max (60px)",
+      "clearAll": "Effacer toute l'encre",
+      "clearAllTitle": "Effacer toute l'encre ?",
+      "clearAllDesc": "Cela supprimera tous les traits d'encre sur cette page. Les cartes, formes, zones de texte et notes adhésives resteront.",
+      "clearAllConfirm": "Effacer toute l'encre"
     },
     "color": {
       "picker": "Couleur",

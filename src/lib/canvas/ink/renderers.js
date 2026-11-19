@@ -4,6 +4,7 @@
  */
 
 import { OBJECT_TYPES, FRAME_TYPES } from "@/lib/canvas/objects";
+import { toneOf } from "@/lib/canvas/ink/paper";
 
 /** Render a frame (page) to canvas context */
 export function renderFrame(ctx, object, scale = 1) {
@@ -29,15 +30,13 @@ export function renderFrame(ctx, object, scale = 1) {
   const frameWidth = object.width || frameDef.width;
   const frameHeight = object.height || frameDef.height;
 
-  // Paper colors from the frame's paper settings or defaults
+  // Paper colors from the frame's paper settings using toneOf (handles "auto" tone)
   const template = paper.template || "grid";
-  const tone = paper.tone === "light" ? "light" : "dark";
+  const toneColors = toneOf(paper);
   
-  // Use theme colors via CSS variables (fallback to hardcoded)
-  const isLight = tone === "light";
-  const pageColor = isLight ? "#fefefe" : "#2a2a2a";
-  const borderColor = isLight ? "#d0d0d0" : "#555555";
-  const templateColor = isLight ? "#e8e8e8" : "#3a3a3a";
+  const pageColor = toneColors.page;
+  const borderColor = toneColors.border;
+  const templateColor = toneColors.line;
 
   // Draw frame background (page color) with rounded corners
   ctx.fillStyle = pageColor;

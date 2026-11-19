@@ -86,14 +86,39 @@
     "draw": {
       "pen": "Pen",
       "penHint": "Choose a pen",
+      "penPopover": "Pen settings",
+      "highlighter": "Highlighter",
+      "highlighterHint": "Highlight with a translucent marker",
       "eraser": "Eraser",
       "eraserHint": "Erase marks",
       "lasso": "Lasso",
       "lassoHint": "Select marks by circling them",
+      "brush": "Brush",
+      "colour": "Colour",
+      "opacity": "Opacity",
       "width": "Width",
+      "recentColours": "Recent colours",
+      "palettes": "Palettes",
+      "customColour": "Custom colour",
+      "livePreview": "Live preview",
       "saveFavPen": "Save current pen as favourite",
       "removeFavPen": "Remove favourite pen",
       "noFavPens": "save your favourite pen setups here (max 8)"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "Whole stroke",
+        "precision": "Part of stroke"
+      },
+      "size": "Size",
+      "sizeSmall": "Small (4px)",
+      "sizeMedium": "Medium (16px)",
+      "sizeLarge": "Large (32px)",
+      "sizeMax": "Max (60px)",
+      "clearAll": "Clear all ink",
+      "clearAllTitle": "Clear all ink?",
+      "clearAllDesc": "This will remove all ink strokes on this page. Cards, shapes, text boxes and sticky notes will stay.",
+      "clearAllConfirm": "Clear all ink"
     },
     "color": {
       "picker": "Colour",
@@ -218,7 +243,11 @@
     "frames": {
       "template": "Template",
       "pages": "Pages",
-      "shapes": "Shapes"
+      "shapes": "Shapes",
+      "duplicate": "Duplicate frame",
+      "delete": "Delete frame",
+      "addFrame": "Add frame",
+      "frameName": "Frame name"
     },
     "objects": {
       "select": "Select",
@@ -865,11 +894,22 @@
       "draw": {
         "pen": "Pen",
         "penHint": "Choose a pen",
+        "penPopover": "Pen settings",
+        "highlighter": "Highlighter",
+        "highlighterHint": "Highlight with a translucent marker",
         "eraser": "Eraser",
         "eraserHint": "Erase marks",
         "lasso": "Lasso",
         "lassoHint": "Select marks by circling them",
+        "brush": "Brush",
+        "colour": "Colour",
+        "opacity": "Opacity",
         "width": "Width",
+        "recentColours": "Recent colours",
+        "palettes": "Palettes",
+        "customColour": "Custom colour",
+        "livePreview": "Live preview",
+        "nibAngle": "Nib angle",
         "saveFavPen": "Save current pen as favourite",
         "removeFavPen": "Remove favourite pen",
         "noFavPens": "save your favourite pen setups here (max 8)"
@@ -1804,6 +1844,17 @@
         "unlock": "Unlock",
         "unlockWarning": "Unlocking will allow editing, but ink strokes may no longer match the text content."
       },
+      "textTools": {
+        "fontFamily": "Font",
+        "fontSize": "Size",
+        "bold": "Bold",
+        "italic": "Italic",
+        "alignLeft": "Align Left",
+        "alignCenter": "Align Center",
+        "alignRight": "Align Right",
+        "textColor": "Text Color",
+        "stickyColor": "Sticky Color"
+      },
       "tabs": {
         "home": "Home",
         "draw": "Draw",
@@ -1829,7 +1880,8 @@
           "duplicate": "Duplicate",
           "duplicateHint": "Duplicate selected objects",
           "delete": "Delete",
-          "deleteHint": "Delete selected objects"
+          "deleteHint": "Delete selected objects",
+          "selectFirst": "Select an object first"
         },
         "arrange": {
           "label": "Arrange",
@@ -1838,13 +1890,17 @@
           "sendBackward": "Send Backward",
           "sendBackwardHint": "Move selected objects one layer backward",
           "notImplemented": "Not implemented yet"
-        }
+        },
+        "undoDisabled": "Undo not available yet",
+        "redoDisabled": "Redo not available yet"
       },
       "draw": {
         "tools": {
           "label": "Tools",
           "pen": "Pen",
           "penHint": "Freehand drawing",
+          "highlighter": "Highlighter",
+          "highlighterHint": "Highlight strokes",
           "eraser": "Eraser",
           "eraserHint": "Erase strokes",
           "lasso": "Lasso",
@@ -1852,7 +1908,25 @@
           "shape": "Shapes",
           "shapeHint": "Draw shapes",
           "shapeRecognition": "Shape Recognition",
-          "shapeRecognitionHint": "Snap drawn shapes to perfect geometry"
+          "shapeRecognitionHint": "Snap drawn shapes to perfect geometry",
+          "shapeTool": "Shapes",
+          "shapeToolHint": "Draw shapes directly",
+          "shapeTypes": "Shape types",
+          "shapeTypeLine": "Line",
+          "shapeTypeArrow": "Arrow",
+          "shapeTypeRectangle": "Rectangle",
+          "shapeTypeRoundedRect": "Rounded rectangle",
+          "shapeTypeEllipse": "Ellipse",
+          "shapeTypeTriangle": "Triangle",
+          "shapeTypeStar": "Star",
+          "shapeOptions": "Shape options",
+          "shapeStrokeColor": "Stroke colour",
+          "shapeStrokeWidth": "Stroke width",
+          "shapeFillColor": "Fill colour",
+          "shapeFillOpacity": "Fill opacity",
+          "shapeFillNone": "None",
+          "snapShapes": "Snap shapes",
+          "snapShapesHint": "Automatically snap freehand drawings to perfect shapes"
         },
         "penLook": {
           "label": "Pen Look",
@@ -1868,7 +1942,9 @@
           "addCard": "Add Card",
           "addCardHint": "Add a new card",
           "connect": "Connect",
-          "connectHint": "Connect two cards"
+          "connectHint": "Connect two cards",
+          "connectDisabled": "Select a card or start a connection first",
+          "connectActiveHint": "Click the first card, then the second"
         },
         "textNotes": {
           "label": "Text & Notes",
@@ -1882,18 +1958,21 @@
           "shapes": "Shapes",
           "shapesHint": "Add a shape",
           "rectangle": "Rectangle",
+          "roundedRect": "Rounded rectangle",
           "ellipse": "Circle / Ellipse",
           "line": "Line",
           "arrow": "Arrow",
           "triangle": "Triangle",
-          "polygon": "Polygon"
+          "polygon": "Polygon",
+          "star": "Star"
         },
         "media": {
           "label": "Media",
           "sticker": "Sticker",
           "stickerHint": "Add a sticker",
           "image": "Image",
-          "imageHint": "Add an image"
+          "imageHint": "Add an image",
+          "imageError": "Failed to add image"
         }
       },
       "page": {
@@ -1917,6 +1996,7 @@
           "sizeHint": "Page size",
           "tone": "Tone",
           "toneHint": "Paper tone",
+          "auto": "Auto",
           "blank": "Blank",
           "ruled": "Ruled",
           "grid": "Grid",
@@ -1957,6 +2037,10 @@
       "toolbar": {
         "label": "Canvas tools"
       },
+      "frame": {
+        "duplicate": "Duplicate frame",
+        "delete": "Delete frame"
+      },
       "stats": "{cards} cards · {connections} connections",
       "selectObject": "Select an object to edit",
       "status": {
@@ -1964,12 +2048,23 @@
         "saved": "saved",
         "idle": "idle",
         "marks": "{count} mark",
-        "marks_plural": "{count} marks"
+        "marks_plural": "{count} marks",
+        "cards": "{count} cards",
+        "marks_short": "{count} marks",
+        "objects_short": "{count} objects"
       },
       "emptyState": {
         "noCanvases": "No canvases yet",
         "newCanvas": "New canvas",
         "canvasGone": "This canvas is gone."
+      },
+      "ribbon": {
+        "home": {
+          "undo": "Undo",
+          "undoHint": "Undo the last action",
+          "redo": "Redo",
+          "redoHint": "Redo the last undone action"
+        }
       }
     },
     "tables": {

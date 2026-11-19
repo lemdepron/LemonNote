@@ -14,8 +14,9 @@ export const PAPER_TEMPLATES = [
 ];
 
 export const PAPER_TONES = [
-  { id: "dark", label: "Slate" },
-  { id: "light", label: "Paper" },
+  { id: "auto", label: "Auto" },
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
 ];
 
 export const PAPER_SIZES = [
@@ -44,7 +45,7 @@ const TONES = {
     page: "#f7f2e7",
     outside: "#090c10",
     line: "rgba(28,36,54,0.10)",
-    strong: "rgba(28,36,54,0.18)",
+    strong: "rgba(28,36,54,0.15)",
     accent: "rgba(178,88,66,0.4)",
     label: "rgba(28,36,54,0.34)",
     border: "rgba(28,36,54,0.12)",
@@ -55,7 +56,17 @@ const GAP = 34;
 
 /** Paper stock and canvas surround both resolve from theme tokens at paint time. */
 export function toneOf(paper) {
-  const tone = TONES[paper?.tone === "light" ? "light" : "dark"];
+  // Resolve "auto" tone from app theme (localStorage themeMode)
+  let toneKey = paper?.tone;
+  if (toneKey === "auto") {
+    try {
+      const themeMode = typeof localStorage !== "undefined" ? localStorage.getItem("themeMode") : "dark";
+      toneKey = themeMode === "light" ? "light" : "dark";
+    } catch {
+      toneKey = "dark";
+    }
+  }
+  const tone = TONES[toneKey === "light" ? "light" : "dark"];
   return {
     ...tone,
     page: tokenColor(tone.pageToken) || tone.page,

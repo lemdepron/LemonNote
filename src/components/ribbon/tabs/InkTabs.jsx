@@ -3,19 +3,21 @@ import {
   Brush, History, Layers, Maximize, Mic, MicOff, Pause, PenLine, Play, Redo2,
   ScanText, Sigma, SquareDashedMousePointer, Trash2, Undo2, ZoomIn, ZoomOut, Loader2, Square, X, Check, ChevronLeft, ChevronRight,
   Droplets, BookOpen, Paperclip, MoreHorizontal, Eraser, MousePointer2, Minus, Plus, PenTool, LassoSelect,
-  Image, StickyNote, Type, Circle, ArrowRight, Triangle, Hexagon,
+  Image, StickyNote, Type, Circle, ArrowRight, Triangle, Hexagon, Star, SlidersHorizontal, RectangleCorner,
 } from "lucide-react";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { MenuItem, RibbonMenu, RibbonSelect } from "@/components/ribbon/RibbonKit";
 import { readPref, writePref } from "@/lib/preferences";
 import { toast } from "@/lib/toast";
+import { tokenColor } from "@/lib/theme";
 import { Slider } from "@/components/ink/StudioSection";
 import BrushStudio from "@/components/ink/BrushStudio";
 import AssistStudio from "@/components/ink/AssistStudio";
 import SelectionStudio from "@/components/ink/SelectionStudio";
 import PaperStudio from "@/components/ink/PaperStudio";
 import { BRUSHES, brushPreviewStyle } from "@/lib/canvas/ink/brushes";
+import { PRESET_PALETTES } from "@/lib/canvas/ink/color";
 import { PAPER_SIZES, PAPER_TEMPLATES, PAPER_TONES } from "@/lib/canvas/ink/paper";
 import { createCoordinateGraph } from "@/lib/canvas/ink/shapes";
 import { relativeTime } from "@/lib/vault";
@@ -24,11 +26,12 @@ import { useI18n } from "@/lib/i18n";
 import {
   FountainPenIcon, BallpointPenIcon, CalligraphyPenIcon, HighlighterIcon,
   WatercolorBrushIcon, PencilIcon, EraserIcon, LassoIcon, HandIcon,
-  EyedropperIcon, ShapesIcon, CoordinateGraphIcon, SavePenIcon, RemovePenIcon,
+  EyedropperIcon, ShapesIcon, CoordinateGraphIcon,
   InsertSpaceIcon, MousePointerIcon,
 } from "@/components/ink/icons";
 import { Popover, PopoverTrigger, PopoverContent, CompactPopoverIconButton, CompactPopoverGrid } from "@/components/ui/compact-popover";
 import { Switch } from "@/components/ui/switch";
+import { Pipette } from "lucide-react";
 
 function getModes(tool) {
   return [
@@ -66,6 +69,76 @@ function writeFavPens(pens) {
   writePref(FAV_PENS_KEY, JSON.stringify(pens.slice(0, MAX_FAV_PENS)));
 }
 
+// Pen/Highlighter settings persistence
+const PEN_SETTINGS_KEY = "inkPenSettings";
+const HIGHLIGHTER_SETTINGS_KEY = "inkHighlighterSettings";
+
+const DEFAULT_PEN_SETTINGS = {
+  brush: "fountain",
+  color: "", // Will be resolved to tokenColor("--foreground")
+  width: 3,
+  alpha: 1,
+  nibAngle: -0.55,
+};
+
+const DEFAULT_HIGHLIGHTER_SETTINGS = {
+  brush: "marker",
+  color: "#eab308", // Yellow
+  width: 18,
+  alpha: 0.4,
+  nibAngle: -0.55,
+};
+
+function readPenSettings() {
+  try {
+    const raw = readPref(PEN_SETTINGS_KEY, "{}");
+    return { ...DEFAULT_PEN_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_PEN_SETTINGS };
+  }
+}
+
+function writePenSettings(settings) {
+  writePref(PEN_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function readHighlighterSettings() {
+  try {
+    const raw = readPref(HIGHLIGHTER_SETTINGS_KEY, "{}");
+    return { ...DEFAULT_HIGHLIGHTER_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_HIGHLIGHTER_SETTINGS };
+  }
+}
+
+function writeHighlighterSettings(settings) {
+  writePref(HIGHLIGHTER_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// Shape settings persistence
+const SHAPE_SETTINGS_KEY = "inkShapeSettings";
+
+const DEFAULT_SHAPE_SETTINGS = {
+  shapeType: "rect",
+  shapeStrokeColor: "", // Will be resolved to tokenColor("--foreground")
+  shapeStrokeWidth: 2,
+  shapeFillColor: "none",
+  shapeFillOpacity: 1,
+};
+
+function readShapeSettings() {
+  try {
+    const raw = readPref(SHAPE_SETTINGS_KEY, "{}");
+    return { ...DEFAULT_SHAPE_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_SHAPE_SETTINGS };
+  }
+}
+
+function writeShapeSettings(settings) {
+  writePref(SHAPE_SETTINGS_KEY, JSON.stringify(settings));
+}
+
 function hexIsValid(hex) {
   if (!hex) return false;
   const clean = hex.trim().replace("#", "");
@@ -83,6 +156,13 @@ function normalizeHex(hex) {
 function brushLabel(id) {
   return BRUSHES.find((brush) => brush.id === id)?.label || "Ballpoint";
 }
+
+// Expanded color palette: 7 quick + 14 from presets = 21 total
+const PALETTE_COLORS = [
+  "#111827", "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", // 7 quick
+  "#8b5cf6", "#ec4899", "#f9fafb", // 3 more from quick
+  ...PRESET_PALETTES.flatMap((p) => p.colors), // 30 from presets
+].filter((c, i, a) => a.indexOf(c) === i).slice(0, 21); // Unique, max 21
 
 /* ---------------------------------- Draw ---------------------------------- */
 
@@ -128,32 +208,35 @@ function PenPickerPopover({ tool, onTool, onClose }) {
 }
 
 /** Eraser settings popover */
-function EraserPopover({ tool, onTool, onClose }) {
+function EraserPopover({ tool, onTool, onClose, ink }) {
+  const { t } = useI18n();
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
   return (
     <div className="p-1 space-y-3">
       <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
-        Eraser
+        {t("ink.draw.eraser")}
       </div>
       <div className="flex gap-1 px-0.5">
         <CompactPopoverIconButton
           icon={() => <EraserIcon mode="stroke" />}
-          label="Stroke eraser — removes whole marks"
+          label={t("ink.eraser.mode.stroke")}
           active={tool.eraserMode === "stroke"}
           onClick={() => { onTool({ eraserMode: "stroke", mode: "erase" }); onClose(); }}
         />
         <CompactPopoverIconButton
           icon={() => <EraserIcon mode="precision" />}
-          label="Point eraser — cuts the exact path"
+          label={t("ink.eraser.mode.precision")}
           active={tool.eraserMode === "precision"}
           onClick={() => { onTool({ eraserMode: "precision", mode: "erase" }); onClose(); }}
         />
       </div>
       <div className="px-0.5">
         <Slider
-          label="radius"
+          label={t("ink.eraser.size")}
           value={tool.size}
-          min={6}
-          max={90}
+          min={4}
+          max={60}
           onChange={(size) => onTool({ size })}
           display={`${tool.size}px`}
         />
@@ -161,23 +244,296 @@ function EraserPopover({ tool, onTool, onClose }) {
       <div className="flex gap-1 px-0.5">
         <CompactPopoverIconButton
           icon={Minus}
-          label="Small (12px)"
-          active={tool.size === 12}
-          onClick={() => { onTool({ size: 12, mode: "erase" }); onClose(); }}
+          label={t("ink.eraser.sizeSmall")}
+          active={tool.size === 4}
+          onClick={() => { onTool({ size: 4, mode: "erase" }); onClose(); }}
         />
         <CompactPopoverIconButton
           icon={Eraser}
-          label="Medium (26px)"
-          active={tool.size === 26}
-          onClick={() => { onTool({ size: 26, mode: "erase" }); onClose(); }}
+          label={t("ink.eraser.sizeMedium")}
+          active={tool.size === 16}
+          onClick={() => { onTool({ size: 16, mode: "erase" }); onClose(); }}
         />
         <CompactPopoverIconButton
           icon={Plus}
-          label="Large (50px)"
-          active={tool.size === 50}
-          onClick={() => { onTool({ size: 50, mode: "erase" }); onClose(); }}
+          label={t("ink.eraser.sizeLarge")}
+          active={tool.size === 32}
+          onClick={() => { onTool({ size: 32, mode: "erase" }); onClose(); }}
+        />
+        <CompactPopoverIconButton
+          icon={Trash2}
+          label={t("ink.eraser.sizeMax")}
+          active={tool.size === 60}
+          onClick={() => { onTool({ size: 60, mode: "erase" }); onClose(); }}
         />
       </div>
+      <div className="border-t border-border/60 pt-2">
+        <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <button
+              type="button"
+              onClick={() => setClearDialogOpen(true)}
+              className="w-full flex items-center justify-center gap-2 px-2 py-1.5 text-left font-mono text-[11px] text-destructive hover:bg-destructive/10 rounded-md transition"
+            >
+              <Trash2 className="h-3.5 w-3.5 shrink-0" />
+              <span>{t("ink.eraser.clearAll")}</span>
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="max-w-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("ink.eraser.clearAllTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("ink.eraser.clearAllDesc")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setClearDialogOpen(false)}>{t("common.cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  ink.engine()?.clearAllStrokes();
+                  setClearDialogOpen(false);
+                  onClose();
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {t("ink.eraser.clearAllConfirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
+  );
+}
+
+/** Pen settings popover - brushes, colours, width, opacity */
+function PenPopover({ tool, onTool, onClose, isHighlighter, readHistory, rememberColor }) {
+  const { t } = useI18n();
+  const [tab, setTab] = useState("brushes");
+  const [draftHex, setDraftHex] = useState(tool.color);
+  const [history, setHistory] = useState(() => readHistory());
+  const [paletteId, setPaletteId] = useState("inkwell");
+
+  // Live preview stroke
+  const previewStyle = brushPreviewStyle(tool.brush, tool.color);
+  const previewColor = previewStyle.color;
+  const previewHeight = previewStyle.height;
+
+  const applyColor = (nextColor) => {
+    const clean = nextColor.trim().replace("#", "");
+    if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean)) {
+      const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+      onTool({ color: `#${full.toLowerCase()}` });
+      setHistory(rememberColor(`#${full.toLowerCase()}`));
+    }
+  };
+
+  const applyAlpha = (alpha) => {
+    onTool({ alpha: alpha / 100 });
+  };
+
+  const applyWidth = (width) => {
+    onTool({ width });
+  };
+
+  const applyBrush = (brushId) => {
+    onTool({ brush: brushId, mode: "draw" });
+  };
+
+  const palette = PALETTE_COLORS;
+
+  return (
+    <div className="p-1 space-y-3 max-w-[320px]">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-border/60 pb-1">
+        <button
+          type="button"
+          onClick={() => setTab("brushes")}
+          className={cn(
+            "px-2 py-1 rounded-t font-mono text-[10px] transition",
+            tab === "brushes" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("ink.draw.brush")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("colours")}
+          className={cn(
+            "px-2 py-1 rounded-t font-mono text-[10px] transition",
+            tab === "colours" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("ink.draw.colour")}
+        </button>
+      </div>
+
+      {tab === "brushes" && (
+        <div className="space-y-3">
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("ink.draw.brush")}
+          </div>
+          <CompactPopoverGrid columns={3}>
+            {BRUSHES.map((brush) => {
+              const preview = brushPreviewStyle(brush.id, tool.color);
+              const active = tool.brush === brush.id && tool.mode !== "erase";
+              const Icon = {
+                fountain: FountainPenIcon,
+                ballpoint: BallpointPenIcon,
+                calligraphy: CalligraphyPenIcon,
+                marker: HighlighterIcon,
+                watercolor: WatercolorBrushIcon,
+                pencil: PencilIcon,
+              }[brush.id] || FountainPenIcon;
+              return (
+                <CompactPopoverIconButton
+                  key={brush.id}
+                  icon={Icon}
+                  label={`${brush.label} — ${brush.hint}`}
+                  active={active}
+                  onClick={() => { applyBrush(brush.id); onClose(); }}
+                >
+                  <div className="absolute bottom-1 right-1 h-1.5 w-4 rounded-full" style={{ background: preview.color, opacity: 0.8 }} />
+                </CompactPopoverIconButton>
+              );
+            })}
+          </CompactPopoverGrid>
+
+          {/* Calligraphy nib angle */}
+          {tool.brush === "calligraphy" && (
+            <div className="px-0.5">
+              <Slider
+                label={t("ink.draw.nibAngle") || "Nib angle"}
+                value={Math.round((tool.nibAngle * 180) / Math.PI)}
+                min={-90}
+                max={90}
+                onChange={(value) => onTool({ nibAngle: (value * Math.PI) / 180 })}
+                display={`${Math.round((tool.nibAngle * 180) / Math.PI)}°`}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "colours" && (
+        <div className="space-y-3">
+          {/* Custom colour input + eyedropper */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("ink.draw.customColour")}
+          </div>
+          <div className="flex items-center gap-1.5 px-0.5">
+            <input
+              value={draftHex}
+              onChange={(e) => {
+                setDraftHex(e.target.value);
+                const clean = e.target.value.trim().replace("#", "");
+                if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean)) {
+                  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+                  onTool({ color: `#${full.toLowerCase()}` });
+                }
+              }}
+              aria-label={t("ink.draw.customColour")}
+              spellCheck={false}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-border/70 bg-card/60 px-2 font-mono text-[12px] uppercase text-foreground outline-none transition focus:border-primary/40"
+            />
+            <button
+              type="button"
+              onClick={() => onTool({ eyedropper: true })}
+              title="Eyedropper — sample any pixel on the canvas"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border/70 text-muted-foreground hover:text-foreground transition"
+            >
+              <Pipette className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Opacity */}
+          <div className="px-0.5">
+            <Slider
+              label={`${t("ink.draw.opacity")} ${Math.round(tool.alpha * 100)}%`}
+              value={Math.round(tool.alpha * 100)}
+              min={10}
+              max={100}
+              onChange={applyAlpha}
+              display={`${Math.round(tool.alpha * 100)}%`}
+            />
+          </div>
+
+          {/* Width */}
+          <div className="px-0.5">
+            <Slider
+              label={`${t("ink.draw.width")} ${tool.width}px`}
+              value={tool.width}
+              min={1}
+              max={40}
+              step={0.5}
+              onChange={applyWidth}
+              display={`${tool.width}px`}
+            />
+          </div>
+
+          {/* Live preview */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("ink.draw.livePreview")}
+          </div>
+          <div className="px-0.5 h-8 flex items-center border border-border/60 rounded-md bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,hsl(var(--card))_0%_50%)] bg-[length:8px_8px]">
+            <div
+              className="h-full mx-2 rounded"
+              style={{
+                width: Math.min(200, tool.width * 8),
+                background: previewColor,
+                height: previewHeight,
+              }}
+            />
+          </div>
+
+          {/* Palettes */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("ink.draw.palettes")}
+          </div>
+          <div className="flex flex-wrap gap-1 px-0.5">
+            {PALETTE_COLORS.map((hex) => (
+              <button
+                key={hex}
+                type="button"
+                onClick={() => applyColor(hex)}
+                aria-label={`Colour ${hex}`}
+                className={cn(
+                  "h-6 w-6 rounded-full border transition hover:scale-105",
+                  tool.color.toLowerCase() === hex.toLowerCase() ? "border-foreground/80 ring-1 ring-foreground/30" : "border-foreground/30"
+                )}
+                style={{ background: hex }}
+              />
+            ))}
+          </div>
+
+          {/* Recent colours */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("ink.draw.recentColours")}
+          </div>
+          <div className="flex flex-wrap gap-1 px-0.5">
+            {history.length ? (
+              history.map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => applyColor(hex)}
+                  aria-label={`Recent ${hex}`}
+                  className={cn(
+                    "h-6 w-6 rounded-full border transition hover:scale-105",
+                    tool.color.toLowerCase() === hex.toLowerCase() ? "border-foreground/80 ring-1 ring-foreground/30" : "border-foreground/30"
+                  )}
+                  style={{
+                    backgroundImage: `linear-gradient(${hex}, ${hex}), repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--card)) 0% 50%)`,
+                    backgroundSize: "100% 100%, 8px 8px",
+                  }}
+                />
+              ))
+            ) : (
+              <span className="font-mono text-[9.5px] text-muted-foreground">colours you ink with land here</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -252,7 +608,7 @@ function MoreToolsPopover({ ink, onClose }) {
       <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
         {t("ink.more.eraser")}
       </div>
-      <EraserPopover tool={tool} onTool={onTool} onClose={onClose} />
+      <EraserPopover tool={tool} onTool={onTool} onClose={onClose} ink={ink} />
 
       {/* Brush engine */}
       <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
@@ -422,20 +778,286 @@ function MoreToolsPopover({ ink, onClose }) {
   );
 }
 
+/** Shape type selector popover */
+function ShapePopover({ tool, onTool, onClose, shapeSettings }) {
+  const { t } = useI18n();
+  const shapeTypes = [
+    { id: "line", icon: Minus, labelKey: "vault.canvas.draw.tools.shapeTypeLine" },
+    { id: "arrow", icon: ArrowRight, labelKey: "vault.canvas.draw.tools.shapeTypeArrow" },
+    { id: "rect", icon: Square, labelKey: "vault.canvas.draw.tools.shapeTypeRectangle" },
+    { id: "rounded-rect", icon: RectangleCorner, labelKey: "vault.canvas.draw.tools.shapeTypeRoundedRect" },
+    { id: "ellipse", icon: Circle, labelKey: "vault.canvas.draw.tools.shapeTypeEllipse" },
+    { id: "triangle", icon: Triangle, labelKey: "vault.canvas.draw.tools.shapeTypeTriangle" },
+    { id: "star", icon: Star, labelKey: "vault.canvas.draw.tools.shapeTypeStar" },
+  ];
+
+  return (
+    <div className="p-1 space-y-3">
+      <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+        {t("vault.canvas.draw.tools.shapeTypes")}
+      </div>
+      <div className="grid grid-cols-4 gap-1 px-0.5">
+        {shapeTypes.map((shape) => {
+          const Icon = shape.icon;
+          const active = tool.shapeType === shape.id && tool.mode === "shape";
+          return (
+            <CompactPopoverIconButton
+              key={shape.id}
+              icon={Icon}
+              label={t(shape.labelKey)}
+              active={active}
+              onClick={() => {
+                onTool({
+                  mode: "shape",
+                  shapeType: shape.id,
+                  shapeStrokeColor: shapeSettings.shapeStrokeColor || tokenColor("--foreground"),
+                  shapeStrokeWidth: shapeSettings.shapeStrokeWidth,
+                  shapeFillColor: shapeSettings.shapeFillColor,
+                  shapeFillOpacity: shapeSettings.shapeFillOpacity,
+                });
+                onClose();
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Shape options popover - stroke and fill settings */
+function ShapeOptionsPopover({ tool, onTool, onClose, shapeSettings }) {
+  const { t } = useI18n();
+  const [tab, setTab] = useState("stroke");
+  const [draftStrokeHex, setDraftStrokeHex] = useState(shapeSettings.shapeStrokeColor || tool.color);
+  const [draftFillHex, setDraftFillHex] = useState(shapeSettings.shapeFillColor === "none" ? "" : shapeSettings.shapeFillColor);
+
+  const applyStrokeColor = (nextColor) => {
+    const clean = nextColor.trim().replace("#", "");
+    if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean)) {
+      const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+      onTool({ shapeStrokeColor: `#${full.toLowerCase()}` });
+    }
+  };
+
+  const applyFillColor = (nextColor) => {
+    if (!nextColor || nextColor === "none") {
+      onTool({ shapeFillColor: "none" });
+      return;
+    }
+    const clean = nextColor.trim().replace("#", "");
+    if (/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(clean)) {
+      const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+      onTool({ shapeFillColor: `#${full.toLowerCase()}` });
+    }
+  };
+
+  const applyStrokeWidth = (width) => {
+    onTool({ shapeStrokeWidth: width });
+  };
+
+  const applyFillOpacity = (opacity) => {
+    onTool({ shapeFillOpacity: opacity / 100 });
+  };
+
+  return (
+    <div className="p-1 space-y-3 max-w-[320px]">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-border/60 pb-1">
+        <button
+          type="button"
+          onClick={() => setTab("stroke")}
+          className={cn(
+            "px-2 py-1 rounded-t font-mono text-[10px] transition",
+            tab === "stroke" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("vault.canvas.draw.tools.shapeStrokeColor")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("fill")}
+          className={cn(
+            "px-2 py-1 rounded-t font-mono text-[10px] transition",
+            tab === "fill" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("vault.canvas.draw.tools.shapeFillColor")}
+        </button>
+      </div>
+
+      {tab === "stroke" && (
+        <div className="space-y-3">
+          {/* Stroke colour */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("vault.canvas.draw.tools.shapeStrokeColor")}
+          </div>
+          <div className="flex items-center gap-1.5 px-0.5">
+            <input
+              value={draftStrokeHex}
+              onChange={(e) => {
+                setDraftStrokeHex(e.target.value);
+                applyStrokeColor(e.target.value);
+              }}
+              aria-label={t("vault.canvas.draw.tools.shapeStrokeColor")}
+              spellCheck={false}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-border/70 bg-card/60 px-2 font-mono text-[12px] uppercase text-foreground outline-none transition focus:border-primary/40"
+            />
+          </div>
+
+          {/* Stroke width */}
+          <div className="px-0.5">
+            <Slider
+              label={`${t("vault.canvas.draw.tools.shapeStrokeWidth")} ${shapeSettings.shapeStrokeWidth}px`}
+              value={shapeSettings.shapeStrokeWidth}
+              min={1}
+              max={20}
+              onChange={applyStrokeWidth}
+              display={`${shapeSettings.shapeStrokeWidth}px`}
+            />
+          </div>
+
+          {/* Quick colours */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            Quick colours
+          </div>
+          <div className="flex flex-wrap gap-1 px-0.5">
+            {PALETTE_COLORS.map((hex) => (
+              <button
+                key={hex}
+                type="button"
+                onClick={() => applyStrokeColor(hex)}
+                aria-label={`Colour ${hex}`}
+                className={cn(
+                  "h-6 w-6 rounded-full border transition hover:scale-105",
+                  (shapeSettings.shapeStrokeColor || tool.color).toLowerCase() === hex.toLowerCase() ? "border-foreground/80 ring-1 ring-foreground/30" : "border-foreground/30"
+                )}
+                style={{ background: hex }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "fill" && (
+        <div className="space-y-3">
+          {/* Fill colour */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            {t("vault.canvas.draw.tools.shapeFillColor")}
+          </div>
+          <div className="flex items-center gap-1.5 px-0.5">
+            <input
+              value={draftFillHex}
+              onChange={(e) => {
+                setDraftFillHex(e.target.value);
+                applyFillColor(e.target.value);
+              }}
+              aria-label={t("vault.canvas.draw.tools.shapeFillColor")}
+              spellCheck={false}
+              placeholder={t("vault.canvas.draw.tools.shapeFillNone")}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-border/70 bg-card/60 px-2 font-mono text-[12px] uppercase text-foreground outline-none transition focus:border-primary/40"
+            />
+            <button
+              type="button"
+              onClick={() => { onTool({ shapeFillColor: "none" }); setDraftFillHex(""); }}
+              aria-label={t("vault.canvas.draw.tools.shapeFillNone")}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border/70 text-muted-foreground hover:text-foreground transition"
+              title={t("vault.canvas.draw.tools.shapeFillNone")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Fill opacity */}
+          <div className="px-0.5">
+            <Slider
+              label={`${t("vault.canvas.draw.tools.shapeFillOpacity")} ${Math.round(shapeSettings.shapeFillOpacity * 100)}%`}
+              value={Math.round(shapeSettings.shapeFillOpacity * 100)}
+              min={0}
+              max={100}
+              onChange={applyFillOpacity}
+              display={`${Math.round(shapeSettings.shapeFillOpacity * 100)}%`}
+            />
+          </div>
+
+          {/* Quick colours */}
+          <div className="px-2 pb-1 pt-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
+            Quick colours
+          </div>
+          <div className="flex flex-wrap gap-1 px-0.5">
+            <button
+              type="button"
+              onClick={() => { onTool({ shapeFillColor: "none" }); setDraftFillHex(""); }}
+              aria-label={t("vault.canvas.draw.tools.shapeFillNone")}
+              className={cn(
+                "h-6 w-6 rounded-full border transition hover:scale-105",
+                shapeSettings.shapeFillColor === "none" ? "border-foreground/80 ring-1 ring-foreground/30" : "border-foreground/30"
+              )}
+              style={{ background: "repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--card)) 0% 50%)", backgroundSize: "8px 8px" }}
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+            {PALETTE_COLORS.map((hex) => (
+              <button
+                key={hex}
+                type="button"
+                onClick={() => applyFillColor(hex)}
+                aria-label={`Fill ${hex}`}
+                className={cn(
+                  "h-6 w-6 rounded-full border transition hover:scale-105",
+                  (shapeSettings.shapeFillColor || "").toLowerCase() === hex.toLowerCase() ? "border-foreground/80 ring-1 ring-foreground/30" : "border-foreground/30"
+                )}
+                style={{ background: hex }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============================== Canvas Ribbon Tabs ============================== */
 
 export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
   const { t } = useI18n();
   const { tool, onTool, engine } = ink;
   const [favPens, setFavPens] = useState(() => readFavPens());
-  const [penPickerOpen, setPenPickerOpen] = useState(false);
+  const [penPopoverOpen, setPenPopoverOpen] = useState(false);
+  const [highlighterPopoverOpen, setHighlighterPopoverOpen] = useState(false);
   const [eraserPopoverOpen, setEraserPopoverOpen] = useState(false);
   const [morePopoverOpen, setMorePopoverOpen] = useState(false);
   const [snapShapes, setSnapShapes] = useState(() => readPref("inkSnapShapes", "true") === "true");
+  const [shapePopoverOpen, setShapePopoverOpen] = useState(false);
+
+  // Load persisted settings for pen, highlighter, and shapes
+  const [penSettings] = useState(() => readPenSettings());
+  const [highlighterSettings] = useState(() => readHighlighterSettings());
+  const [shapeSettings] = useState(() => readShapeSettings());
+
+  // Determine if current tool is highlighter (marker brush with highlighter-like settings)
+  const isHighlighterMode = tool.brush === "marker" && tool.alpha < 0.6;
 
   useEffect(() => {
     setFavPens(readFavPens());
   }, []);
+
+  // Read history and rememberColor from palette module
+  const readHistory = useCallback(() => {
+    try {
+      const raw = readPref("inkColorHistory", "[]");
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const rememberColor = useCallback((color) => {
+    if (!color) return readHistory();
+    const next = [color, ...readHistory().filter((entry) => entry !== color)].slice(0, 14);
+    writePref("inkColorHistory", JSON.stringify(next));
+    return next;
+  }, [readHistory]);
 
   const handleToolChange = useCallback((changes) => {
     if (changes.mode === "insertSpace") {
@@ -447,6 +1069,22 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
     }
     onTool(changes);
   }, [onTool]);
+
+  // Persist pen/highlighter/shape settings when they change
+  const persistPenSettings = useCallback((changes) => {
+    const next = { ...penSettings, ...changes };
+    writePenSettings(next);
+  }, [penSettings]);
+
+  const persistHighlighterSettings = useCallback((changes) => {
+    const next = { ...highlighterSettings, ...changes };
+    writeHighlighterSettings(next);
+  }, [highlighterSettings]);
+
+  const persistShapeSettings = useCallback((changes) => {
+    const next = { ...shapeSettings, ...changes };
+    writeShapeSettings(next);
+  }, [shapeSettings]);
 
   const saveFavPen = useCallback(() => {
     const pen = {
@@ -492,11 +1130,21 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
 
   // Auto-start ink when a drawing tool is used on a note without ink
   const wrapToolChange = useCallback((changes) => {
-    if (onAutoStart && changes && (changes.mode === "draw" || changes.brush)) {
+    if (onAutoStart && changes && (changes.mode === "draw" || changes.brush || changes.shapeType)) {
       onAutoStart();
     }
+
+    // Persist settings per tool
+    if (isHighlighterMode) {
+      persistHighlighterSettings(changes);
+    } else if (changes.shapeType !== undefined || changes.shapeStrokeColor !== undefined || changes.shapeStrokeWidth !== undefined || changes.shapeFillColor !== undefined || changes.shapeFillOpacity !== undefined) {
+      persistShapeSettings(changes);
+    } else {
+      persistPenSettings(changes);
+    }
+
     handleToolChange(changes);
-  }, [onAutoStart, handleToolChange]);
+  }, [onAutoStart, handleToolChange, isHighlighterMode, persistPenSettings, persistHighlighterSettings, persistShapeSettings]);
 
   const handleSnapShapesChange = useCallback((checked) => {
     setSnapShapes(checked);
@@ -504,25 +1152,118 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
     onTool({ shapeRecognition: checked });
   }, [onTool]);
 
+  // Switch to pen with persisted settings
+  const activatePen = useCallback(() => {
+    wrapToolChange({
+      mode: "draw",
+      brush: penSettings.brush,
+      color: penSettings.color || tokenColor("--foreground"),
+      width: penSettings.width,
+      alpha: penSettings.alpha,
+      nibAngle: penSettings.nibAngle,
+    });
+  }, [wrapToolChange, penSettings]);
+
+  // Switch to highlighter with persisted settings
+  const activateHighlighter = useCallback(() => {
+    wrapToolChange({
+      mode: "draw",
+      brush: highlighterSettings.brush,
+      color: highlighterSettings.color,
+      width: highlighterSettings.width,
+      alpha: highlighterSettings.alpha,
+      nibAngle: highlighterSettings.nibAngle,
+    });
+  }, [wrapToolChange, highlighterSettings]);
+
+  // Switch to shape tool with persisted settings
+  const activateShape = useCallback(() => {
+    wrapToolChange({
+      mode: "shape",
+      shapeType: shapeSettings.shapeType,
+      shapeStrokeColor: shapeSettings.shapeStrokeColor || tokenColor("--foreground"),
+      shapeStrokeWidth: shapeSettings.shapeStrokeWidth,
+      shapeFillColor: shapeSettings.shapeFillColor,
+      shapeFillOpacity: shapeSettings.shapeFillOpacity,
+    });
+  }, [wrapToolChange, shapeSettings]);
+
   // Show max 4 favourite pens in the panel, rest accessible via popover if needed
   const visibleFavPens = favPens.slice(0, 4);
+
+  // Current color dot and width for display
+  const currentPreview = brushPreviewStyle(tool.brush, tool.color);
 
   return (
     <>
       <RibbonGroup label={t("ink.groups.draw")} priority={70} icon={PenLine}>
-        {/* Pen picker - single button opening popover with all brushes */}
-        <Popover open={penPickerOpen} onOpenChange={setPenPickerOpen}>
+        {/* Pen button with popover */}
+        <Popover open={penPopoverOpen} onOpenChange={setPenPopoverOpen}>
           <PopoverTrigger asChild>
             <RibbonButton
               icon={PenTool}
               label={t("ink.draw.pen")}
               hint={t("ink.draw.penHint")}
-              active={tool.mode === "draw"}
-              onClick={() => wrapToolChange({ mode: "draw" })}
+              active={tool.mode === "draw" && !isHighlighterMode}
+              onClick={activatePen}
             />
           </PopoverTrigger>
-          <PopoverContent align="start" style={{ width: 220 }} className="max-h-[70vh] overflow-y-auto p-1">
-            <PenPickerPopover tool={tool} onTool={wrapToolChange} onClose={() => setPenPickerOpen(false)} />
+          <PopoverContent align="start" style={{ width: 340 }} className="max-h-[80vh] overflow-y-auto p-1">
+            <PenPopover
+              tool={tool}
+              onTool={wrapToolChange}
+              onClose={() => setPenPopoverOpen(false)}
+              isHighlighter={false}
+              readHistory={readHistory}
+              rememberColor={rememberColor}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Current colour dot - clicking opens pen popover */}
+        <button
+          type="button"
+          onClick={() => setPenPopoverOpen(true)}
+          aria-label={t("ink.draw.colour")}
+          className="relative h-8 w-8 shrink-0 rounded-md border border-border/60 transition hover:border-primary/50"
+          style={{
+            backgroundImage: `linear-gradient(${tool.color}, ${tool.color}), repeating-conic-gradient(hsl(var(--muted)) 0% 25%, hsl(var(--card)) 0% 50%)`,
+            backgroundSize: "100% 100%, 8px 8px",
+            opacity: tool.alpha < 1 ? 0.55 + tool.alpha * 0.45 : 1,
+          }}
+        >
+          {tool.alpha < 1 && (
+            <span className="absolute -bottom-1 -right-1 font-mono text-[7px] text-foreground/70 bg-background px-0.5 rounded">
+              {Math.round(tool.alpha * 100)}%
+            </span>
+          )}
+        </button>
+
+        {/* Width indicator */}
+        <span className="self-center font-mono text-[10px] text-muted-foreground w-10 text-center">
+          {tool.width}px
+        </span>
+
+        {/* Highlighter button with popover */}
+        <Popover open={highlighterPopoverOpen} onOpenChange={setHighlighterPopoverOpen}>
+          <PopoverTrigger asChild>
+            <RibbonButton
+              icon={HighlighterIcon}
+              label={t("ink.draw.highlighter")}
+              hint={t("ink.draw.highlighterHint")}
+              active={isHighlighterMode}
+              onClick={activateHighlighter}
+            />
+          </PopoverTrigger>
+          <PopoverContent align="start" style={{ width: 340 }} className="max-h-[80vh] overflow-y-auto p-1">
+            <PenPopover
+              tool={tool}
+              onTool={wrapToolChange}
+              onClose={() => setHighlighterPopoverOpen(false)}
+              isHighlighter={true}
+              readHistory={readHistory}
+              rememberColor={rememberColor}
+            />
           </PopoverContent>
         </Popover>
 
@@ -538,7 +1279,7 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
             />
           </PopoverTrigger>
           <PopoverContent align="start" style={{ width: 200 }} className="max-h-[70vh] overflow-y-auto p-1">
-            <EraserPopover tool={tool} onTool={wrapToolChange} onClose={() => setEraserPopoverOpen(false)} />
+            <EraserPopover tool={tool} onTool={wrapToolChange} onClose={() => setEraserPopoverOpen(false)} ink={ink} />
           </PopoverContent>
         </Popover>
 
@@ -551,14 +1292,46 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
           onClick={() => wrapToolChange({ mode: "lasso" })}
         />
 
-        {/* Shape mode */}
-        <RibbonButton
-          icon={ShapesIcon}
-          label={t("ink.draw.shapeMode")}
-          hint={t("ink.draw.shapeModeHint")}
-          active={tool.mode === "shape"}
-          onClick={() => wrapToolChange({ mode: "shape" })}
-        />
+        {/* Shape tool with dropdown */}
+        <Popover open={shapePopoverOpen} onOpenChange={setShapePopoverOpen}>
+          <PopoverTrigger asChild>
+            <RibbonButton
+              icon={ShapesIcon}
+              label={t("ink.draw.shapeTool")}
+              hint={t("ink.draw.shapeToolHint")}
+              active={tool.mode === "shape"}
+              onClick={activateShape}
+            />
+          </PopoverTrigger>
+          <PopoverContent align="start" style={{ width: 280 }} className="max-h-[80vh] overflow-y-auto p-1">
+            <ShapePopover
+              tool={tool}
+              onTool={wrapToolChange}
+              onClose={() => setShapePopoverOpen(false)}
+              shapeSettings={shapeSettings}
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Shape options button */}
+        <Popover open={shapePopoverOpen} onOpenChange={setShapePopoverOpen}>
+          <PopoverTrigger asChild>
+            <RibbonButton
+              icon={SlidersHorizontal}
+              label={t("ink.draw.shapeOptions")}
+              hint={t("ink.draw.shapeOptions")}
+              onClick={() => setShapePopoverOpen(true)}
+            />
+          </PopoverTrigger>
+          <PopoverContent align="start" style={{ width: 300 }} className="max-h-[80vh] overflow-y-auto p-1">
+            <ShapeOptionsPopover
+              tool={tool}
+              onTool={wrapToolChange}
+              onClose={() => setShapePopoverOpen(false)}
+              shapeSettings={shapeSettings}
+            />
+          </PopoverContent>
+        </Popover>
 
         {/* Snap shapes toggle */}
         <div style={{ gridRow: "span 2", minWidth: 100, display: "flex", alignItems: "center", gap: 8 }}>
@@ -571,63 +1344,6 @@ export function CanvasDrawTab({ ink, onAutoStart, afterDraw }) {
         </div>
       </RibbonGroup>
       {afterDraw}
-      <RibbonGroup label={t("ink.draw.width")} priority={65} icon={PenLine}>
-        {/* Width slider - always visible */}
-        <div style={{ gridRow: "span 2", minWidth: 110 }}>
-          <Slider
-            label={t("ink.draw.width")}
-            value={tool.width}
-            min={0.5}
-            max={24}
-            step={0.5}
-            onChange={(width) => wrapToolChange({ width })}
-            display={`${tool.width}px`}
-          />
-        </div>
-
-        {/* Favourite pens - max 4 visible, save button */}
-        <div className="flex flex-wrap items-center gap-1.5" style={{ minWidth: 'max-content', gridRow: "span 2" }}>
-          {visibleFavPens.map((pen, index) => {
-            const preview = brushPreviewStyle(pen.brush, pen.color);
-            const active =
-              tool.brush === pen.brush &&
-              tool.color.toLowerCase() === pen.color.toLowerCase() &&
-              tool.width === pen.width &&
-              tool.mode !== "erase";
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={() => selectFavPen(pen)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  removeFavPen(index);
-                }}
-                title={`${brushLabel(pen.brush)} — ${pen.color} — ${pen.width}px${pen.alpha < 1 ? ` — ${Math.round(pen.alpha * 100)}%` : ""} — Right-click to remove`}
-                aria-pressed={active}
-                className={cn(
-                  "relative flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[10px] transition",
-                  active ? "border-primary/50 bg-primary/15 text-primary" : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                <span className="block w-4 rounded-full" style={{ height: preview.height / 2 + 2, background: preview.color }} />
-                {brushLabel(pen.brush).split(" ")[0]}
-                <RemovePenIcon className="absolute -end-1 -top-1 h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
-              </button>
-            );
-          })}
-          {favPens.length < MAX_FAV_PENS && (
-            <button
-              type="button"
-              onClick={saveFavPen}
-              title={t("ink.draw.saveFavPen")}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-dashed border-border text-muted-foreground transition hover:border-primary/50 hover:text-primary"
-            >
-              <SavePenIcon className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </RibbonGroup>
 
       <RibbonGroup label={t("ink.groups.history")} priority={30} icon={History}>
         <RibbonButton icon={Undo2} label={t("ink.history.undo")} hint={t("ink.history.undoHint")} shortcut="Ctrl+Z" disabled={!ink.canUndo} onClick={ink.onUndo} />
@@ -770,11 +1486,13 @@ export function CanvasObjectsTab({ ink }) {
               <div className="grid grid-cols-3 gap-1">
                 {[
                   { id: "rect", icon: Square, label: "Rectangle" },
+                  { id: "rounded-rect", icon: RectangleCorner, label: "Rounded rect" },
                   { id: "ellipse", icon: Circle, label: "Circle/Ellipse" },
                   { id: "line", icon: Minus, label: "Line" },
                   { id: "arrow", icon: ArrowRight, label: "Arrow" },
                   { id: "triangle", icon: Triangle, label: "Triangle" },
                   { id: "polygon", icon: Hexagon, label: "Polygon" },
+                  { id: "star", icon: Star, label: "Star" },
                 ].map((shape) => {
                   const Icon = shape.icon;
                   return (
@@ -790,7 +1508,7 @@ export function CanvasObjectsTab({ ink }) {
                       className="flex flex-col items-center gap-1 p-2 rounded-md border border-border/60 hover:bg-accent hover:border-primary/50 transition"
                     >
                       <Icon className="h-5 w-5 text-foreground" />
-                      <span className="font-mono text-[9px] text-muted-foreground">{shape.label}</span>
+                      <span className="font-mono text-[9px] text-muted-foreground">{t(`vault.canvas.insert.objects.${shape.id === "rounded-rect" ? "roundedRect" : shape.id}`)}</span>
                     </button>
                   );
                 })}

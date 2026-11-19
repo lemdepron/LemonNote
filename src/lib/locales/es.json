@@ -1507,7 +1507,10 @@
         "autosaveOn": "autoguardado activado",
         "saved": "guardado",
         "saving": "guardando…",
-        "idle": "inactivo"
+        "idle": "inactivo",
+        "cards": "{count} tarjetas",
+        "marks_short": "{count} trazos",
+        "objects_short": "{count} objetos"
       },
       "subtitle": "{cards} tarjetas · {connections} conexiones",
       "addFrame": "Añadir marco",
@@ -1545,6 +1548,17 @@
         "locked": "El texto está bloqueado porque se ha dibujado tinta sobre él",
         "unlock": "Desbloquear",
         "unlockWarning": "Desbloquear permitirá la edición, pero los trazos de tinta pueden dejar de coincidir con el contenido del texto."
+      },
+      "textTools": {
+        "fontFamily": "Fuente",
+        "fontSize": "Tamaño",
+        "bold": "Negrita",
+        "italic": "Cursiva",
+        "alignLeft": "Alinear a la izquierda",
+        "alignCenter": "Centrar",
+        "alignRight": "Alinear a la derecha",
+        "textColor": "Color del texto",
+        "stickyColor": "Color de la nota"
       }
     },
     "cards": {
@@ -1907,6 +1921,21 @@
       "saveFavPen": "Guardar lápiz actual como favorito",
       "removeFavPen": "Eliminar lápiz favorito",
       "noFavPens": "guarda tus configuraciones de lápiz favoritas aquí (máx. 8)"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "Trazo completo",
+        "precision": "Parte del trazo"
+      },
+      "size": "Tamaño",
+      "sizeSmall": "Pequeño (4px)",
+      "sizeMedium": "Mediano (16px)",
+      "sizeLarge": "Grande (32px)",
+      "sizeMax": "Máx (60px)",
+      "clearAll": "Borrar toda la tinta",
+      "clearAllTitle": "¿Borrar toda la tinta?",
+      "clearAllDesc": "Esto eliminará todos los trazos de tinta en esta página. Las tarjetas, formas, cuadros de texto y notas adhesivas se mantendrán.",
+      "clearAllConfirm": "Borrar toda la tinta"
     },
     "color": {
       "picker": "Color",

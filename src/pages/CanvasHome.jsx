@@ -56,6 +56,7 @@ export default function CanvasHome() {
       const initialFrame = createObject(OBJECT_TYPES.FRAME, centerX - frameSize.width / 2, centerY - frameSize.height / 2, frameSize.width, frameSize.height, {
         frameType: "a4",
         name: "Page 1",
+        paper: { template: "grid", tone: "auto" },
       });
       initialObjects = [initialFrame];
       initialPaper = { template: "grid", size: "infinite", tone: "dark" };

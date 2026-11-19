@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import InkEngine from "@/lib/canvas/engine";
 import FloatingObjects from "@/components/ink/FloatingObjects";
 import { useThemeRevision } from "@/lib/theme";
@@ -8,7 +8,7 @@ const CURSORS = {
   draw: "cursor-crosshair",
   shape: "cursor-crosshair",
   lasso: "cursor-crosshair",
-  erase: "cursor-cell",
+  erase: "cursor-none", // Custom cursor via overlay
   pan: "cursor-grab active:cursor-grabbing",
   eyedropper: "cursor-copy",
   insertSpace: "cursor-ns-resize",
@@ -56,6 +56,7 @@ export default function InkBoard({
   const fittedRef = useRef(false);
   const themeRevision = useThemeRevision();
   const insertSpaceDrag = useRef(null); // { dragging: boolean, startY: number, lineY: number }
+  const [eraserCursor, setEraserCursor] = useState({ x: 0, y: 0, size: 0, visible: false });
   const live = useRef({});
   live.current = {
     strokes,
@@ -184,6 +185,7 @@ export default function InkBoard({
       button: event.button,
       pointerType: pointer,
       altKey: event.altKey,
+      shiftKey: event.shiftKey,
     };
   };
 
@@ -210,6 +212,23 @@ export default function InkBoard({
     const engine = engineRef.current;
     if (!engine) return;
     const mode = engine.tool.mode;
+
+    // Update eraser cursor position when in erase mode
+    if (mode === "erase") {
+      const rect = overlayRef.current?.getBoundingClientRect();
+      if (rect) {
+        const size = engine.tool.size || 26;
+        setEraserCursor({
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+          size: Math.max(4, size / 2), // radius in screen pixels
+          visible: true,
+        });
+      }
+    } else {
+      setEraserCursor((prev) => ({ ...prev, visible: false }));
+    }
+
     if (mode === "insertSpace" && insertSpaceDrag.current?.dragging) {
       const input = pointFrom(event);
       const world = engine.worldFromScreen(input.x, input.y);
@@ -252,6 +271,8 @@ export default function InkBoard({
       return;
     }
     engine.pointerUp();
+    // Hide eraser cursor when drag ends
+    setEraserCursor((prev) => ({ ...prev, visible: false }));
   };
 
   // Determine pointer events for overlay canvas
@@ -308,6 +329,24 @@ export default function InkBoard({
         onPointerCancel={endStroke}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {/* Eraser cursor preview - round cursor showing real eraser size */}
+      {eraserCursor.visible && tool?.mode === "erase" && (
+        <div
+          className="absolute pointer-events-none z-50"
+          style={{
+            left: `${eraserCursor.x - eraserCursor.size}px`,
+            top: `${eraserCursor.y - eraserCursor.size}px`,
+            width: `${eraserCursor.size * 2}px`,
+            height: `${eraserCursor.size * 2}px`,
+            border: "2px solid hsl(var(--foreground) / 0.7)",
+            borderRadius: "50%",
+            boxShadow: "0 0 0 2px hsl(var(--background) / 0.8), 0 0 8px 2px hsl(var(--foreground) / 0.3)",
+            transition: "width 50ms ease-out, height 50ms ease-out, left 50ms ease-out, top 50ms ease-out",
+            transform: "translate(-1px, -1px)", // Compensate for border
+          }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 }

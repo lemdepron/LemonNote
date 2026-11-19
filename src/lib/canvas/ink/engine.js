@@ -20,6 +20,7 @@ import {
   renderSticky,
   renderTextFrame,
   OBJECT_TYPES,
+  createObject,
 } from "@/lib/canvas/objects";
 
 const MIN_SCALE = 0.18;
@@ -55,6 +56,12 @@ export default class InkEngine {
       shapeRecognition: false,
       ruler: false,
       rulerAngle: 0,
+      // Shape tool properties
+      shapeType: "rect",
+      shapeStrokeColor: tokenColor("--foreground") || "#e9e2d0",
+      shapeStrokeWidth: 2,
+      shapeFillColor: "none",
+      shapeFillOpacity: 1,
     };
     this.live = null;
     this.dragging = null;
@@ -68,6 +75,13 @@ export default class InkEngine {
     this.dirtyOverlay = true;
     this.frame = 0;
     this.transparent = transparent;
+
+    // Eraser drag state for single undo per drag
+    this.eraseDrag = null; // { active: boolean, changed: boolean }
+
+    // History for undo/redo
+    this.historyPast = [];
+    this.historyFuture = [];
   }
 
   setTransparent(transparent) {
@@ -208,6 +222,55 @@ export default class InkEngine {
     else this.fit();
   }
 
+  /* ------------------------------------------------------------ history */
+
+  /** Push a history snapshot for undo/redo */
+  pushHistory() {
+    this.historyPast.push({
+      strokes: JSON.parse(JSON.stringify(this.strokes)),
+      objects: JSON.parse(JSON.stringify(this.objects)),
+    });
+    // Limit history size
+    if (this.historyPast.length > 60) this.historyPast.shift();
+    this.historyFuture = [];
+  }
+
+  /** Undo the last action */
+  undo() {
+    if (!this.historyPast.length) return false;
+    const current = { strokes: this.strokes, objects: this.objects };
+    this.historyFuture.push(current);
+    const previous = this.historyPast.pop();
+    this.strokes = previous.strokes;
+    this.objects = previous.objects;
+    this.cb.onReplace?.(this.strokes);
+    this.cb.onUpdateObject?.("__history__", this.objects); // Trigger object refresh
+    this.invalidate();
+    return true;
+  }
+
+  /** Redo the last undone action */
+  redo() {
+    if (!this.historyFuture.length) return false;
+    const current = { strokes: this.strokes, objects: this.objects };
+    this.historyPast.push(current);
+    const next = this.historyFuture.pop();
+    this.strokes = next.strokes;
+    this.objects = next.objects;
+    this.cb.onReplace?.(this.strokes);
+    this.cb.onUpdateObject?.("__history__", this.objects);
+    this.invalidate();
+    return true;
+  }
+
+  get canUndo() {
+    return this.historyPast.length > 0;
+  }
+
+  get canRedo() {
+    return this.historyFuture.length > 0;
+  }
+
   /** Fits the first frame (or page) to the viewport width. */
   fitWidth() {
     // First try to find a frame object
@@ -293,28 +356,56 @@ export default class InkEngine {
     if (mode === "erase") {
       if (this.selection) this.setSelection([]);
       this.dragging = "erase";
+      // Start erase drag - push history immediately for proper undo
+      this.pushHistory();
+      this.eraseDrag = { active: true, changed: false };
       this.eraseAt(world);
       return;
     }
 
+    // Only draw and shape modes start a stroke/shape
+    if (mode !== "draw" && mode !== "shape") {
+      // All other modes (select, addCard, addConnector, insertSpace, etc.) do nothing here
+      // They are handled by the parent component (CanvasBoard) or do nothing on pointer down
+      return;
+    }
+
     if (this.selection) this.setSelection([]);
-    this.dragging = "draw";
-    this.rulerOrigin = this.tool.ruler ? world : null;
-    this.live = {
-      id: nextId("stroke"),
-      kind: "stroke",
-      tool: mode === "shape" ? "shape" : "pen",
-      brush: this.tool.brush,
-      color: this.tool.color,
-      alpha: this.tool.alpha,
-      width: this.tool.width,
-      nibAngle: this.tool.nibAngle,
-      tilt: input.tilt ?? 0,
-      points: [[world.x, world.y]],
-      pressures: [input.pressure ?? 0.55],
-    };
-    this.dirtyOverlay = true;
-    this.schedule();
+
+    if (mode === "shape" && this.tool.shapeType) {
+      // Direct shape drawing mode - create a live shape object
+      this.dragging = "shape";
+      this.liveShape = {
+        startPoint: world,
+        endPoint: world,
+        shapeType: this.tool.shapeType,
+        strokeColor: this.tool.shapeStrokeColor,
+        strokeWidth: this.tool.shapeStrokeWidth,
+        fillColor: this.tool.shapeFillColor,
+        fillOpacity: this.tool.shapeFillOpacity,
+      };
+      this.dirtyOverlay = true;
+      this.schedule();
+    } else {
+      // Freehand drawing mode
+      this.dragging = "draw";
+      this.rulerOrigin = this.tool.ruler ? world : null;
+      this.live = {
+        id: nextId("stroke"),
+        kind: "stroke",
+        tool: mode === "shape" ? "shape" : "pen",
+        brush: this.tool.brush,
+        color: this.tool.color,
+        alpha: this.tool.alpha,
+        width: this.tool.width,
+        nibAngle: this.tool.nibAngle,
+        tilt: input.tilt ?? 0,
+        points: [[world.x, world.y]],
+        pressures: [input.pressure ?? 0.55],
+      };
+      this.dirtyOverlay = true;
+      this.schedule();
+    }
   }
 
   pointerMove(input) {
@@ -351,7 +442,58 @@ export default class InkEngine {
       if (input.tilt != null && input.tilt > 0) this.live.tilt = input.tilt;
       this.dirtyOverlay = true;
       this.schedule();
+      return;
     }
+    if (this.dragging === "shape" && this.liveShape) {
+      // Apply shift key constraints for perfect shapes
+      let endPoint = world;
+      if (input.shiftKey) {
+        endPoint = this.applyShapeConstraints(this.liveShape.startPoint, world, this.liveShape.shapeType);
+      }
+      this.liveShape.endPoint = endPoint;
+      this.dirtyOverlay = true;
+      this.schedule();
+    }
+  }
+
+  /** Apply shift key constraints for shape drawing */
+  applyShapeConstraints(start, end, shapeType) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const dist = Math.hypot(dx, dy);
+    
+    if (dist < 1) return end;
+    
+    if (shapeType === "rect" || shapeType === "rounded-rect") {
+      // Constrain to square
+      const size = Math.max(Math.abs(dx), Math.abs(dy));
+      return {
+        x: start.x + (dx >= 0 ? size : -size),
+        y: start.y + (dy >= 0 ? size : -size),
+      };
+    }
+    
+    if (shapeType === "ellipse") {
+      // Constrain to circle
+      const size = Math.max(Math.abs(dx), Math.abs(dy));
+      return {
+        x: start.x + (dx >= 0 ? size : -size),
+        y: start.y + (dy >= 0 ? size : -size),
+      };
+    }
+    
+    if (shapeType === "line" || shapeType === "arrow") {
+      // Constrain to 45 degree increments
+      const angle = Math.atan2(dy, dx);
+      const snappedAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+      return {
+        x: start.x + Math.cos(snappedAngle) * dist,
+        y: start.y + Math.sin(snappedAngle) * dist,
+      };
+    }
+    
+    // For triangle, star, polygon - maintain aspect ratio from center
+    return end;
   }
 
   pointerUp() {
@@ -361,12 +503,73 @@ export default class InkEngine {
       return;
     }
     if (this.dragging === "draw" && this.live) this.commitLive();
+    if (this.dragging === "shape" && this.liveShape) this.commitLiveShape();
+    // Erase history is pushed at drag start (pointerDown)
+    this.eraseDrag = null;
+    this.liveShape = null;
     this.dragging = null;
+  }
+
+  /** Commit a live shape as a shape object */
+  commitLiveShape() {
+    const shape = this.liveShape;
+    this.liveShape = null;
+    if (!shape) return;
+
+    const { startPoint, endPoint, shapeType, strokeColor, strokeWidth, fillColor, fillOpacity } = shape;
+    
+    // Calculate bounds from start and end points
+    const minX = Math.min(startPoint.x, endPoint.x);
+    const minY = Math.min(startPoint.y, endPoint.y);
+    const maxX = Math.max(startPoint.x, endPoint.x);
+    const maxY = Math.max(startPoint.y, endPoint.y);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    // Skip tiny shapes
+    if (width < 4 && height < 4) return;
+
+    // For line and arrow, use center as position and full width/height
+    let x, y, w, h;
+    if (shapeType === "line" || shapeType === "arrow") {
+      // Line/arrow: center at midpoint, width is length, height is stroke width
+      const cx = (startPoint.x + endPoint.x) / 2;
+      const cy = (startPoint.y + endPoint.y) / 2;
+      const length = Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y);
+      const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+      x = cx - length / 2;
+      y = cy - strokeWidth / 2;
+      w = length;
+      h = strokeWidth;
+      // We'll handle rotation in the object
+    } else {
+      x = minX;
+      y = minY;
+      w = Math.max(4, width);
+      h = Math.max(4, height);
+    }
+
+    // Create shape object
+    const shapeObj = createObject("shape", x, y, w, h, {
+      shapeType,
+      stroke: strokeColor,
+      strokeWidth,
+      fill: fillColor,
+      opacity: fillOpacity,
+      rotation: shapeType === "line" || shapeType === "arrow" ? Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x) : 0,
+    });
+
+    // Push history and add object
+    this.pushHistory();
+    this.objects.push(shapeObj);
+    this.cb.onUpdateObject?.(shapeObj.id, shapeObj);
+    this.invalidate();
   }
 
   cancel() {
     this.live = null;
     this.lasso = null;
+    this.liveShape = null;
     this.rulerOrigin = null;
     this.dragging = null;
     this.dirtyOverlay = true;
@@ -388,21 +591,43 @@ export default class InkEngine {
     this.live = null;
     this.rulerOrigin = null;
     if (!live) return;
+
+    // Discard tiny dots (click without movement) in draw mode
+    // unless the brush is dot-capable (not implemented yet, so allow all for now)
+    if (this.tool.mode === "draw" && live.points.length <= 1) {
+      // Single point stroke - check if it's a tiny dot
+      // For now, we allow single-point strokes (dots) for all brushes
+      // TODO: Add dot-capable brush property and check it here
+    }
+
+    // Push history before committing the stroke
+    this.pushHistory();
     let strokes = [live];
     if (this.tool.shapeRecognition || this.tool.mode === "shape") {
       const recognized = recognizeShape(toPoints(live));
       if (recognized) {
-        strokes = recognized.paths.map((path, index) => ({
-          ...live,
-          id: index === 0 ? live.id : nextId("stroke"),
-          shape: recognized.type,
-          tilt: 0,
-          points: path.map((point) => [point.x, point.y]),
-          pressures: path.map((point) => point.p ?? 0.75),
-        }));
+        // Create a single SHAPE object instead of multiple strokes
+        const points = toPoints(live);
+        const box = boundsOf(points);
+        if (box) {
+          const shapeObj = createObject("shape", box.x, box.y, box.w, box.h, {
+            shapeType: recognized.type === "circle" ? "ellipse" : recognized.type,
+            stroke: this.tool.shapeStrokeColor || live.color,
+            strokeWidth: this.tool.shapeStrokeWidth || live.width,
+            fill: this.tool.shapeFillColor || "none",
+            opacity: this.tool.shapeFillOpacity ?? 1,
+          });
+          // Add the shape object
+          this.objects.push(shapeObj);
+          this.cb.onUpdateObject?.(shapeObj.id, shapeObj);
+          // Don't add strokes for recognized shapes - they become objects
+          strokes = [];
+        }
       }
     }
-    this.cb.onCommit?.(strokes);
+    if (strokes.length > 0) {
+      this.cb.onCommit?.(strokes);
+    }
     this.checkFrameLocks();
     this.dirtyOverlay = true;
     this.schedule();
@@ -486,9 +711,9 @@ export default class InkEngine {
     const current = this.strokes;
     if (!current.length) return;
     let next;
+    let changed = false;
     if (this.tool.eraserMode === "precision") {
       next = [];
-      let changed = false;
       current.forEach((stroke) => {
         if (stroke.kind === "text") {
           const box = strokeBounds(stroke);
@@ -506,16 +731,33 @@ export default class InkEngine {
         if (pieces.length !== 1 || pieces[0] !== stroke) changed = true;
         next.push(...pieces);
       });
-      if (!changed) return;
     } else {
       next = current.filter(
         (stroke) => distToStroke(world, stroke) > radius + (stroke.width || 0) / 2
       );
-      if (next.length === current.length) return;
+      if (next.length !== current.length) changed = true;
+    }
+    if (!changed) return;
+
+    // Track that something changed during this drag (for single undo per drag)
+    if (this.eraseDrag?.active) {
+      this.eraseDrag.changed = true;
+    } else {
+      // Not in a drag (e.g., single click) - push history immediately
+      this.pushHistory();
     }
     this.strokes = next;
     this.cb.onReplace?.(next);
     this.checkFrameLocks();
+    this.invalidate();
+  }
+
+  /** Clear all ink strokes (keeps objects/cards/shapes) */
+  clearAllStrokes() {
+    if (!this.strokes.length) return;
+    this.pushHistory();
+    this.strokes = [];
+    this.cb.onReplace?.([]);
     this.invalidate();
   }
 
@@ -614,6 +856,8 @@ export default class InkEngine {
         width: Number(((stroke.width || 3) * scale).toFixed(2)),
       };
     });
+    // Push history before committing selection transform
+    this.pushHistory();
     this.strokes = next;
     this.cb.onReplace?.(next);
     this.selection = { ids, transform: { dx: 0, dy: 0, scale: 1, rotate: 0 } };
@@ -627,6 +871,8 @@ export default class InkEngine {
     const next = this.strokes.map((stroke) =>
       ids.has(stroke.id) ? { ...stroke, color, alpha: alpha ?? stroke.alpha } : stroke
     );
+    // Push history before recoloring
+    this.pushHistory();
     this.strokes = next;
     this.cb.onReplace?.(next);
     this.invalidate();
@@ -636,6 +882,8 @@ export default class InkEngine {
     if (!this.selection) return;
     const ids = this.selection.ids;
     const next = this.strokes.filter((stroke) => !ids.has(stroke.id));
+    // Push history before deleting
+    this.pushHistory();
     this.strokes = next;
     this.cb.onReplace?.(next);
     this.setSelection([]);
@@ -649,6 +897,9 @@ export default class InkEngine {
    */
   insertSpace(lineY, distance) {
     if (distance === 0) return { moved: 0, limited: false };
+
+    // Push history before the modification
+    this.pushHistory();
 
     const strokes = this.strokes;
     let limited = false;
@@ -842,8 +1093,8 @@ export default class InkEngine {
   drawFramePaper(ctx, frame, view, scale, light) {
     const { x, y, width, height, paper: framePaper = {} } = frame;
     const template = framePaper.template || "grid";
-    const tone = framePaper.tone === "light" ? "light" : "dark";
-    const toneColors = toneOf({ ...this.paper, tone });
+    // Use frame's paper settings directly; toneOf handles "auto" tone
+    const toneColors = toneOf(framePaper);
 
     // Frame bounds in world coordinates
     const frameRect = {
@@ -887,6 +1138,51 @@ export default class InkEngine {
     return stroke.t > playback.ms;
   }
 
+  /** Render a live shape being drawn */
+  renderLiveShape(ctx, shape, scale, light) {
+    const { startPoint, endPoint, shapeType, strokeColor, strokeWidth, fillColor, fillOpacity } = shape;
+    
+    const minX = Math.min(startPoint.x, endPoint.x);
+    const minY = Math.min(startPoint.y, endPoint.y);
+    const maxX = Math.max(startPoint.x, endPoint.x);
+    const maxY = Math.max(startPoint.y, endPoint.y);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    if (width < 1 && height < 1) return;
+
+    let x, y, w, h, rotation = 0;
+    if (shapeType === "line" || shapeType === "arrow") {
+      const cx = (startPoint.x + endPoint.x) / 2;
+      const cy = (startPoint.y + endPoint.y) / 2;
+      const length = Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y);
+      const angle = Math.atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x);
+      x = cx - length / 2;
+      y = cy - strokeWidth / 2;
+      w = length;
+      h = strokeWidth;
+      rotation = angle;
+    } else {
+      x = minX;
+      y = minY;
+      w = Math.max(4, width);
+      h = Math.max(4, height);
+    }
+
+    // Create a temporary shape object for rendering
+    const tempShape = {
+      x, y, width: w, height: h,
+      shapeType,
+      stroke: strokeColor,
+      strokeWidth,
+      fill: fillColor,
+      opacity: fillOpacity,
+      rotation,
+    };
+
+    renderShape(ctx, tempShape, scale);
+  }
+
   paintOverlay() {
     const ctx = this.overlay.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -912,6 +1208,11 @@ export default class InkEngine {
     }
 
     if (this.live) paintElement(ctx, this.live, { light });
+
+    // Render live shape being drawn
+    if (this.liveShape) {
+      this.renderLiveShape(ctx, this.liveShape, scale, light);
+    }
 
     if (this.lasso && this.lasso.length > 1) {
       ctx.save();

@@ -495,6 +495,21 @@
         "removeFavPen": "移除常用笔",
         "noFavPens": "在此保存你常用的笔设置（最多 8 个）"
       },
+      "eraser": {
+        "mode": {
+          "stroke": "整条笔画",
+          "precision": "笔画的一部分"
+        },
+        "size": "大小",
+        "sizeSmall": "小 (4px)",
+        "sizeMedium": "中 (16px)",
+        "sizeLarge": "大 (32px)",
+        "sizeMax": "最大 (60px)",
+        "clearAll": "清除所有墨迹",
+        "clearAllTitle": "清除所有墨迹？",
+        "clearAllDesc": "这将移除此页面上的所有墨迹笔画。卡片、形状、文本框和便签将保留。",
+        "clearAllConfirm": "清除所有墨迹"
+      },
       "color": {
         "picker": "颜色",
         "pickerHint": "打开调色器、调色板和历史记录"
@@ -1729,13 +1744,27 @@
         "autosaveOn": "自动保存开启",
         "saved": "已保存",
         "saving": "正在保存…",
-        "idle": "空闲"
+        "idle": "空闲",
+        "cards": "{count} 张卡片",
+        "marks_short": "{count} 笔画",
+        "objects_short": "{count} 对象"
       },
       "subtitle": "{cards} 张卡片 · {connections} 个连接",
       "textFrame": {
         "locked": "因在其上绘制墨迹而锁定文本",
         "unlock": "解锁",
         "unlockWarning": "解锁将允许编辑，但墨迹笔画可能不再与文本内容匹配。"
+      },
+      "textTools": {
+        "fontFamily": "字体",
+        "fontSize": "大小",
+        "bold": "粗体",
+        "italic": "斜体",
+        "alignLeft": "左对齐",
+        "alignCenter": "居中",
+        "alignRight": "右对齐",
+        "textColor": "文字颜色",
+        "stickyColor": "便签颜色"
       },
       "zoomIn": "放大",
       "zoomOut": "缩小",

@@ -96,7 +96,7 @@ export function paintStroke(ctx, stroke, { light = false } = {}) {
   const points = toPoints(stroke);
   if (!points.length) return;
   const brush = resolveBrush(stroke);
-  const color = stroke.color || tokenColor("--ink-light") || "#e9e2d0";
+  const color = stroke.color || tokenColor("--foreground") || "#111827";
   const alpha = stroke.alpha ?? 1;
   const width = Math.max(0.6, stroke.width || 3);
   const tilt = Math.max(0, Math.min(1, stroke.tilt || 0));
@@ -196,7 +196,7 @@ export function paintText(ctx, element) {
   const size = element.fontSize || 22;
   ctx.save();
   ctx.globalAlpha = element.alpha ?? 1;
-  ctx.fillStyle = element.color || tokenColor("--ink-light") || "#e9e2d0";
+  ctx.fillStyle = element.color || tokenColor("--foreground") || "#111827";
   ctx.font = `500 ${size}px "Inter", ui-sans-serif, system-ui, sans-serif`;
   ctx.textBaseline = "top";
   String(element.text || "")

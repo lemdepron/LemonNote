@@ -1,8 +1,9 @@
-import { forwardRef, useEffect, useRef, useCallback, useMemo, useImperativeHandle } from "react";
+import { forwardRef, useEffect, useRef, useCallback, useMemo, useImperativeHandle, useState } from "react";
 import InkEngine from "@/lib/canvas/engine";
 import FloatingObjects from "@/components/ink/FloatingObjects";
 import { useThemeRevision, tokenColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 const CURSORS = {
   draw: "cursor-crosshair",
@@ -33,6 +34,9 @@ const ALL_TOOL_MODES = [
   "addShape", "addSticker", "addTextBox", "addSticky"
 ];
 
+// Hint text for connector mode - use translation
+const getConnectorHint = () => t("vault.canvas.insert.cards.connectActiveHint") || "Click the first card, then the second";
+
 /**
  * Unified canvas board supporting both ink and card/canvas modes.
  * 
@@ -57,6 +61,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     onSelectObject,
     onUpdateObject,
     onDeleteObject,
+    onDuplicateObject,
     onBringToFront,
     onSendToBack,
     editingObjectId,
@@ -68,8 +73,9 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     transparent = false,
     pendingConnectorFrom = null,
     setPendingConnectorFrom,
-  onCreateConnector,
-} = props;
+    onCreateConnector,
+    onTool,
+  } = props;
   const wrapRef = useRef(null);
   const baseRef = useRef(null);
   const overlayRef = useRef(null);
@@ -78,6 +84,10 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
   const themeRevision = useThemeRevision();
   const insertSpaceDrag = useRef(null);
   const pendingConnectorRef = useRef(null);
+  // Text box creation drag state for drag-to-size
+  const textBoxDrag = useRef(null); // { active: boolean, startX, startY, objectId, startWorldX, startWorldY }
+  // Connector hint state
+  const [connectorHint, setConnectorHint] = useState("");
 
   // Determine default tool based on kind
   const defaultToolForKind = useMemo(() => {
@@ -109,6 +119,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     onSelectObject,
     onUpdateObject,
     onDeleteObject,
+    onDuplicateObject,
     onBringToFront,
     onSendToBack,
     editingObjectId,
@@ -118,6 +129,9 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     pendingConnectorFrom,
     setPendingConnectorFrom,
     onCreateConnector,
+    onTool,
+    connectorHint,
+    setConnectorHint,
   };
 
   // Initialize engine
@@ -194,7 +208,15 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       }
     };
     const onKey = (event) => {
-      if (event.key === "Escape") engineRef.current?.cancel();
+      if (event.key === "Escape") {
+        engineRef.current?.cancel();
+        // Cancel connector if active
+        if (live.current.pendingConnectorFrom) {
+          live.current.setPendingConnectorFrom?.(null);
+          live.current.setConnectorHint?.("");
+          live.current.onTool?.({ mode: "select" });
+        }
+      }
     };
     canvas.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
@@ -292,10 +314,46 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       if (frameType) overrides.frameType = frameType;
       if (shapeType) overrides.shapeType = shapeType;
       
-      const newObject = createObject(type, world.x - size.width / 2, world.y - size.height / 2, size.width, size.height, overrides);
+      // For text box and sticky note: position at click (top-left), not centered
+      // For text box: support drag-to-size
+      let x, y;
+      if (mode === "addTextBox" || mode === "addSticky") {
+        x = world.x;
+        y = world.y;
+        
+        // For text box, start drag-to-size
+        if (mode === "addTextBox") {
+          textBoxDrag.current = {
+            active: true,
+            startX: input.x,
+            startY: input.y,
+            startWorldX: world.x,
+            startWorldY: world.y,
+            objectId: null, // Will be set after creation
+          };
+        }
+      } else {
+        // Other objects: centered at click
+        x = world.x - size.width / 2;
+        y = world.y - size.height / 2;
+      }
+      
+      const newObject = createObject(type, x, y, size.width, size.height, overrides);
+      
+      // If text box drag started, store the object ID
+      if (mode === "addTextBox" && textBoxDrag.current) {
+        textBoxDrag.current.objectId = newObject.id;
+      }
+      
       live.current.onUpdateObject?.(newObject.id, newObject);
-      engine.setTool({ ...engine.tool, mode: "select" });
-      live.current.onEngine?.(engine);
+      
+      // For text box and sticky: immediately start editing
+      if (mode === "addTextBox" || mode === "addSticky") {
+        live.current.setEditingObjectId?.(newObject.id);
+      }
+      
+      // Update tool through page state (onTool callback), not directly on engine
+      live.current.onTool?.({ mode: "select" });
       return;
     }
 
@@ -303,18 +361,30 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     if (mode === "addConnector") {
       const input = pointFrom(event);
       const world = engine.worldFromScreen(input.x, input.y);
-      // Start connector from clicked object or point
+      // Find object at click position (excluding connectors)
       const hitObject = live.current.objects?.find(obj => {
+        if (obj.type === "connector") return false;
         // Simple hit test
         return world.x >= obj.x && world.x <= obj.x + obj.width &&
                world.y >= obj.y && world.y <= obj.y + obj.height;
       });
       
-      if (hitObject) {
+      const pendingFrom = live.current.pendingConnectorFrom;
+      
+      if (pendingFrom && hitObject && hitObject.id !== pendingFrom) {
+        // Second click - create connector between pendingFrom and hitObject
+        live.current.onCreateConnector?.(pendingFrom, hitObject.id);
+        live.current.setPendingConnectorFrom?.(null);
+        live.current.setConnectorHint?.("");
+        live.current.onTool?.({ mode: "select" });
+      } else if (hitObject) {
+        // First click - start connector from this object
         live.current.setPendingConnectorFrom?.(hitObject.id);
+        live.current.setConnectorHint?.(getConnectorHint());
       } else {
         // Clicked empty space - cancel pending
         live.current.setPendingConnectorFrom?.(null);
+        live.current.setConnectorHint?.("");
       }
       return;
     }
@@ -349,6 +419,26 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       return;
     }
 
+    // Handle text box drag-to-size
+    if (mode === "addTextBox" && textBoxDrag.current?.active && textBoxDrag.current.objectId) {
+      const input = pointFrom(event);
+      const world = engine.worldFromScreen(input.x, input.y);
+      
+      // Calculate new width/height from drag
+      const newWidth = Math.max(50, world.x - textBoxDrag.current.startWorldX);
+      const newHeight = Math.max(30, world.y - textBoxDrag.current.startWorldY);
+      
+      // Update the object size
+      live.current.onUpdateObject?.(textBoxDrag.current.objectId, {
+        width: newWidth,
+        height: newHeight,
+      });
+      
+      engine.dirtyOverlay = true;
+      engine.schedule();
+      return;
+    }
+
     engine.pointerMove(pointFrom(event));
   }, [pointFrom]);
 
@@ -374,6 +464,15 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     const engine = engineRef.current;
     if (!engine) return;
     const mode = live.current.tool?.mode;
+    
+    // Handle text box drag-to-size end
+    if (mode === "addTextBox" && textBoxDrag.current?.active) {
+      textBoxDrag.current.active = false;
+      // If the text box is too small (user just clicked without dragging), it will be handled by auto-delete in FloatingObjects
+      textBoxDrag.current = null;
+      return;
+    }
+    
     // Skip ink engine pointerUp for object creation tools and connector - they handle their own logic
     const creationTools = [
       "addCard", "addFrame", "addTextFrame", "addImage", "addPdfPage",
@@ -431,6 +530,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
         onSelectObject={selectObject}
         onUpdateObject={live.current.onUpdateObject}
         onDeleteObject={live.current.onDeleteObject}
+        onDuplicateObject={live.current.onDuplicateObject}
         onBringToFront={live.current.onBringToFront}
         onSendToBack={live.current.onSendToBack}
         editingObjectId={live.current.editingObjectId}
@@ -448,6 +548,11 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
         onPointerCancel={endStroke}
         onContextMenu={(event) => event.preventDefault()}
       />
+      {live.current.connectorHint && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-lg bg-background/95 border border-border/60 text-sm text-foreground shadow-lg backdrop-blur animate-fade-in">
+          {live.current.connectorHint}
+        </div>
+      )}
     </div>
   );
 });

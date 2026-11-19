@@ -1504,7 +1504,10 @@
         "autosaveOn": "自動保存オン",
         "saved": "保存済み",
         "saving": "保存中…",
-        "idle": "アイドル"
+        "idle": "アイドル",
+        "cards": "{count} 枚のカード",
+        "marks_short": "{count} ストローク",
+        "objects_short": "{count} オブジェクト"
       },
       "subtitle": "{cards} 枚のカード · {connections} 件の接続",
       "addFrame": "フレーム追加",
@@ -1542,6 +1545,17 @@
         "locked": "上にインクが描かれているためテキストがロックされています",
         "unlock": "ロック解除",
         "unlockWarning": "ロック解除で編集可能になりますが、インクストロークがテキスト内容と一致しなくなる可能性があります。"
+      },
+      "textTools": {
+        "fontFamily": "フォント",
+        "fontSize": "サイズ",
+        "bold": "太字",
+        "italic": "斜体",
+        "alignLeft": "左揃え",
+        "alignCenter": "中央揃え",
+        "alignRight": "右揃え",
+        "textColor": "文字色",
+        "stickyColor": "付箋の色"
       }
     },
     "cards": {
@@ -1904,6 +1918,21 @@
       "saveFavPen": "現在のペンをお気に入りに保存",
       "removeFavPen": "お気に入りのペンを削除",
       "noFavPens": "お気に入りのペン設定をここに保存（最大8個）"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "ストローク全体",
+        "precision": "ストロークの一部"
+      },
+      "size": "サイズ",
+      "sizeSmall": "小 (4px)",
+      "sizeMedium": "中 (16px)",
+      "sizeLarge": "大 (32px)",
+      "sizeMax": "最大 (60px)",
+      "clearAll": "すべてのインクを消去",
+      "clearAllTitle": "すべてのインクを消去しますか？",
+      "clearAllDesc": "このページのすべてのインクストロークが削除されます。カード、図形、テキストボックス、付箋は残ります。",
+      "clearAllConfirm": "すべてのインクを消去"
     },
     "color": {
       "picker": "色",

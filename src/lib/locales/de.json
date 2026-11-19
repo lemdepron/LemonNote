@@ -1507,7 +1507,10 @@
         "autosaveOn": "Autosave an",
         "saved": "gespeichert",
         "saving": "wird gespeichert…",
-        "idle": "Leerlauf"
+        "idle": "Leerlauf",
+        "cards": "{count} Karten",
+        "marks_short": "{count} Markierungen",
+        "objects_short": "{count} Objekte"
       },
       "subtitle": "{cards} Karten · {connections} Verbindungen",
       "addFrame": "Rahmen hinzufügen",
@@ -1545,6 +1548,17 @@
         "locked": "Text ist gesperrt, weil Tinte darüber gezeichnet wurde",
         "unlock": "Entsperren",
         "unlockWarning": "Entsperren erlaubt Bearbeitung, aber Tintenstriche stimmen möglicherweise nicht mehr mit dem Textinhalt überein."
+      },
+      "textTools": {
+        "fontFamily": "Schriftart",
+        "fontSize": "Größe",
+        "bold": "Fett",
+        "italic": "Kursiv",
+        "alignLeft": "Linksbündig",
+        "alignCenter": "Zentriert",
+        "alignRight": "Rechtsbündig",
+        "textColor": "Textfarbe",
+        "stickyColor": "Notizzettelfarbe"
       }
     },
     "cards": {
@@ -1907,6 +1921,21 @@
       "saveFavPen": "Aktuellen Stift als Favorit speichern",
       "removeFavPen": "Favoriten-Stift entfernen",
       "noFavPens": "speichern Sie Ihre Lieblingsstift-Einstellungen hier (max. 8)"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "Gesamter Strich",
+        "precision": "Teil des Strichs"
+      },
+      "size": "Größe",
+      "sizeSmall": "Klein (4px)",
+      "sizeMedium": "Mittel (16px)",
+      "sizeLarge": "Groß (32px)",
+      "sizeMax": "Max (60px)",
+      "clearAll": "Alle Tinte löschen",
+      "clearAllTitle": "Alle Tinte löschen?",
+      "clearAllDesc": "Dies entfernt alle Tintenstriche auf dieser Seite. Karten, Formen, Textfelder und Haftnotizen bleiben erhalten.",
+      "clearAllConfirm": "Alle Tinte löschen"
     },
     "color": {
       "picker": "Farbe",

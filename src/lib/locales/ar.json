@@ -1495,7 +1495,10 @@
         "autosaveOn": "الحفظ التلقائي مفعل",
         "saved": "تم الحفظ",
         "saving": "جاري الحفظ…",
-        "idle": "سكون"
+        "idle": "سكون",
+        "cards": "{count} بطاقة",
+        "marks_short": "{count} علامة",
+        "objects_short": "{count} كائن"
       },
       "subtitle": "{cards} بطاقة · {connections} ربط",
       "addFrame": "إضافة إطار",
@@ -1533,6 +1536,17 @@
         "locked": "النص مقفل لأن الحبر مرسوم فوقه",
         "unlock": "إلغاء القفل",
         "unlockWarning": "إلغاء القفل سيسمح بالتحرير، لكن ضربات الحبر قد لا تتطابق مع محتوى النص."
+      },
+      "textTools": {
+        "fontFamily": "الخط",
+        "fontSize": "الحجم",
+        "bold": "عريض",
+        "italic": "مائل",
+        "alignLeft": "محاذاة لليسار",
+        "alignCenter": "محاذاة للوسط",
+        "alignRight": "محاذاة لليمين",
+        "textColor": "لون النص",
+        "stickyColor": "لون الملاحظة"
       }
     },
     "cards": {
@@ -1895,6 +1909,21 @@
       "saveFavPen": "حفظ القلم الحالي كمفضل",
       "removeFavPen": "إزالة القلم المفضل",
       "noFavPens": "احفظ إعدادات أقلامك المفضلة هنا (الحد الأقصى 8)"
+    },
+    "eraser": {
+      "mode": {
+        "stroke": "السكتة كاملة",
+        "precision": "جزء من السكتة"
+      },
+      "size": "الحجم",
+      "sizeSmall": "صغير (4px)",
+      "sizeMedium": "متوسط (16px)",
+      "sizeLarge": "كبير (32px)",
+      "sizeMax": "الأقصى (60px)",
+      "clearAll": "مسح كل الحبر",
+      "clearAllTitle": "مسح كل الحبر؟",
+      "clearAllDesc": "سيؤدي هذا إلى إزالة جميع السكتات الحبرية في هذه الصفحة. البطاقات والأشكال ومربعات النص والملاحظات اللاصقة ستبقى.",
+      "clearAllConfirm": "مسح كل الحبر"
     },
     "color": {
       "picker": "اللون",

@@ -19,12 +19,44 @@ import {
   OBJECT_TYPES,
 } from "@/lib/canvas/objects";
 import { cn } from "@/lib/utils";
-import { Unlock } from "lucide-react";
+import { 
+  Unlock, 
+  Bold, 
+  Italic, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  Palette,
+  Square,
+  Trash2,
+  CopyPlus
+} from "lucide-react";
 import { t } from "@/lib/i18n";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 const HANDLE_SIZE = 10;
 const ROTATE_HANDLE_OFFSET = 30;
+
+// Font options for text toolbar (4 app fonts)
+const TOOLBAR_FONTS = [
+  { id: "app", label: "App Sans", stack: "var(--font-body)" },
+  { id: "display", label: "App Serif", stack: "var(--font-display)" },
+  { id: "mono", label: "App Mono", stack: "var(--font-mono)" },
+  { id: "georgia", label: "Georgia", stack: "Georgia, serif" },
+];
+
+// Font sizes for toolbar
+const TOOLBAR_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72, 96];
+
+// Sticky note pastel background colors (6 colors)
+const STICKY_COLORS = [
+  { id: "yellow", label: "Yellow", value: "#fef08a" },
+  { id: "pink", label: "Pink", value: "#fce7f3" },
+  { id: "blue", label: "Blue", value: "#dbeafe" },
+  { id: "green", label: "Green", value: "#dcfce7" },
+  { id: "purple", label: "Purple", value: "#f3e8ff" },
+  { id: "orange", label: "Orange", value: "#ffedd5" },
+];
 
 /**
  * Renders floating objects (shapes, stickers, text boxes, sticky notes) on a canvas.
@@ -39,6 +71,7 @@ export default function FloatingObjects({
   onSelectObject,
   onUpdateObject,
   onDeleteObject,
+  onDuplicateObject,
   onBringToFront,
   onSendToBack,
   editingObjectId,
@@ -54,6 +87,14 @@ export default function FloatingObjects({
   const [editState, setEditState] = useState({ text: "", caretPos: 0 });
   const [unlockDialogOpen, setUnlockDialogOpen] = useState(false);
   const [lockedTextFrameId, setLockedTextFrameId] = useState(null);
+  // Frame name editing state
+  const [editingFrameNameId, setEditingFrameNameId] = useState(null);
+  const [frameNameEditText, setFrameNameEditText] = useState("");
+  // Text formatting toolbar state
+  const [showTextToolbar, setShowTextToolbar] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ x: 0, y: 0 });
+  // Selection rectangle for drag-to-select multiple objects
+  const [selectionRect, setSelectionRect] = useState(null); // { startX, startY, endX, endY }
 
   // Resize canvas when viewport changes
   useEffect(() => {
@@ -153,7 +194,8 @@ export default function FloatingObjects({
     overlay.style.whiteSpace = "pre-wrap";
     overlay.style.wordWrap = "break-word";
     overlay.style.textAlign = object.align || "left";
-    overlay.style.direction = "ltr";
+    // Use dir="auto" for RTL support (Arabic, Hebrew, etc.)
+    overlay.dir = "auto";
   }, [objects, editingObjectId, camera, worldToScreen]);
 
   // Draw all objects
@@ -212,7 +254,25 @@ export default function FloatingObjects({
         drawHandles(ctx, object, scale);
       }
     });
-  }, [objects, camera, dpr, scale, editingObjectId, selectedObjectIds]);
+
+    // Draw selection rectangle (in screen coordinates, so reset transform)
+    if (selectionRect) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const minX = Math.min(selectionRect.startX, selectionRect.endX);
+      const maxX = Math.max(selectionRect.startX, selectionRect.endX);
+      const minY = Math.min(selectionRect.startY, selectionRect.endY);
+      const maxY = Math.max(selectionRect.startY, selectionRect.endY);
+      
+      ctx.strokeStyle = "#e5b567";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      
+      ctx.fillStyle = "rgba(229, 181, 103, 0.1)";
+      ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+      ctx.setLineDash([]);
+    }
+  }, [objects, camera, dpr, scale, editingObjectId, selectedObjectIds, selectionRect]);
 
   // Draw selection handles for an object
   const drawHandles = (ctx, object, scale) => {
@@ -373,9 +433,18 @@ export default function FloatingObjects({
       };
       canvas.setPointerCapture(event.pointerId);
     } else {
-      onSelectObject?.(null, event);
+      // Clicked on empty space - start selection rectangle if in select mode
+      const isSelectMode = tool?.mode === "select";
+      if (isSelectMode) {
+        setSelectionRect({ startX: screenX, startY: screenY, endX: screenX, endY: screenY });
+      }
+      // Clear selection if not multi-select (Ctrl/Shift not held)
+      const isMulti = event.ctrlKey || event.metaKey || event.shiftKey;
+      if (!isMulti) {
+        onSelectObject?.(null, event);
+      }
     }
-  }, [objects, screenToWorld, getObjectAt, onSelectObject, editingObjectId, camera.scale, selectedObjectIds]);
+  }, [objects, screenToWorld, getObjectAt, onSelectObject, editingObjectId, camera.scale, selectedObjectIds, tool]);
 
   // Handle pointer move
   const onPointerMove = useCallback((event) => {
@@ -388,6 +457,12 @@ export default function FloatingObjects({
 
     // Update hover handle cursor
     const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
+    
+    // Update selection rectangle
+    if (selectionRect && !dragStateRef.current) {
+      setSelectionRect((prev) => prev ? { ...prev, endX: screenX, endY: screenY } : null);
+    }
+    
     if (selectedObject && !editingObjectId && !dragStateRef.current && selectedObject.type !== OBJECT_TYPES.CONNECTOR) {
       const isFreeFrame = selectedObject.type === OBJECT_TYPES.FRAME && selectedObject.frameType === "free";
       const showCornerHandles = selectedObject.type !== OBJECT_TYPES.FRAME || isFreeFrame;
@@ -495,10 +570,44 @@ export default function FloatingObjects({
     if (canvas) {
       canvas.releasePointerCapture?.(event.pointerId);
     }
+    
+    // Finalize selection rectangle
+    if (selectionRect) {
+      const rect = selectionRect;
+      const minX = Math.min(rect.startX, rect.endX);
+      const maxX = Math.max(rect.startX, rect.endX);
+      const minY = Math.min(rect.startY, rect.endY);
+      const maxY = Math.max(rect.startY, rect.endY);
+      
+      // Only select if rectangle has some size (not just a click)
+      if (Math.abs(maxX - minX) > 5 || Math.abs(maxY - minY) > 5) {
+        // Find all objects within the selection rectangle
+        const selectedInRect = objects.filter((obj) => {
+          if (obj.type === OBJECT_TYPES.CONNECTOR) return false;
+          // Convert object bounds to screen coordinates
+          const objScreen = worldToScreen(obj.x, obj.y);
+          const objScreenBR = worldToScreen(obj.x + obj.width, obj.y + obj.height);
+          const objMinX = Math.min(objScreen.x, objScreenBR.x);
+          const objMaxX = Math.max(objScreen.x, objScreenBR.x);
+          const objMinY = Math.min(objScreen.y, objScreenBR.y);
+          const objMaxY = Math.max(objScreen.y, objScreenBR.y);
+          
+          // Check if object bounds intersect with selection rect
+          return objMaxX >= minX && objMinX <= maxX && objMaxY >= minY && objMinY <= maxY;
+        });
+        
+        if (selectedInRect.length > 0) {
+          const ids = selectedInRect.map((o) => o.id);
+          onSelectObject?.(ids, event); // Pass array for multi-select
+        }
+      }
+      setSelectionRect(null);
+    }
+    
     dragStateRef.current = null;
-  }, []);
+  }, [selectionRect, objects, onSelectObject, worldToScreen]);
 
-  // Handle double-click for text editing
+  // Handle double-click for text editing and frame name editing
   const onDoubleClick = useCallback((event) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -506,6 +615,20 @@ export default function FloatingObjects({
     const screenX = event.clientX - rect.left;
     const screenY = event.clientY - rect.top;
     const object = getObjectAt(screenX, screenY);
+    
+    // Frame name editing on double-click
+    if (object && object.type === OBJECT_TYPES.FRAME) {
+      // Check if click is near the top of the frame (where name is displayed)
+      const world = screenToWorld(screenX, screenY);
+      const nameAreaHeight = 30 / camera.scale; // Approximate name area height
+      if (world.y <= object.y + nameAreaHeight) {
+        setEditingFrameNameId(object.id);
+        setFrameNameEditText(object.name || "Page");
+        return;
+      }
+    }
+    
+    // Text editing for text objects
     if (object && (object.type === OBJECT_TYPES.TEXTBOX || object.type === OBJECT_TYPES.STICKY || object.type === OBJECT_TYPES.TEXT_FRAME)) {
       // Prevent editing if locked
       if (object.locked) return;
@@ -515,7 +638,49 @@ export default function FloatingObjects({
       // Focus the overlay after state update
       setTimeout(() => overlayRef.current?.focus(), 0);
     }
-  }, [getObjectAt, setEditingObjectId]);
+  }, [getObjectAt, setEditingObjectId, camera.scale, screenToWorld]);
+
+  // Show/hide text formatting toolbar when text box or sticky is selected or editing
+  useEffect(() => {
+    const isTextObject = selectedObjectIds.length === 1 && objects.some(
+      (o) => o.id === selectedObjectIds[0] && (o.type === OBJECT_TYPES.TEXTBOX || o.type === OBJECT_TYPES.STICKY)
+    );
+    const isEditingText = editingObjectId && objects.some(
+      (o) => o.id === editingObjectId && (o.type === OBJECT_TYPES.TEXTBOX || o.type === OBJECT_TYPES.STICKY)
+    );
+    
+    if (isTextObject || isEditingText) {
+      // Calculate toolbar position (above the object)
+      const objectId = editingObjectId || selectedObjectIds[0];
+      const object = objects.find((o) => o.id === objectId);
+      if (object && canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        const { x, y, width, height, rotation } = object;
+        const cx = x + width / 2;
+        const cy = y;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        
+        // Position above the object
+        const toolbarOffsetY = -50; // 50px above
+        const worldX = cx;
+        const worldY = cy + toolbarOffsetY;
+        
+        const dx = worldX - (x + width / 2);
+        const dy = worldY - (y + height / 2);
+        const rx = cx + dx * cos - dy * sin;
+        const ry = cy + dx * sin + dy * cos;
+        
+        const screenX = rx * camera.scale + camera.x;
+        const screenY = ry * camera.scale + camera.y;
+        
+        setToolbarPosition({ x: screenX - rect.left, y: screenY - rect.top });
+        setShowTextToolbar(true);
+      }
+    } else {
+      setShowTextToolbar(false);
+    }
+  }, [selectedObjectIds, editingObjectId, objects, camera]);
 
   // Handle overlay text changes
   const onOverlayChange = useCallback((event) => {
@@ -528,9 +693,23 @@ export default function FloatingObjects({
 
   // Handle overlay blur (save and exit edit)
   const onOverlayBlur = useCallback(() => {
+    // Auto-delete empty text boxes and sticky notes
+    if (editingObjectId) {
+      const object = objects.find((o) => o.id === editingObjectId);
+      if (object && (object.type === OBJECT_TYPES.TEXTBOX || object.type === OBJECT_TYPES.STICKY)) {
+        const content = object.type === OBJECT_TYPES.TEXT_FRAME ? (object.markdown || "") : (object.text || "");
+        if (!content || content.trim() === "") {
+          // Delete empty object
+          onDeleteObject?.(editingObjectId);
+          setEditingObjectId(null);
+          setEditState({ text: "", caretPos: 0 });
+          return;
+        }
+      }
+    }
     setEditingObjectId(null);
     setEditState({ text: "", caretPos: 0 });
-  }, [setEditingObjectId]);
+  }, [editingObjectId, objects, onDeleteObject, setEditingObjectId]);
 
   // Handle overlay key down
   const onOverlayKeyDown = useCallback((event) => {
@@ -547,6 +726,105 @@ export default function FloatingObjects({
       setEditingObjectId(null);
     }
   }, [editingObjectId, objects, onUpdateObject, setEditingObjectId]);
+
+  // Handle frame name edit save (blur or Enter)
+  const saveFrameNameEdit = useCallback(() => {
+    if (editingFrameNameId) {
+      onUpdateObject?.(editingFrameNameId, { name: frameNameEditText || "Page" });
+      setEditingFrameNameId(null);
+      setFrameNameEditText("");
+    }
+  }, [editingFrameNameId, frameNameEditText, onUpdateObject]);
+
+  // Handle frame name edit key down
+  const onFrameNameKeyDown = useCallback((event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveFrameNameEdit();
+    } else if (event.key === "Escape") {
+      setEditingFrameNameId(null);
+      setFrameNameEditText("");
+    }
+  }, [saveFrameNameEdit]);
+
+  // Handle keyboard events for canvas (Delete key, etc.)
+  const onCanvasKeyDown = useCallback((event) => {
+    // Don't handle keys while editing
+    if (editingObjectId) return;
+    
+    // Delete/Backspace to remove selected object
+    if ((event.key === "Delete" || event.key === "Backspace") && selectedObjectIds.length > 0) {
+      event.preventDefault();
+      selectedObjectIds.forEach((id) => {
+        onDeleteObject?.(id);
+      });
+      onSelectObject?.(null); // Clear selection
+    }
+    
+    // Escape to clear selection
+    if (event.key === "Escape" && selectedObjectIds.length > 0) {
+      onSelectObject?.(null);
+    }
+  }, [editingObjectId, selectedObjectIds, onDeleteObject, onSelectObject]);
+
+  // Attach keyboard listener
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.addEventListener("keydown", onCanvasKeyDown);
+    return () => canvas.removeEventListener("keydown", onCanvasKeyDown);
+  }, [onCanvasKeyDown]);
+
+  // Get the currently selected/editing text object
+  const getTextObject = useCallback(() => {
+    const objectId = editingObjectId || (selectedObjectIds.length === 1 ? selectedObjectIds[0] : null);
+    if (!objectId) return null;
+    return objects.find((o) => o.id === objectId && (o.type === OBJECT_TYPES.TEXTBOX || o.type === OBJECT_TYPES.STICKY));
+  }, [editingObjectId, selectedObjectIds, objects]);
+
+  // Toolbar handlers
+  const onFontChange = useCallback((fontId) => {
+    const obj = getTextObject();
+    if (obj) onUpdateObject?.(obj.id, { fontFamily: fontId });
+  }, [getTextObject, onUpdateObject]);
+
+  const onFontSizeChange = useCallback((size) => {
+    const obj = getTextObject();
+    if (obj) onUpdateObject?.(obj.id, { fontSize: size });
+  }, [getTextObject, onUpdateObject]);
+
+  const onBoldToggle = useCallback(() => {
+    const obj = getTextObject();
+    if (obj) {
+      // For text boxes and sticky notes, we don't have inline bold - would need rich text
+      // For now, we'll skip this or use a workaround
+      // Could add a 'bold' property to the object
+    }
+  }, [getTextObject, onUpdateObject]);
+
+  const onItalicToggle = useCallback(() => {
+    const obj = getTextObject();
+    if (obj) {
+      // Similar to bold - would need rich text support
+    }
+  }, [getTextObject, onUpdateObject]);
+
+  const onAlignChange = useCallback((align) => {
+    const obj = getTextObject();
+    if (obj) onUpdateObject?.(obj.id, { align });
+  }, [getTextObject, onUpdateObject]);
+
+  const onTextColorChange = useCallback((color) => {
+    const obj = getTextObject();
+    if (obj) onUpdateObject?.(obj.id, { color });
+  }, [getTextObject, onUpdateObject]);
+
+  const onStickyColorChange = useCallback((color) => {
+    const obj = getTextObject();
+    if (obj && obj.type === OBJECT_TYPES.STICKY) {
+      onUpdateObject?.(obj.id, { background: color });
+    }
+  }, [getTextObject, onUpdateObject]);
 
   // Handle context menu for z-order
   const onContextMenu = useCallback((event) => {
@@ -578,6 +856,7 @@ export default function FloatingObjects({
         onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
+        tabIndex={0} // For keyboard events
       />
       {editingObjectId && (
         <textarea
@@ -598,6 +877,215 @@ export default function FloatingObjects({
           autoFocus
         />
       )}
+      
+      {/* Frame name editing overlay */}
+      {editingFrameNameId && (() => {
+        const frame = objects.find((o) => o.id === editingFrameNameId);
+        if (!frame || !canvasRef.current) return null;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const { x, y, width, height, rotation } = frame;
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        
+        // Position at frame name area (top center of frame)
+        const nameY = y - 10 / camera.scale; // Slightly above frame
+        const dx = cx - (x + width / 2);
+        const dy = nameY - cy;
+        const rx = cx + dx * cos - dy * sin;
+        const ry = cy + dx * sin + dy * cos;
+        
+        const screenX = rx * camera.scale + camera.x;
+        const screenY = ry * camera.scale + camera.y;
+        
+        return (
+          <input
+            key={`frame-name-${editingFrameNameId}`}
+            type="text"
+            value={frameNameEditText}
+            onChange={(e) => setFrameNameEditText(e.target.value)}
+            onBlur={saveFrameNameEdit}
+            onKeyDown={onFrameNameKeyDown}
+            className="absolute pointer-events-auto z-50"
+            style={{
+              left: `${screenX - rect.left}px`,
+              top: `${screenY - rect.top}px`,
+              transform: 'translate(-50%, -100%)',
+              zIndex: 100,
+              outline: "none",
+              border: "1px solid hsl(var(--primary))",
+              borderRadius: "4px",
+              padding: "2px 8px",
+              fontSize: `${12 * camera.scale}px`,
+              fontFamily: "inherit",
+              background: "hsl(var(--popover))",
+              color: "hsl(var(--popover-foreground))",
+              minWidth: "80px",
+              textAlign: "center",
+            }}
+            autoFocus
+          />
+        );
+      })()}
+      
+      {/* Text formatting toolbar */}
+      {showTextToolbar && (() => {
+        const obj = getTextObject();
+        if (!obj) return null;
+        const isSticky = obj.type === OBJECT_TYPES.STICKY;
+        
+        return (
+          <div
+            key={`text-toolbar-${obj.id}`}
+            className="absolute pointer-events-auto z-50 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-popover border border-border shadow-lg backdrop-blur"
+            style={{
+              left: `${toolbarPosition.x}px`,
+              top: `${toolbarPosition.y}px`,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            {/* Font family */}
+            <select
+              value={obj.fontFamily || "app"}
+              onChange={(e) => onFontChange(e.target.value)}
+              className="px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring"
+              aria-label={t("vault.canvas.textTools.fontFamily") || "Font"}
+            >
+              {TOOLBAR_FONTS.map((font) => (
+                <option key={font.id} value={font.id}>{font.label}</option>
+              ))}
+            </select>
+            
+            {/* Font size */}
+            <select
+              value={obj.fontSize || (isSticky ? 14 : 16)}
+              onChange={(e) => onFontSizeChange(Number(e.target.value))}
+              className="px-2 py-1 text-xs bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring w-20"
+              aria-label={t("vault.canvas.textTools.fontSize") || "Size"}
+            >
+              {TOOLBAR_SIZES.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            {/* Bold */}
+            <button
+              type="button"
+              onClick={onBoldToggle}
+              className="p-1.5 rounded hover:bg-accent transition-colors"
+              aria-label={t("vault.canvas.textTools.bold") || "Bold"}
+              title={t("vault.canvas.textTools.bold") || "Bold"}
+            >
+              <Bold className="h-3.5 w-3.5" />
+            </button>
+            
+            {/* Italic */}
+            <button
+              type="button"
+              onClick={onItalicToggle}
+              className="p-1.5 rounded hover:bg-accent transition-colors"
+              aria-label={t("vault.canvas.textTools.italic") || "Italic"}
+              title={t("vault.canvas.textTools.italic") || "Italic"}
+            >
+              <Italic className="h-3.5 w-3.5" />
+            </button>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            {/* Alignment */}
+            <button
+              type="button"
+              onClick={() => onAlignChange("left")}
+              className={`p-1.5 rounded transition-colors ${(obj.align || "left") === "left" ? "bg-accent" : "hover:bg-accent"}`}
+              aria-label={t("vault.canvas.textTools.alignLeft") || "Align Left"}
+              title={t("vault.canvas.textTools.alignLeft") || "Align Left"}
+            >
+              <AlignLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onAlignChange("center")}
+              className={`p-1.5 rounded transition-colors ${(obj.align || "left") === "center" ? "bg-accent" : "hover:bg-accent"}`}
+              aria-label={t("vault.canvas.textTools.alignCenter") || "Align Center"}
+              title={t("vault.canvas.textTools.alignCenter") || "Align Center"}
+            >
+              <AlignCenter className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onAlignChange("right")}
+              className={`p-1.5 rounded transition-colors ${(obj.align || "left") === "right" ? "bg-accent" : "hover:bg-accent"}`}
+              aria-label={t("vault.canvas.textTools.alignRight") || "Align Right"}
+              title={t("vault.canvas.textTools.alignRight") || "Align Right"}
+            >
+              <AlignRight className="h-3.5 w-3.5" />
+            </button>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            {/* Text color */}
+            <div className="relative">
+              <button
+                type="button"
+                className="p-1.5 rounded hover:bg-accent transition-colors relative"
+                aria-label={t("vault.canvas.textTools.textColor") || "Text Color"}
+                title={t("vault.canvas.textTools.textColor") || "Text Color"}
+              >
+                <Palette className="h-3.5 w-3.5" />
+                <span
+                  className="absolute bottom-0 left-1/2 w-2 h-0.5 -translate-x-1/2 rounded"
+                  style={{ backgroundColor: obj.color || (isSticky ? "#111827" : "#e9e2d0") }}
+                />
+              </button>
+              {/* Color picker dropdown - simplified as color input for now */}
+              <input
+                type="color"
+                value={obj.color || (isSticky ? "#111827" : "#e9e2d0")}
+                onChange={(e) => onTextColorChange(e.target.value)}
+                className="absolute opacity-0 w-full h-full cursor-pointer"
+                aria-hidden="true"
+              />
+            </div>
+            
+            {/* Sticky note background color */}
+            {isSticky && (
+              <div className="relative">
+                <button
+                  type="button"
+                  className="p-1.5 rounded hover:bg-accent transition-colors relative"
+                  aria-label={t("vault.canvas.textTools.stickyColor") || "Sticky Color"}
+                  title={t("vault.canvas.textTools.stickyColor") || "Sticky Color"}
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  <span
+                    className="absolute bottom-0 left-1/2 w-2 h-0.5 -translate-x-1/2 rounded"
+                    style={{ backgroundColor: obj.background || "#fef08a" }}
+                  />
+                </button>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 flex gap-1 p-2 bg-popover border border-border rounded-lg shadow-lg">
+                  {STICKY_COLORS.map((color) => (
+                    <button
+                      key={color.id}
+                      type="button"
+                      onClick={() => onStickyColorChange(color.value)}
+                      className="w-6 h-6 rounded border-2 transition-colors"
+                      style={{
+                        backgroundColor: color.value,
+                        borderColor: (obj.background || "#fef08a") === color.value ? "#e5b567" : "transparent",
+                      }}
+                      aria-label={color.label}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       
       {/* Unlock button for locked text frames */}
       {selectedObjectIds.length === 1 && (() => {
@@ -665,6 +1153,78 @@ export default function FloatingObjects({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </div>
+          );
+        }
+        return null;
+      })}
+
+      {/* Frame action buttons (delete/duplicate) for selected frames */}
+      {selectedObjectIds.length === 1 && (() => {
+        const selectedObj = objects.find(o => o.id === selectedObjectIds[0]);
+        if (selectedObj?.type === OBJECT_TYPES.FRAME) {
+          const canvas = canvasRef.current;
+          if (!canvas) return null;
+          const rect = canvas.getBoundingClientRect();
+          const { x, y, width, height, rotation } = selectedObj;
+          const cx = x + width / 2;
+          const cy = y + height / 2;
+          const cos = Math.cos(rotation);
+          const sin = Math.sin(rotation);
+          
+          // Position near the rotation handle (top of frame)
+          const rotX = cx;
+          const rotY = y - ROTATE_HANDLE_OFFSET;
+          const dx = rotX - cx;
+          const dy = rotY - cy;
+          const rotRx = cx + dx * cos - dy * sin;
+          const rotRy = cy + dx * sin + dy * cos;
+          
+          const screenX = rotRx * camera.scale + camera.x;
+          const screenY = (rotRy - 35) * camera.scale + camera.y; // Above rotation handle
+          
+          return (
+            <div
+              key={`frame-actions-${selectedObj.id}`}
+              className="absolute pointer-events-auto z-50 flex gap-1"
+              style={{
+                left: `${screenX}px`,
+                top: `${screenY}px`,
+                transform: 'translate(-50%, -100%)',
+              }}
+            >
+              {/* Duplicate button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDuplicateObject) {
+                    // Create a duplicate frame offset by 40px to the right
+                    const newFrame = {
+                      ...selectedObj,
+                      id: `obj-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+                      x: selectedObj.x + selectedObj.width + 40,
+                      y: selectedObj.y,
+                      zOrder: Date.now(),
+                    };
+                    onDuplicateObject(selectedObj.id, newFrame);
+                  }
+                }}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-background/90 border border-border/50 text-foreground shadow-lg backdrop-blur hover:bg-accent transition-colors"
+                aria-label={t("vault.canvas.frame.duplicate") || "Duplicate frame"}
+                title={t("vault.canvas.frame.duplicate") || "Duplicate frame"}
+              >
+                <CopyPlus className="h-3.5 w-3.5" />
+              </button>
+              {/* Delete button */}
+              <button
+                type="button"
+                onClick={() => onDeleteObject?.(selectedObj.id)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-background/90 border border-border/50 text-foreground shadow-lg backdrop-blur hover:bg-destructive/10 hover:text-destructive transition-colors"
+                aria-label={t("vault.canvas.frame.delete") || "Delete frame"}
+                title={t("vault.canvas.frame.delete") || "Delete frame"}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           );
         }

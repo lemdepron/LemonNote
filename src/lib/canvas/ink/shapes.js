@@ -173,16 +173,9 @@ function arrowPaths(points, start, end, diag) {
   const shaft = { x: end.x - start.x, y: end.y - start.y };
   const back = { x: tail.x - end.x, y: tail.y - end.y };
   if (angleBetween(shaft, back) < (Math.PI * 2) / 3) return null;
-  const size = Math.min(diag * 0.22, Math.hypot(shaft.x, shaft.y) * 0.4);
-  const main = Math.atan2(-shaft.y, -shaft.x);
-  const head = (offset) => [
-    { x: end.x, y: end.y, p: 0.75 },
-    { x: end.x + Math.cos(main + offset) * size, y: end.y + Math.sin(main + offset) * size, p: 0.75 },
-  ];
+  // Return single path (shaft) for arrow - the shapeType "arrow" will handle rendering the arrowhead
   return [
     [{ x: start.x, y: start.y, p: 0.75 }, { x: end.x, y: end.y, p: 0.75 }],
-    head(0.5),
-    head(-0.5),
   ];
 }
 

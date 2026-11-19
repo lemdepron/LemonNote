@@ -1,14 +1,62 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Moon, Sun, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Upload, FileText as FileTextIcon, Image as ImageIcon, MoreHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  Moon,
+  Sun,
+  Info,
+  Plus,
+  SlidersHorizontal,
+  PenTool,
+  MousePointer2,
+  Hand,
+  Link as LinkIcon,
+  Minus,
+  Maximize2,
+  RotateCcw,
+  Layers,
+  Square,
+  Type,
+  Image,
+  FileText,
+  Layout,
+  Upload,
+  FileText as FileTextIcon,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Highlighter,
+  Eraser,
+  LassoSelect,
+  Shapes,
+  Wand2,
+  SquareStack,
+  Cable,
+  StickyNote,
+  Sticker,
+  ImagePlus,
+  Frame,
+  Grid3x3,
+  BringToFront,
+  SendToBack,
+  CopyPlus,
+  Trash2,
+  Undo2,
+  Redo2,
+  Circle,
+  ArrowRight,
+  Triangle,
+  Hexagon,
+  Clipboard,
+} from "lucide-react";
 import { db } from "@/api/localDb";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
 import EdgeDock from "@/components/shell/EdgeDock";
 import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
-import { OBJECT_TYPES, FRAME_TYPES, createObject, getDefaultSize } from "@/lib/canvas/objects";
+import { OBJECT_TYPES, FRAME_TYPES, STICKERS, createObject, getDefaultSize } from "@/lib/canvas/objects";
 import { exportCanvasDoc, triggerImport, exportCanvasToPdf, exportCanvasToPng } from "@/lib/canvas/export";
+import { addAttachment } from "@/lib/attachments";
 import { toast } from "@/lib/toast";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { RibbonSelect, RibbonMenu, MenuItem, MenuLabel } from "@/components/ribbon/RibbonKit";
@@ -16,6 +64,7 @@ import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
 import { NoteTopStack } from "@/lib/ScrollContext";
 import { t } from "@/lib/i18n";
+import { CANVAS_TOOLS, getToolById } from "@/lib/canvas/tool-defs";
 
 // Local t function that prefixes with vault.canvas
 const ct = (key, params) => t(`vault.canvas.${key}`, params);
@@ -47,6 +96,8 @@ export default function CanvasPage() {
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [clipboard, setClipboard] = useState([]);
+  const [stickerPopover, setStickerPopover] = useState({ open: false, x: 0, y: 0 });
   const dirty = useRef(false);
   const engineRef = useRef(null);
 
@@ -156,7 +207,24 @@ export default function CanvasPage() {
   const handleAddDesignObject = useCallback((type, worldX, worldY, overrides = {}) => {
     if (!canvasDoc) return;
     const size = getDefaultSize(type, overrides.shapeType || overrides.frameType);
-    const newObject = createObject(type, worldX - size.width / 2, worldY - size.height / 2, size.width, size.height, overrides);
+    
+    // For frames: place to the right of the last frame with 40px gap
+    let x = worldX - size.width / 2;
+    let y = worldY - size.height / 2;
+    
+    if (type === OBJECT_TYPES.FRAME) {
+      const frames = canvasDoc.objects?.filter((o) => o.type === OBJECT_TYPES.FRAME) || [];
+      if (frames.length > 0) {
+        // Find the rightmost frame
+        const rightmostFrame = frames.reduce((max, frame) => 
+          (frame.x + frame.width) > (max.x + max.width) ? frame : max
+        );
+        x = rightmostFrame.x + rightmostFrame.width + 40; // 40px gap
+        y = rightmostFrame.y; // Align vertically with the last frame
+      }
+    }
+    
+    const newObject = createObject(type, x, y, size.width, size.height, overrides);
     const updatedObjects = [...canvasDoc.objects, newObject];
     saveCanvasDoc({ objects: updatedObjects });
     setSelectedIds([newObject.id]);
@@ -191,8 +259,95 @@ export default function CanvasPage() {
     setPendingConnectorFrom(null);
   }, [pendingConnectorFrom, canvasDoc, saveCanvasDoc]);
 
+  // Handle connector creation from CanvasBoard (onCreateConnector)
+  const handleCreateConnector = useCallback((fromId, toId) => {
+    if (!canvasDoc || fromId === toId) return;
+    const exists = canvasDoc.objects.some(
+      (obj) => obj.type === OBJECT_TYPES.CONNECTOR &&
+        ((obj.from === fromId && obj.to === toId) || (obj.from === toId && obj.to === fromId))
+    );
+    if (!exists) {
+      const newConnector = createObject(OBJECT_TYPES.CONNECTOR, 0, 0, 0, 0, {
+        from: fromId,
+        to: toId,
+        style: "straight",
+        stroke: "#e5b567",
+        strokeWidth: 2,
+        endArrow: true,
+      });
+      saveCanvasDoc({ objects: [...canvasDoc.objects, newConnector] });
+    }
+  }, [canvasDoc, saveCanvasDoc]);
+
+  // Handle image insertion - open file picker and store file
+  const handleAddImage = useCallback(async (worldX, worldY) => {
+    if (!canvasDoc) return;
+    
+    // Create file input and trigger click
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp,image/svg+xml";
+    input.style.display = "none";
+    
+    input.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      try {
+        // Store file using the attachment system
+        const attachment = await addAttachment(file);
+        
+        // Create image object with local: reference
+        const size = getDefaultSize(OBJECT_TYPES.IMAGE);
+        // Scale to max 400px wide
+        const maxWidth = 400;
+        let { width, height } = size;
+        if (width > maxWidth) {
+          const ratio = maxWidth / width;
+          width = maxWidth;
+          height = height * ratio;
+        }
+        
+        const newImage = createObject(OBJECT_TYPES.IMAGE, worldX - width / 2, worldY - height / 2, width, height, {
+          src: attachment.ref,
+          alt: file.name,
+        });
+        
+        saveCanvasDoc({ objects: [...canvasDoc.objects, newImage] });
+        setSelectedIds([newImage.id]);
+        selectTool("select");
+      } catch (err) {
+        console.error("Failed to add image:", err);
+        toast.error(ct("insert.media.imageError") || "Failed to add image");
+      }
+    });
+    
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+  }, [canvasDoc, saveCanvasDoc, selectTool]);
+
+  // Handle sticker selection from popover
+  const handleStickerSelect = useCallback((stickerId, worldX, worldY) => {
+    if (!canvasDoc) return;
+    const size = getDefaultSize(OBJECT_TYPES.STICKER);
+    const newSticker = createObject(OBJECT_TYPES.STICKER, worldX - size.width / 2, worldY - size.height / 2, size.width, size.height, {
+      stickerId,
+    });
+    saveCanvasDoc({ objects: [...canvasDoc.objects, newSticker] });
+    setSelectedIds([newSticker.id]);
+    selectTool("select");
+    setStickerPopover({ open: false, x: 0, y: 0 });
+  }, [canvasDoc, saveCanvasDoc, selectTool]);
+
   // Object selection
   const handleSelectObject = useCallback((id, event) => {
+    // Handle array of IDs (from drag-rectangle selection)
+    if (Array.isArray(id)) {
+      setSelectedIds(id);
+      setPendingConnectorFrom(null);
+      return;
+    }
     if (!id) {
       setSelectedIds([]);
       setPendingConnectorFrom(null);
@@ -227,6 +382,14 @@ export default function CanvasPage() {
     setSelectedIds((prev) => prev.filter((id) => id !== objectId));
   }, [canvasDoc, saveCanvasDoc]);
 
+  // Object duplicate
+  const handleDuplicateObject = useCallback((objectId, newObject) => {
+    if (!canvasDoc) return;
+    const updatedObjects = [...canvasDoc.objects, newObject];
+    saveCanvasDoc({ objects: updatedObjects });
+    setSelectedIds([newObject.id]);
+  }, [canvasDoc, saveCanvasDoc]);
+
   // Paper change
   const handlePaperChange = useCallback((changes) => {
     setPaper((prev) => ({ ...prev, ...changes }));
@@ -251,6 +414,7 @@ export default function CanvasPage() {
     saveCanvasDoc({ strokes });
   }, [canvasDoc, saveCanvasDoc]);
 
+  // Derived values from canvasDoc (must be before handleToolAction and keyboard shortcuts)
   const strokes = canvasDoc?.strokes || [];
   const objects = canvasDoc?.objects || [];
   const selectedObjects = objects.filter((o) => selectedIds.includes(o.id));
@@ -263,64 +427,351 @@ export default function CanvasPage() {
     ? ct("status.marks", { count: localDigits(markCount) }) 
     : ct("status.marks_plural", { count: localDigits(markCount) });
 
-  // Tool groups for compact bar row 2
+  // Action handlers for tools (must be defined before keyboard shortcuts useEffect)
+  const handleToolAction = useCallback((btn) => {
+    if (!engineRef.current) return;
+    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+
+    switch (btn.id) {
+      case "addCard":
+        handleAddCard(centerX, centerY);
+        break;
+      case "addTextBox":
+        handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
+        break;
+      case "addSticky":
+        handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
+        break;
+      case "addSticker":
+        // Open sticker popover at center of viewport
+        setStickerPopover({ open: true, x: centerX, y: centerY });
+        break;
+      case "addImage":
+        // Open file picker for image
+        handleAddImage(centerX, centerY);
+        break;
+      case "duplicate":
+        if (selectedIds.length > 0) {
+          const newObjects = selectedIds.map((id) => {
+            const obj = objects.find((o) => o.id === id);
+            if (!obj) return null;
+            const copy = { ...obj, id: `obj-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, x: obj.x + 20, y: obj.y + 20 };
+            return copy;
+          }).filter(Boolean);
+          saveCanvasDoc({ objects: [...objects, ...newObjects] });
+          setSelectedIds(newObjects.map((o) => o.id));
+        }
+        break;
+      case "copy":
+        if (selectedIds.length > 0) {
+          const copiedObjects = selectedIds.map((id) => objects.find((o) => o.id === id)).filter(Boolean);
+          setClipboard(copiedObjects);
+          toast.success(ct("clipboard.copied") || "Copied to clipboard");
+        }
+        break;
+      case "paste":
+        if (clipboard.length > 0) {
+          const viewport = engineRef.current?.viewport || { w: 800, h: 600 };
+          const camera = engineRef.current?.camera || { x: 0, y: 0, scale: 1 };
+          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+          
+          const newObjects = clipboard.map((obj, index) => ({
+            ...obj,
+            id: `obj-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+            x: centerX + index * 20,
+            y: centerY + index * 20,
+            zOrder: Date.now() + index,
+          }));
+          saveCanvasDoc({ objects: [...objects, ...newObjects] });
+          setSelectedIds(newObjects.map((o) => o.id));
+        }
+        break;
+      case "bringForward":
+        if (selectedIds.length > 0) {
+          // Find the highest zOrder among selected objects
+          const selectedObjects = objects.filter((o) => selectedIds.includes(o.id));
+          const maxSelectedZ = Math.max(...selectedObjects.map((o) => o.zOrder || 0), 0);
+          
+          // Find the next zOrder above the highest selected
+          const allZOrders = objects.map((o) => o.zOrder || 0).sort((a, b) => a - b);
+          const nextZ = allZOrders.find((z) => z > maxSelectedZ) || maxSelectedZ + 1;
+          
+          const updatedObjects = objects.map((obj) => {
+            if (selectedIds.includes(obj.id)) {
+              return { ...obj, zOrder: nextZ };
+            }
+            // Shift objects in between down by 1
+            if ((obj.zOrder || 0) > maxSelectedZ && (obj.zOrder || 0) <= nextZ) {
+              return { ...obj, zOrder: (obj.zOrder || 0) - 1 };
+            }
+            return obj;
+          });
+          saveCanvasDoc({ objects: updatedObjects });
+        }
+        break;
+      case "sendBackward":
+        if (selectedIds.length > 0) {
+          // Find the lowest zOrder among selected objects
+          const selectedObjects = objects.filter((o) => selectedIds.includes(o.id));
+          const minSelectedZ = Math.min(...selectedObjects.map((o) => o.zOrder || 0), 0);
+          
+          // Find the next zOrder below the lowest selected
+          const allZOrders = objects.map((o) => o.zOrder || 0).sort((a, b) => b - a);
+          const prevZ = allZOrders.find((z) => z < minSelectedZ) || minSelectedZ - 1;
+          
+          const updatedObjects = objects.map((obj) => {
+            if (selectedIds.includes(obj.id)) {
+              return { ...obj, zOrder: prevZ };
+            }
+            // Shift objects in between up by 1
+            if ((obj.zOrder || 0) < minSelectedZ && (obj.zOrder || 0) >= prevZ) {
+              return { ...obj, zOrder: (obj.zOrder || 0) + 1 };
+            }
+            return obj;
+          });
+          saveCanvasDoc({ objects: updatedObjects });
+        }
+        break;
+      case "delete":
+        selectedIds.forEach((id) => handleDeleteObject(id));
+        break;
+      case "undo":
+        // TODO: implement undo
+        break;
+      case "redo":
+        // TODO: implement redo
+        break;
+      default:
+        break;
+    }
+  }, [engineRef, objects, selectedIds, saveCanvasDoc, clipboard, handleAddCard, handleAddDesignObject, handleDeleteObject, handleAddImage, handleStickerSelect]);
+
+  // Tool groups for compact bar row 2 - from tool-defs.js
   const isPenActive = tool.mode === "draw";
   const isEraserActive = tool.mode === "erase";
   const isShapeActive = tool.mode === "shape";
-  const showPenControls = isPenActive || isEraserActive || isShapeActive;
+  const isHighlighterActive = tool.mode === "highlighter";
+  const showPenControls = isPenActive || isEraserActive || isShapeActive || isHighlighterActive;
 
-  // Row 2 button groups
-  const row2Groups = useMemo(() => [
-    // Navigation group
-    {
-      separator: false,
-      buttons: [
-        { id: "select", icon: MousePointer, mode: "select", label: ct("home.select.select"), hint: ct("home.select.selectHint") },
-        { id: "pan", icon: Maximize2, mode: "pan", label: ct("home.select.pan"), hint: ct("home.select.panHint") },
-      ]
-    },
-    // Drawing tools group
-    {
-      separator: true,
-      buttons: [
-        { id: "draw", icon: PenLine, mode: "draw", label: ct("draw.tools.pen"), hint: ct("draw.tools.penHint") },
-        { id: "erase", icon: Minus, mode: "erase", label: ct("draw.tools.eraser"), hint: ct("draw.tools.eraserHint") },
-        { id: "lasso", icon: Square, mode: "lasso", label: ct("draw.tools.lasso"), hint: ct("draw.tools.lassoHint") },
-        { id: "shape", icon: Type, mode: "shape", label: ct("draw.tools.shape"), hint: ct("draw.tools.shapeHint") },
-        { id: "shapeRecognition", icon: Type, mode: "shapeRecognition", toggle: true, label: ct("draw.tools.shapeRecognition"), hint: ct("draw.tools.shapeRecognitionHint") },
-      ]
-    },
-    // Insert objects group
-    {
-      separator: true,
-      buttons: [
-        { id: "addCard", icon: Plus, action: "addCard", label: ct("insert.cards.addCard"), hint: ct("insert.cards.addCardHint") },
-        { id: "addConnector", icon: LinkIcon, mode: "addConnector", label: ct("insert.cards.connect"), hint: ct("insert.cards.connectHint"), disabled: !pendingConnectorFrom && selectedIds.length === 0 },
-        { id: "addTextBox", icon: Type, action: "addTextBox", label: ct("insert.textNotes.textBox"), hint: ct("insert.textNotes.textBoxHint") },
-        { id: "addSticky", icon: FileText, action: "addSticky", label: ct("insert.textNotes.stickyNote"), hint: ct("insert.textNotes.stickyNoteHint") },
-        { id: "addShapeMenu", icon: Square, action: "addShapeMenu", label: ct("insert.objects.shapes"), hint: ct("insert.objects.shapesHint") },
-        { id: "addSticker", icon: Image, action: "addSticker", label: ct("insert.media.sticker"), hint: ct("insert.media.stickerHint") },
-        { id: "addImage", icon: Image, action: "addImage", label: ct("insert.media.image"), hint: ct("insert.media.imageHint") },
-      ]
-    },
-    // Page/Frame group
-    {
-      separator: true,
-      buttons: [
-        { id: "addFrameMenu", icon: Layout, action: "addFrameMenu", label: ct("page.frames.addFrame"), hint: ct("page.frames.addFrameHint") },
-        { id: "paperMenu", icon: Layers, action: "paperMenu", label: ct("page.paper.label"), hint: ct("page.paper.label") },
-      ]
-    },
-    // Arrange group
-    {
-      separator: true,
-      buttons: [
-        { id: "bringForward", icon: ArrowLeft, action: "bringForward", label: ct("home.arrange.bringForward"), hint: ct("home.arrange.bringForwardHint"), disabled: true, disabledReason: ct("home.arrange.notImplemented") },
-        { id: "sendBackward", icon: ArrowLeft, action: "sendBackward", label: ct("home.arrange.sendBackward"), hint: ct("home.arrange.sendBackwardHint"), disabled: true, disabledReason: ct("home.arrange.notImplemented"), className: "transform rotate-180" },
-        { id: "delete", icon: Minus, action: "delete", label: ct("home.clipboard.delete"), hint: ct("home.clipboard.deleteHint"), disabled: selectedIds.length === 0 },
-      ]
-    },
-  ], [tool.mode, tool.shapeRecognition, pendingConnectorFrom, selectedIds.length]);
+  // Build tool groups from CANVAS_TOOLS
+  const row2Groups = useMemo(() => {
+    const groups = {};
+    CANVAS_TOOLS.forEach((toolDef) => {
+      if (!groups[toolDef.group]) {
+        groups[toolDef.group] = { separator: toolDef.group !== "navigation", buttons: [] };
+      }
+      // Determine if tool should be disabled
+      let disabled = false;
+      let disabledReason = "";
+      if (toolDef.requiresSelection && selectedIds.length === 0) {
+        disabled = true;
+        disabledReason = ct("home.clipboard.selectFirst") || "Select an object first";
+      }
+      // Special case for addConnector - enabled when pendingConnectorFrom OR selectedIds.length > 0
+      if (toolDef.id === "addConnector") {
+        disabled = !pendingConnectorFrom && selectedIds.length === 0;
+        if (disabled) {
+          disabledReason = ct("insert.cards.connectDisabled") || "Select a card or start a connection first";
+        }
+      }
+      // Special case for duplicate - needs selection
+      if (toolDef.id === "duplicate") {
+        disabled = selectedIds.length === 0;
+        if (disabled) {
+          disabledReason = ct("home.clipboard.selectFirst") || "Select an object first";
+        }
+      }
+      // Special case for delete - needs selection
+      if (toolDef.id === "delete") {
+        disabled = selectedIds.length === 0;
+        if (disabled) {
+          disabledReason = ct("home.clipboard.selectFirst") || "Select an object first";
+        }
+      }
+      // Undo/Redo are always disabled for now (not implemented)
+      if (toolDef.id === "undo" || toolDef.id === "redo") {
+        disabled = true;
+        disabledReason = toolDef.id === "undo" 
+          ? (ct("home.undoDisabled") || "Undo not available yet")
+          : (ct("home.redoDisabled") || "Redo not available yet");
+      }
+
+      groups[toolDef.group].buttons.push({
+        ...toolDef,
+        label: ct(toolDef.labelKey),
+        hint: ct(toolDef.hintKey),
+        disabled,
+        disabledReason,
+      });
+    });
+    // Convert to array in group order
+    const groupOrder = ["navigation", "drawing", "insert", "arrange", "history"];
+    return groupOrder
+      .filter((g) => groups[g])
+      .map((g) => groups[g]);
+  }, [tool.mode, tool.shapeRecognition, pendingConnectorFrom, selectedIds.length]);
+
+  // Keyboard shortcuts for tools
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      // Don't trigger shortcuts when typing in input/textarea
+      const target = event.target;
+      const isTyping = target.tagName === "INPUT" || 
+                       target.tagName === "TEXTAREA" || 
+                       target.isContentEditable ||
+                       target.closest('[contenteditable="true"]');
+      if (isTyping) return;
+
+      const isCtrl = event.ctrlKey || event.metaKey;
+      const isShift = event.shiftKey;
+      const key = event.key.toLowerCase();
+
+      // Handle modifier+key shortcuts
+      if (isCtrl && !event.altKey) {
+        switch (key) {
+          case "d": // Ctrl+D - Duplicate
+            event.preventDefault();
+            handleToolAction(getToolById("duplicate"));
+            return;
+          case "c": // Ctrl+C - Copy
+            event.preventDefault();
+            handleToolAction(getToolById("copy"));
+            return;
+          case "v": // Ctrl+V - Paste
+            event.preventDefault();
+            handleToolAction(getToolById("paste"));
+            return;
+          case "]": // Ctrl+] - Bring Forward
+            event.preventDefault();
+            handleToolAction(getToolById("bringForward"));
+            return;
+          case "[": // Ctrl+[ - Send Backward
+            event.preventDefault();
+            handleToolAction(getToolById("sendBackward"));
+            return;
+          case "z": // Ctrl+Z - Undo (handled by browser)
+          case "y": // Ctrl+Y - Redo (handled by browser)
+            return;
+        }
+      }
+
+      // Arrow keys for nudging selected objects
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) {
+        if (selectedIds.length > 0) {
+          event.preventDefault();
+          const step = isShift ? 10 : 1;
+          const dx = key === "arrowright" ? step : key === "arrowleft" ? -step : 0;
+          const dy = key === "arrowdown" ? step : key === "arrowup" ? -step : 0;
+          
+          const updatedObjects = objects.map((obj) => {
+            if (selectedIds.includes(obj.id)) {
+              return { ...obj, x: (obj.x || 0) + dx, y: (obj.y || 0) + dy };
+            }
+            return obj;
+          });
+          saveCanvasDoc({ objects: updatedObjects });
+        }
+        return;
+      }
+
+      // Handle Delete key
+      if (key === "delete" || key === "backspace") {
+        if (selectedIds.length > 0 && !isTyping) {
+          event.preventDefault();
+          handleToolAction(getToolById("delete"));
+        }
+        return;
+      }
+
+      // Handle simple key shortcuts (no modifiers)
+      if (!isCtrl && !event.altKey && !isShift) {
+        const toolDef = CANVAS_TOOLS.find((t) => t.shortcut && t.shortcut.toLowerCase() === key && !t.shortcut.includes("+"));
+        if (toolDef) {
+          event.preventDefault();
+          if (toolDef.type === "mode") {
+            selectTool(toolDef.id);
+          } else if (toolDef.type === "action") {
+            if (toolDef.id === "addTextBox") {
+              if (engineRef.current) {
+                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
+              }
+            }
+          } else if (toolDef.type === "toggle") {
+            setTool((prev) => ({ ...prev, shapeRecognition: !prev.shapeRecognition }));
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectTool, engineRef, pendingConnectorFrom, selectedIds, objects, saveCanvasDoc, handleToolAction]);
+
+  // Icon component mapping
+  const iconMap = {
+    MousePointer2,
+    Hand,
+    PenTool,
+    Highlighter,
+    Eraser,
+    LassoSelect,
+    Shapes,
+    Wand2,
+    SquareStack,
+    Cable,
+    Type,
+    StickyNote,
+    Sticker,
+    ImagePlus,
+    Frame,
+    Grid3x3,
+    BringToFront,
+    SendToBack,
+    CopyPlus,
+    Trash2,
+    Undo2,
+    Redo2,
+    Square,
+    Circle,
+    ArrowRight,
+    Triangle,
+    Hexagon,
+    Minus,
+    LinkIcon,
+    Layout,
+    Layers,
+    Plus,
+    FileText,
+    Image,
+    Maximize2,
+    RotateCcw,
+    ArrowLeft,
+    MoreHorizontal,
+    Sun,
+    Moon,
+    Info,
+    SlidersHorizontal,
+    Upload,
+    Clipboard,
+  };
+
+  // Helper to get icon component
+  const getIcon = (iconName) => iconMap[iconName] || Square;
+
+  // Helper to build tooltip with shortcut
+  const buildHint = (hint, shortcut) => {
+    if (shortcut) {
+      return `${hint} (${shortcut})`;
+    }
+    return hint;
+  };
 
   if (loading) {
     return (
@@ -394,9 +845,9 @@ export default function CanvasPage() {
               {/* Undo/Redo */}
               <RibbonButton
                 id="undo"
-                icon={RotateCcw}
-                label={t("ribbon.home.undo")}
-                hint={t("ribbon.home.undoHint")}
+                icon={Undo2}
+                label={ct("ribbon.home.undo")}
+                hint={ct("ribbon.home.undoHint")}
                 disabled
                 disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
                 keepFocus={false}
@@ -404,9 +855,9 @@ export default function CanvasPage() {
               />
               <RibbonButton
                 id="redo"
-                icon={RotateCcw}
-                label={t("ribbon.home.redo")}
-                hint={t("ribbon.home.redoHint")}
+                icon={Redo2}
+                label={ct("ribbon.home.redo")}
+                hint={ct("ribbon.home.redoHint")}
                 disabled
                 disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
                 keepFocus={false}
@@ -536,298 +987,206 @@ export default function CanvasPage() {
                 <React.Fragment key={groupIdx}>
                   {group.separator && <div className="w-px h-6 bg-border/40 mx-1" />}
                   <div className="flex items-center gap-0.5">
-                    {group.buttons.map((btn) => (
-                      <React.Fragment key={btn.id}>
-                        {btn.action === "addShapeMenu" && (
-                          <RibbonMenu
-                            icon={Square}
-                            label={btn.label}
-                            hint={btn.hint}
-                            width={200}
-                          >
-                            {(close) => (
-                              <>
-                                <MenuLabel>{ct("insert.objects.shapes")}</MenuLabel>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "rect" }); close(); }}>
-                                  <Square className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.rectangle")}
-                                </MenuItem>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "ellipse" }); close(); }}>
-                                  <Type className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.ellipse")}
-                                </MenuItem>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "line" }); close(); }}>
-                                  <Minus className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.line")}
-                                </MenuItem>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "arrow" }); close(); }}>
-                                  <LinkIcon className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.arrow")}
-                                </MenuItem>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "triangle" }); close(); }}>
-                                  <RotateCcw className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.triangle")}
-                                </MenuItem>
-                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "polygon" }); close(); }}>
-                                  <Layers className="h-4 w-4 mr-2" />
-                                  {ct("insert.objects.polygon")}
-                                </MenuItem>
-                              </>
-                            )}
-                          </RibbonMenu>
-                        )}
-                        {btn.action === "addFrameMenu" && (
-                          <RibbonMenu
-                            icon={Layout}
-                            label={btn.label}
-                            hint={btn.hint}
-                            width={200}
-                          >
-                            {(close) => (
-                              <>
-                                <MenuLabel>{ct("page.frames.addFrame")}</MenuLabel>
-                                {FRAME_TYPES.map((ft) => (
-                                  <MenuItem
-                                    key={ft.id}
-                                    onClick={() => {
-                                      if (engineRef.current) {
-                                        const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                        const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                        const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                        const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                        handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
-                                      }
-                                      close();
-                                    }}
-                                  >
-                                    {t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}
-                                  </MenuItem>
-                                ))}
-                              </>
-                            )}
-                          </RibbonMenu>
-                        )}
-                        {btn.action === "paperMenu" && (
-                          <RibbonMenu
-                            icon={Layers}
-                            label={btn.label}
-                            hint={btn.hint}
-                            width={200}
-                          >
-                            {(close) => (
-                              <>
-                                <MenuLabel>{ct("page.paper.label")}</MenuLabel>
-                                <hr className="my-1 border-border" />
-                                <MenuLabel>{ct("page.paper.templateHint")}</MenuLabel>
-                                {[
-                                  { value: "blank", label: ct("page.paper.blank") },
-                                  { value: "ruled", label: ct("page.paper.ruled") },
-                                  { value: "grid", label: ct("page.paper.grid") },
-                                  { value: "dots", label: ct("page.paper.dots") },
-                                  { value: "stave", label: ct("page.paper.stave") },
-                                  { value: "iso", label: ct("page.paper.iso") },
-                                ].map((opt) => (
-                                  <MenuItem
-                                    key={opt.value}
-                                    onClick={() => { handlePaperChange({ template: opt.value }); close(); }}
-                                  >
-                                    {opt.label}
-                                  </MenuItem>
-                                ))}
-                                <hr className="my-1 border-border" />
-                                <MenuLabel>{ct("page.paper.sizeHint")}</MenuLabel>
-                                {[
-                                  { value: "infinite", label: ct("page.paper.infinite") },
-                                  { value: "a4", label: "A4" },
-                                  { value: "letter", label: "Letter" },
-                                  { value: "3:4", label: "3:4" },
-                                  { value: "16:9", label: "16:9" },
-                                  { value: "free", label: ct("page.paper.free") },
-                                ].map((opt) => (
-                                  <MenuItem
-                                    key={opt.value}
-                                    onClick={() => { handlePaperChange({ size: opt.value }); close(); }}
-                                  >
-                                    {opt.label}
-                                  </MenuItem>
-                                ))}
-                                <hr className="my-1 border-border" />
-                                <MenuLabel>{ct("page.paper.toneHint")}</MenuLabel>
-                                {[
-                                  { value: "dark", label: ct("page.paper.dark") },
-                                  { value: "light", label: ct("page.paper.light") },
-                                ].map((opt) => (
-                                  <MenuItem
-                                    key={opt.value}
-                                    onClick={() => { handlePaperChange({ tone: opt.value }); close(); }}
-                                  >
-                                    {opt.label}
-                                  </MenuItem>
-                                ))}
-                              </>
-                            )}
-                          </RibbonMenu>
-                        )}
-                        {btn.action === "addCard" && (
+                    {group.buttons.map((btn) => {
+                      const Icon = getIcon(btn.icon);
+                      const hintWithShortcut = buildHint(btn.hint, btn.shortcut);
+                      const isActive = btn.type === "mode" && tool.mode === btn.id;
+                      const isToggleActive = btn.type === "toggle" && tool.shapeRecognition === true;
+
+                      // Menu buttons (addShapeMenu, addFrameMenu, paperMenu)
+                      if (btn.type === "menu") {
+                        if (btn.id === "addShapeMenu") {
+                          return (
+                            <RibbonMenu
+                              key={btn.id}
+                              icon={Icon}
+                              label={btn.label}
+                              hint={hintWithShortcut}
+                              width={200}
+                            >
+                              {(close) => (
+                                <>
+                                  <MenuLabel>{ct("insert.objects.shapes")}</MenuLabel>
+                                  {btn.menuItems?.map((item) => {
+                                    const MenuItemIcon = item.icon ? getIcon(item.icon) : null;
+                                    return (
+                                      <MenuItem
+                                        key={item.id}
+                                        onClick={() => {
+                                          if (engineRef.current) {
+                                            const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                            const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                            const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                            const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                            handleAddDesignObject(OBJECT_TYPES.SHAPE, centerX, centerY, { shapeType: item.shapeType });
+                                          }
+                                          close();
+                                        }}
+                                      >
+                                        {MenuItemIcon && <MenuItemIcon className="h-4 w-4 mr-2" />}
+                                        {ct(item.labelKey)}
+                                      </MenuItem>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </RibbonMenu>
+                          );
+                        }
+                        if (btn.id === "addFrameMenu") {
+                          return (
+                            <RibbonMenu
+                              key={btn.id}
+                              icon={Icon}
+                              label={btn.label}
+                              hint={hintWithShortcut}
+                              width={200}
+                            >
+                              {(close) => (
+                                <>
+                                  <MenuLabel>{ct("page.frames.addFrame")}</MenuLabel>
+                                  {FRAME_TYPES.map((ft) => (
+                                    <MenuItem
+                                      key={ft.id}
+                                      onClick={() => {
+                                        if (engineRef.current) {
+                                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                          handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
+                                        }
+                                        close();
+                                      }}
+                                    >
+                                      {t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}
+                                    </MenuItem>
+                                  ))}
+                                </>
+                              )}
+                            </RibbonMenu>
+                          );
+                        }
+                        if (btn.id === "paperMenu") {
+                          return (
+                            <RibbonMenu
+                              key={btn.id}
+                              icon={Icon}
+                              label={btn.label}
+                              hint={hintWithShortcut}
+                              width={200}
+                            >
+                              {(close) => (
+                                <>
+                                  <MenuLabel>{ct("page.paper.label")}</MenuLabel>
+                                  <hr className="my-1 border-border" />
+                                  <MenuLabel>{ct("page.paper.templateHint")}</MenuLabel>
+                                  {[
+                                    { value: "blank", label: ct("page.paper.blank") },
+                                    { value: "ruled", label: ct("page.paper.ruled") },
+                                    { value: "grid", label: ct("page.paper.grid") },
+                                    { value: "dots", label: ct("page.paper.dots") },
+                                    { value: "stave", label: ct("page.paper.stave") },
+                                    { value: "iso", label: ct("page.paper.iso") },
+                                  ].map((opt) => (
+                                    <MenuItem
+                                      key={opt.value}
+                                      onClick={() => { handlePaperChange({ template: opt.value }); close(); }}
+                                    >
+                                      {opt.label}
+                                    </MenuItem>
+                                  ))}
+                                  <hr className="my-1 border-border" />
+                                  <MenuLabel>{ct("page.paper.sizeHint")}</MenuLabel>
+                                  {[
+                                    { value: "infinite", label: ct("page.paper.infinite") },
+                                    { value: "a4", label: "A4" },
+                                    { value: "letter", label: "Letter" },
+                                    { value: "3:4", label: "3:4" },
+                                    { value: "16:9", label: "16:9" },
+                                    { value: "free", label: ct("page.paper.free") },
+                                  ].map((opt) => (
+                                    <MenuItem
+                                      key={opt.value}
+                                      onClick={() => { handlePaperChange({ size: opt.value }); close(); }}
+                                    >
+                                      {opt.label}
+                                    </MenuItem>
+                                  ))}
+                                  <hr className="my-1 border-border" />
+                                  <MenuLabel>{ct("page.paper.toneHint")}</MenuLabel>
+                                  {[
+                                    { value: "auto", label: ct("page.paper.auto") },
+                                    { value: "light", label: ct("page.paper.light") },
+                                    { value: "dark", label: ct("page.paper.dark") },
+                                  ].map((opt) => (
+                                    <MenuItem
+                                      key={opt.value}
+                                      onClick={() => { handlePaperChange({ tone: opt.value }); close(); }}
+                                    >
+                                      {opt.label}
+                                    </MenuItem>
+                                  ))}
+                                </>
+                              )}
+                            </RibbonMenu>
+                          );
+                        }
+                      }
+
+                      // Action buttons (addCard, addTextBox, addSticky, addSticker, addImage, duplicate, delete, undo, redo)
+                      if (btn.type === "action") {
+                        return (
                           <RibbonButton
-                            icon={btn.icon}
+                            key={btn.id}
+                            icon={Icon}
                             label={btn.label}
-                            hint={btn.hint}
-                            onClick={() => {
-                              if (engineRef.current) {
-                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                handleAddCard(centerX, centerY);
-                              }
-                            }}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.action === "addTextBox" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            onClick={() => {
-                              if (engineRef.current) {
-                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
-                              }
-                            }}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.action === "addSticky" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            onClick={() => {
-                              if (engineRef.current) {
-                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
-                              }
-                            }}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.action === "addSticker" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            onClick={() => {
-                              if (engineRef.current) {
-                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
-                              }
-                            }}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.action === "addImage" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            onClick={() => {
-                              if (engineRef.current) {
-                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
-                              }
-                            }}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.action === "bringForward" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
+                            hint={hintWithShortcut}
                             disabled={btn.disabled}
                             disabledReason={btn.disabledReason}
+                            onClick={() => handleToolAction(btn)}
                             keepFocus={false}
-                            className={`h-8 w-8 ${btn.className || ""}`}
+                            className="h-8 w-8"
                           />
-                        )}
-                        {btn.action === "sendBackward" && (
+                        );
+                      }
+
+                      // Mode buttons (select, pan, draw, highlighter, erase, lasso, shape, addConnector)
+                      if (btn.type === "mode") {
+                        return (
                           <RibbonButton
-                            icon={btn.icon}
+                            key={btn.id}
+                            icon={Icon}
                             label={btn.label}
-                            hint={btn.hint}
+                            hint={hintWithShortcut}
+                            active={isActive}
                             disabled={btn.disabled}
                             disabledReason={btn.disabledReason}
-                            keepFocus={false}
-                            className={`h-8 w-8 ${btn.className || ""}`}
-                          />
-                        )}
-                        {btn.action === "delete" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            disabled={btn.disabled}
-                            onClick={() => { selectedIds.forEach((id) => handleDeleteObject(id)); }}
+                            onClick={() => selectTool(btn.id)}
                             keepFocus={false}
                             className="h-8 w-8"
                           />
-                        )}
-                        {btn.mode && !btn.action && !btn.toggle && (
+                        );
+                      }
+
+                      // Toggle buttons (shapeRecognition)
+                      if (btn.type === "toggle") {
+                        return (
                           <RibbonButton
-                            icon={btn.icon}
+                            key={btn.id}
+                            icon={Icon}
                             label={btn.label}
-                            hint={btn.hint}
-                            active={tool.mode === btn.mode}
-                            disabled={btn.disabled}
-                            onClick={() => selectTool(btn.mode)}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.mode === "addConnector" && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            active={tool.mode === "addConnector"}
-                            disabled={btn.disabled}
-                            onClick={() => selectTool("addConnector")}
-                            keepFocus={false}
-                            className="h-8 w-8"
-                          />
-                        )}
-                        {btn.toggle && (
-                          <RibbonButton
-                            icon={btn.icon}
-                            label={btn.label}
-                            hint={btn.hint}
-                            active={tool.shapeRecognition === true}
+                            hint={hintWithShortcut}
+                            active={isToggleActive}
                             onClick={() => setTool((prev) => ({ ...prev, shapeRecognition: !prev.shapeRecognition }))}
                             keepFocus={false}
                             className="h-8 w-8"
                           />
-                        )}
-                      </React.Fragment>
-                    ))}
+                        );
+                      }
+
+                      return null;
+                    })}
                   </div>
                 </React.Fragment>
               ))}
@@ -877,11 +1236,10 @@ export default function CanvasPage() {
           </div>
         </NoteTopStack>
 
-        {/* Canvas area - fills remaining height, full width */}
+        {/* Canvas area - fills remaining height, full width, no border/radius/shadow */}
         <div
           className={cn(
-            "relative rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
-            "min-h-0 flex-1",
+            "relative min-h-0 flex-1",
             focus ? "h-[calc(100vh-130px)]" : "h-[calc(100vh-80px)]"
           )}
         >
@@ -900,11 +1258,49 @@ export default function CanvasPage() {
             onSelectObject={handleSelectObject}
             onUpdateObject={handleUpdateObject}
             onDeleteObject={handleDeleteObject}
+            onDuplicateObject={handleDuplicateObject}
+            onCreateConnector={handleCreateConnector}
             selectedObjectIds={selectedIds}
             pendingConnectorFrom={pendingConnectorFrom}
             setPendingConnectorFrom={setPendingConnectorFrom}
             autoFit
+            transparent
           />
+
+          {/* Sticker popover */}
+          {stickerPopover.open && engineRef.current && (() => {
+            const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+            const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+            // Convert world coordinates to screen
+            const screenX = stickerPopover.x * camera.scale + camera.x;
+            const screenY = stickerPopover.y * camera.scale + camera.y;
+            
+            return (
+              <div
+                className="absolute z-50 pointer-events-auto"
+                style={{ left: `${screenX}px`, top: `${screenY}px`, transform: 'translate(-50%, -50%)' }}
+              >
+                <div className="bg-popover border border-border rounded-lg shadow-lg p-2 grid grid-cols-6 gap-1" role="menu">
+                  {STICKERS.map((sticker) => (
+                    <button
+                      key={sticker.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleStickerSelect(sticker.id, stickerPopover.x, stickerPopover.y)}
+                      onMouseDown={(e) => e.preventDefault()} // Prevent losing focus
+                      className="p-1.5 rounded hover:bg-accent transition-colors"
+                      aria-label={sticker.label}
+                      title={sticker.label}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                        {sticker.paths.map((path, i) => <path key={i} d={path} />)}
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Connector preview line */}
           {pendingConnectorFrom && tool.mode === "addConnector" && (
@@ -924,12 +1320,14 @@ export default function CanvasPage() {
             </svg>
           )}
 
-          {/* Stats overlay in bottom corner */}
-          <div className="absolute bottom-2 right-2 flex items-center gap-2 text-[10px] text-muted-foreground font-mono bg-background/80 backdrop-blur px-2 py-1 rounded border border-border/40 pointer-events-none">
-            <span>{t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}</span>
-            <span>{markLabel}</span>
-            <span>{objects.length} objects</span>
-          </div>
+          {/* Stats overlay in bottom corner - hides while drawing */}
+          {tool.mode !== "draw" && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1.5 text-[9px] text-muted-foreground font-mono bg-background/50 backdrop-blur px-1.5 py-0.5 rounded pointer-events-none transition-opacity duration-200">
+              <span>{ct("status.cards", { count: localDigits(cards.length) })}</span>
+              <span>{ct("status.marks_short", { count: localDigits(markCount) })}</span>
+              <span>{ct("status.objects_short", { count: localDigits(objects.length) })}</span>
+            </div>
+          )}
         </div>
 
         {/* Edge dock panels */}

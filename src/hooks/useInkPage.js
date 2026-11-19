@@ -25,7 +25,7 @@ const DEFAULT_PAPER = { template: "grid", size: "a4", tone: "dark" };
 
 /** Pen default for a paper stock, read from theme tokens so ink stays visible. */
 const inkForTone = (tone) =>
-  (tone === "light" ? tokenColor("--ink") : tokenColor("--ink-light")) || tokenColor("--ink-light");
+  tokenColor("--foreground") || (tone === "light" ? tokenColor("--ink") : tokenColor("--ink-light")) || "#111827";
 const EMPTY_RECOGNITION = { busy: null, mode: null, text: "", latex: "", error: "" };
 
 /**
@@ -410,6 +410,11 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         if (event.shiftKey) redo();
         else undo();
       }
+      // Ctrl+Y for redo (alternative to Ctrl+Shift+Z)
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+      }
       if ((event.key === "Delete" || event.key === "Backspace") && selection.ids.length) {
         event.preventDefault();
         engineRef.current?.deleteSelection();
@@ -630,10 +635,10 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
         editingObjectId,
         objects,
         engine: () => engineRef.current,
-        canUndo: pastRef.current.length > 0,
-        canRedo: futureRef.current.length > 0,
-        onUndo: undo,
-        onRedo: redo,
+        get canUndo() { return engineRef.current?.canUndo ?? false; },
+        get canRedo() { return engineRef.current?.canRedo ?? false; },
+        onUndo: () => engineRef.current?.undo(),
+        onRedo: () => engineRef.current?.redo(),
         onZoom: (factor) => engineRef.current?.zoomBy(factor),
         onFit: () => engineRef.current?.fit(),
         onClear: clearPage,
@@ -683,6 +688,7 @@ export default function useInkPage(id, { active = true, onOpenPage } = {}) {
     onPickColor: handlePickColor,
     onEngine: handleEngine,
     onInsertSpaceLimited: handleInsertSpaceLimited,
+    onTool: updateTool,
   };
 
   return { loading, page, status, ink, board, markCount: strokes.length, pageIndex, patch, objects };

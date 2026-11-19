@@ -4,8 +4,9 @@
  */
 
 import { jsPDF } from "jspdf";
-import { FRAME_TYPES, OBJECT_TYPES, renderTextFrame, renderShape, renderSticker, renderSticky } from "@/lib/canvas/objects";
+import { FRAME_TYPES, OBJECT_TYPES, renderTextFrame, renderShape, renderSticker, renderSticky, renderConnector, hitTestObject } from "@/lib/canvas/objects";
 import { parseMarkdown } from "@/lib/canvas/ink/objects";
+import { getFile, createFileObjectUrl } from "@/api/localDb";
 
 /**
  * Get frame dimensions in mm from frame type
@@ -41,7 +42,7 @@ export function getFrameDimensionsPx(frame) {
  * @param {Object} object - The object to render
  * @param {number} scale - Scale factor
  */
-export function renderObjectForExport(ctx, object, scale = 1) {
+export function renderObjectForExport(ctx, object, scale = 1, allObjects = []) {
   const { x, y, width, height, rotation = 0, opacity = 1 } = object;
   
   ctx.save();
@@ -76,6 +77,9 @@ export function renderObjectForExport(ctx, object, scale = 1) {
       break;
     case OBJECT_TYPES.IMAGE:
       renderImageForExport(ctx, object, scale);
+      break;
+    case OBJECT_TYPES.CONNECTOR:
+      renderConnectorForExport(ctx, object, scale, allObjects);
       break;
     case OBJECT_TYPES.PDF_PAGE:
       // PDF pages are rendered as images
@@ -121,24 +125,190 @@ function renderTextBoxForExport(ctx, object, scale) {
 }
 
 /**
- * Render image for export
+ * Render image for export - loads from local: ref if needed
  */
-function renderImageForExport(ctx, object, scale) {
+async function renderImageForExport(ctx, object, scale) {
   const { src, x, y, width, height } = object;
   if (!src) return;
   
-  // For local: URLs, we'd need to load the image first
-  // This is a placeholder - actual implementation would need image loading
-  ctx.fillStyle = "#e5e7eb";
-  ctx.fillRect(x, y, width, height);
-  ctx.strokeStyle = "#9ca3af";
-  ctx.strokeRect(x, y, width, height);
+  // If it's a local: ref, load the blob and create object URL
+  let imageUrl = src;
+  if (src.startsWith("local:")) {
+    try {
+      const fileId = src.replace(/^local:/, "");
+      const fileRow = await getFile(fileId);
+      if (fileRow && fileRow.blob) {
+        imageUrl = URL.createObjectURL(fileRow.blob);
+      }
+    } catch (err) {
+      console.warn("Failed to load image for export:", err);
+    }
+  }
   
-  ctx.fillStyle = "#6b7280";
-  ctx.font = "12px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("Image", x + width / 2, y + height / 2);
+  // Load image
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      // Draw image with fit mode (default to cover)
+      const { fit = "cover" } = object;
+      
+      let drawX = x;
+      let drawY = y;
+      let drawW = width;
+      let drawH = height;
+      
+      if (fit === "contain") {
+        // Fit entire image within bounds
+        const imgAspect = img.width / img.height;
+        const boxAspect = width / height;
+        if (imgAspect > boxAspect) {
+          drawH = width / imgAspect;
+          drawY = y + (height - drawH) / 2;
+        } else {
+          drawW = height * imgAspect;
+          drawX = x + (width - drawW) / 2;
+        }
+      } else if (fit === "cover") {
+        // Cover entire bounds (default)
+        const imgAspect = img.width / img.height;
+        const boxAspect = width / height;
+        if (imgAspect < boxAspect) {
+          drawH = width / imgAspect;
+          drawY = y + (height - drawH) / 2;
+        } else {
+          drawW = height * imgAspect;
+          drawX = x + (width - drawW) / 2;
+        }
+      }
+      // fit === "fill" or "none" uses the full width/height
+      
+      // Clip to object bounds
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, width, height);
+      ctx.clip();
+      
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      ctx.restore();
+      
+      // Revoke object URL if we created one
+      if (imageUrl !== src && imageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      
+      resolve();
+    };
+    img.onerror = () => {
+      // Fallback placeholder
+      ctx.fillStyle = "#e5e7eb";
+      ctx.fillRect(x, y, width, height);
+      ctx.strokeStyle = "#9ca3af";
+      ctx.strokeRect(x, y, width, height);
+      
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const displaySrc = src.length > 30 ? "..." + src.slice(-27) : src;
+      ctx.fillText(displaySrc, x + width / 2, y + height / 2);
+      
+      if (imageUrl !== src && imageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(imageUrl);
+      }
+      resolve();
+    };
+    img.src = imageUrl;
+  });
+}
+
+/**
+ * Render connector for export
+ */
+function renderConnectorForExport(ctx, object, scale, allObjects) {
+  const { from, to, style = "straight", stroke = "#e5b567", strokeWidth = 2, startArrow = false, endArrow = true, opacity = 1 } = object;
+
+  if (!from || !to) return;
+
+  const fromObj = allObjects.find(o => o.id === from);
+  const toObj = allObjects.find(o => o.id === to);
+  if (!fromObj || !toObj) return;
+
+  const fromX = fromObj.x + fromObj.width / 2;
+  const fromY = fromObj.y + fromObj.height / 2;
+  const toX = toObj.x + toObj.width / 2;
+  const toY = toObj.y + toObj.height / 2;
+
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.setLineDash([]);
+
+  let pathPoints = [];
+
+  if (style === "straight") {
+    pathPoints = [{ x: fromX, y: fromY }, { x: toX, y: toY }];
+  } else if (style === "elbow") {
+    const midX = (fromX + toX) / 2;
+    pathPoints = [
+      { x: fromX, y: fromY },
+      { x: midX, y: fromY },
+      { x: midX, y: toY },
+      { x: toX, y: toY }
+    ];
+  } else if (style === "curved") {
+    // Simple quadratic curve
+    const cpX = (fromX + toX) / 2;
+    const cpY = (fromY + toY) / 2 - 100; // curve upward
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.quadraticCurveTo(cpX, cpY, toX, toY);
+    ctx.stroke();
+    
+    // Draw arrows on curved line
+    if (startArrow) drawArrowHead(ctx, fromX, fromY, cpX, cpY, strokeWidth, 1, true);
+    if (endArrow) drawArrowHead(ctx, toX, toY, cpX, cpY, strokeWidth, 1, false);
+    ctx.restore();
+    return;
+  }
+
+  // Draw path
+  ctx.beginPath();
+  ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+  for (let i = 1; i < pathPoints.length; i++) {
+    ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+  }
+  ctx.stroke();
+
+  // Draw arrowheads
+  if (startArrow && pathPoints.length >= 2) {
+    drawArrowHead(ctx, pathPoints[0].x, pathPoints[0].y, pathPoints[1].x, pathPoints[1].y, strokeWidth, 1, true);
+  }
+  if (endArrow && pathPoints.length >= 2) {
+    const last = pathPoints.length - 1;
+    drawArrowHead(ctx, pathPoints[last].x, pathPoints[last].y, pathPoints[last - 1].x, pathPoints[last - 1].y, strokeWidth, 1, false);
+  }
+
+  ctx.restore();
+}
+
+function drawArrowHead(ctx, tipX, tipY, backX, backY, strokeWidth, scale, isStart) {
+  const angle = Math.atan2(tipY - backY, tipX - backX);
+  const headLen = Math.max(8, strokeWidth * 3) / Math.max(0.15, scale);
+  
+  ctx.save();
+  ctx.translate(tipX, tipY);
+  ctx.rotate(isStart ? angle + Math.PI : angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-headLen, -headLen / 2);
+  ctx.lineTo(-headLen, headLen / 2);
+  ctx.closePath();
+  ctx.fillStyle = ctx.strokeStyle;
+  ctx.fill();
+  ctx.restore();
 }
 
 /**
@@ -153,7 +323,8 @@ export async function exportCanvasToPdf(canvasDoc, options = {}) {
   const { wholeCanvas = false, selectedFrameId = null, filename = "canvas-export.pdf" } = options;
   
   const frames = canvasDoc.objects?.filter(o => o.type === OBJECT_TYPES.FRAME) || [];
-  const objects = canvasDoc.objects?.filter(o => o.type !== OBJECT_TYPES.FRAME && o.type !== OBJECT_TYPES.CONNECTOR) || [];
+  // Include connectors in objects for rendering
+  const objects = canvasDoc.objects?.filter(o => o.type !== OBJECT_TYPES.FRAME) || [];
   const strokes = canvasDoc.strokes || [];
   
   if (frames.length === 0 && !wholeCanvas) {
@@ -250,7 +421,7 @@ async function renderFrameToPdf(pdf, frame, objects, strokes, paper) {
   
   // Render objects
   for (const obj of frameObjects) {
-    renderObjectForExport(ctx, obj, 1);
+    await renderObjectForExport(ctx, obj, 1, frameObjects);
   }
   
   // Render strokes that fall within frame
@@ -316,7 +487,7 @@ async function renderInfiniteCanvasToPdf(pdf, objects, strokes, paper) {
   // Sort and render objects
   objects.sort((a, b) => (a.zOrder || 0) - (b.zOrder || 0));
   for (const obj of objects) {
-    renderObjectForExport(ctx, obj, 1);
+    await renderObjectForExport(ctx, obj, 1, objects);
   }
   
   // Render strokes
@@ -529,7 +700,7 @@ async function renderFrameToPngBlob(frame, objects, strokes, paper) {
   
   // Render objects
   for (const obj of frameObjects) {
-    renderObjectForExport(ctx, obj, 1);
+    await renderObjectForExport(ctx, obj, 1, frameObjects);
   }
   
   // Render strokes in frame
@@ -588,7 +759,7 @@ async function exportInfiniteCanvasToPng(canvasDoc, objects, strokes, filename) 
   // Sort and render objects
   objects.sort((a, b) => (a.zOrder || 0) - (b.zOrder || 0));
   for (const obj of objects) {
-    renderObjectForExport(ctx, obj, 1);
+    await renderObjectForExport(ctx, obj, 1, objects);
   }
   
   // Render strokes
