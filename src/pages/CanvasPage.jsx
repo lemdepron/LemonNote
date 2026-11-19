@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Box, Download, Upload, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Download, Upload, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react";
 import { db } from "@/api/localDb";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
 import EdgeDock from "@/components/shell/EdgeDock";
-import FocusToggle from "@/components/shell/FocusToggle";
 import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -14,122 +13,36 @@ import { toast } from "@/lib/toast";
 import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { RibbonSelect, RibbonMenu, MenuItem, MenuLabel } from "@/components/ribbon/RibbonKit";
+import { RibbonTabLine, RibbonPanel, RibbonPanelPopoverProvider } from "@/components/ribbon/RibbonKit";
 import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
+import ThemeToggle from "@/components/shell/ThemeToggle";
+import { readPref, writePref } from "@/lib/preferences";
+import { NoteTopStack } from "@/lib/ScrollContext";
+import { t } from "@/lib/i18n";
 
-const TOOL_GROUPS_INK = [
-  {
-    name: "draw",
-    label: "Draw",
-    icon: PenLine,
-    tools: [
-      { id: "draw", label: "Pen", icon: PenLine, hint: "Freehand drawing" },
-      { id: "erase", label: "Erase", icon: Minus, hint: "Erase strokes" },
-      { id: "lasso", label: "Lasso", icon: Square, hint: "Select strokes" },
-      { id: "shape", label: "Shapes", icon: Type, hint: "Draw shapes" },
-    ],
-  },
-  {
-    name: "navigate",
-    label: "Navigate",
-    icon: MousePointer,
-    tools: [
-      { id: "select", label: "Select", icon: MousePointer, hint: "Select and move objects" },
-      { id: "pan", label: "Pan", icon: Maximize2, hint: "Pan the canvas" },
-      { id: "insertSpace", label: "Insert Space", icon: RotateCcw, hint: "Insert vertical space" },
-    ],
-  },
-  {
-    name: "objects",
-    label: "Objects",
-    icon: Layers,
-    tools: [
-      { id: "addSticker", label: "Sticker", icon: Image, hint: "Add a sticker" },
-      { id: "addTextBox", label: "Text Box", icon: Type, hint: "Add a text box" },
-      { id: "addSticky", label: "Sticky Note", icon: FileText, hint: "Add a sticky note" },
-    ],
-  },
+// Local t function that prefixes with vault.canvas
+const ct = (key, params) => t(`vault.canvas.${key}`, params);
+
+const CANVAS_TABS = [
+  { id: "home", label: "tabs.home", icon: PenLine },
+  { id: "draw", label: "tabs.draw", icon: PenLine },
+  { id: "insert", label: "tabs.insert", icon: Plus },
+  { id: "page", label: "tabs.page", icon: Layout },
+  { id: "view", label: "tabs.view", icon: Maximize2 },
+  { id: "file", label: "tabs.file", icon: Download },
 ];
 
-const TOOL_GROUPS_CANVAS = [
-  {
-    name: "cards",
-    label: "Cards",
-    icon: Square,
-    tools: [
-      { id: "select", label: "Select", icon: MousePointer, hint: "Select and move cards" },
-      { id: "addCard", label: "Add Card", icon: Plus, hint: "Add a new card" },
-      { id: "addConnector", label: "Connect", icon: LinkIcon, hint: "Connect two cards" },
-    ],
-  },
-  {
-    name: "navigate",
-    label: "Navigate",
-    icon: MousePointer,
-    tools: [
-      { id: "pan", label: "Pan", icon: Maximize2, hint: "Pan the canvas" },
-      { id: "insertSpace", label: "Insert Space", icon: RotateCcw, hint: "Insert vertical space" },
-    ],
-  },
-];
-
-const TOOL_GROUPS_DESIGN = [
-  {
-    name: "frames",
-    label: "Frames",
-    icon: Layout,
-    tools: [
-      { id: "addFrame", label: "Add Frame", icon: Layout, hint: "Add a paper frame (A4, Letter, etc.)" },
-      { id: "addTextFrame", label: "Text Frame", icon: Type, hint: "Add a markdown text frame" },
-    ],
-  },
-  {
-    name: "media",
-    label: "Media",
-    icon: Image,
-    tools: [
-      { id: "addImage", label: "Image", icon: Image, hint: "Add an image" },
-      { id: "addPdfPage", label: "PDF Page", icon: FileText, hint: "Add a PDF page" },
-    ],
-  },
-  {
-    name: "objects",
-    label: "Objects",
-    icon: Box,
-    tools: [
-      { id: "addShape", label: "Shape", icon: Square, hint: "Add a shape" },
-      { id: "addSticker", label: "Sticker", icon: Image, hint: "Add a sticker" },
-      { id: "addTextBox", label: "Text Box", icon: Type, hint: "Add a text box" },
-      { id: "addSticky", label: "Sticky Note", icon: FileText, hint: "Add a sticky note" },
-    ],
-  },
-  {
-    name: "navigate",
-    label: "Navigate",
-    icon: MousePointer,
-    tools: [
-      { id: "select", label: "Select", icon: MousePointer, hint: "Select and move objects" },
-      { id: "pan", label: "Pan", icon: Maximize2, hint: "Pan the canvas" },
-      { id: "insertSpace", label: "Insert Space", icon: RotateCcw, hint: "Insert vertical space" },
-    ],
-  },
-  {
-    name: "ink",
-    label: "Ink",
-    icon: PenLine,
-    tools: [
-      { id: "draw", label: "Draw", icon: PenLine, hint: "Freehand drawing" },
-      { id: "erase", label: "Erase", icon: Minus, hint: "Erase strokes" },
-      { id: "lasso", label: "Lasso", icon: Square, hint: "Select strokes" },
-      { id: "shape", label: "Shapes", icon: Type, hint: "Draw shapes" },
-    ],
-  },
-];
+function initialCanvasTab() {
+  const saved = readPref("canvasRibbonTab", "home");
+  return CANVAS_TABS.some((item) => item.id === saved) ? saved : "home";
+}
 
 export default function CanvasPage() {
   const { t, localDigits } = useI18n();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { focus } = useFocusMode();
   const [canvasDoc, setCanvasDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -139,8 +52,8 @@ export default function CanvasPage() {
   const [paper, setPaper] = useState({ template: "grid", size: "infinite", tone: "dark" });
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState(() => initialCanvasTab());
   const dirty = useRef(false);
-  const { focus } = useFocusMode();
   const engineRef = useRef(null);
 
   // Load canvas doc
@@ -168,16 +81,13 @@ export default function CanvasPage() {
   useEffect(() => {
     if (fittedRef.current) return;
     if (!canvasDoc) return;
-    if (canvasDoc.kind !== "design") return;
     if (!engineRef.current) return;
     
     const frames = canvasDoc.objects?.filter((o) => o.type === OBJECT_TYPES.FRAME) || [];
     if (frames.length === 0) return;
     
-    // Check if camera is still at default (not yet fitted)
     const cam = canvasDoc.camera || { x: 0, y: 0, scale: 1 };
     if (cam.x === 0 && cam.y === 0 && cam.scale === 1) {
-      // Small delay to ensure engine is ready
       setTimeout(() => {
         engineRef.current?.fitWidth?.();
         fittedRef.current = true;
@@ -206,7 +116,6 @@ export default function CanvasPage() {
     setStatus("saving");
     const updated = { ...canvasDoc, ...updates };
     setCanvasDoc(updated);
-    // Debounced save
     clearTimeout(saveCanvasDoc.timer);
     saveCanvasDoc.timer = setTimeout(async () => {
       try {
@@ -259,7 +168,6 @@ export default function CanvasPage() {
       setPendingConnectorFrom(null);
       return;
     }
-    // Check if connector already exists
     const exists = canvasDoc.objects.some(
       (obj) => obj.type === OBJECT_TYPES.CONNECTOR &&
         ((obj.from === pendingConnectorFrom && obj.to === targetId) || (obj.from === targetId && obj.to === pendingConnectorFrom))
@@ -307,7 +215,6 @@ export default function CanvasPage() {
   // Object delete
   const handleDeleteObject = useCallback((objectId) => {
     if (!canvasDoc) return;
-    // Also delete any connectors connected to this object
     const updatedObjects = canvasDoc.objects.filter(
       (obj) => obj.id !== objectId && !(obj.type === OBJECT_TYPES.CONNECTOR && (obj.from === objectId || obj.to === objectId))
     );
@@ -339,34 +246,59 @@ export default function CanvasPage() {
     saveCanvasDoc({ strokes });
   }, [canvasDoc, saveCanvasDoc]);
 
-  // Tool groups based on kind
-  const currentKind = canvasDoc?.kind || "canvas";
-  const toolGroups = useMemo(() => {
-    switch (currentKind) {
-      case "ink":
-        return TOOL_GROUPS_INK;
-      case "design":
-        return TOOL_GROUPS_DESIGN;
-      default:
-        return TOOL_GROUPS_CANVAS;
-    }
-  }, [currentKind]);
+  const strokes = canvasDoc?.strokes || [];
+  const objects = canvasDoc?.objects || [];
+  const selectedObjects = objects.filter((o) => selectedIds.includes(o.id));
+  const cards = objects.filter((o) => o.type === OBJECT_TYPES.CARD);
+  const connectors = objects.filter((o) => o.type === OBJECT_TYPES.CONNECTOR);
 
-  // Current mode display
-  const currentMode = currentKind;
+  // Tab change handler
+  const chooseTab = (tabId) => {
+    writePref("canvasRibbonTab", tabId);
+    setActiveTab(tabId);
+  };
 
-  // Reset tool to default when kind changes
-  useEffect(() => {
-    const defaultTool = currentKind === "ink" ? "draw" : "select";
-    setTool((prev) => ({ ...prev, mode: defaultTool }));
-  }, [currentKind]);
+  // Leading: Undo/Redo (disabled for now - engine doesn't support it)
+  const leading = (
+    <>
+      <RibbonButton
+        id="undo"
+        icon={RotateCcw}
+        label={t("ribbon.home.undo")}
+        hint={t("ribbon.home.undoHint")}
+        disabled
+        disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
+        keepFocus={false}
+      />
+      <RibbonButton
+        id="redo"
+        icon={RotateCcw}
+        label={t("ribbon.home.redo")}
+        hint={t("ribbon.home.redoHint")}
+        disabled
+        disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
+        keepFocus={false}
+        className="transform rotate-180"
+      />
+    </>
+  );
+
+  // Trailing: ThemeToggle + FocusToggle
+  const trailing = (
+    <>
+      <ThemeToggle />
+      {/* FocusToggle removed from CanvasPage per C19 */}
+    </>
+  );
 
   if (loading) {
     return (
       <div className="nb-shell min-h-screen">
-        <div className="mx-auto max-w-[1400px] px-5 py-8">
+        <SpaceRail />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
           <div className="h-[60vh] animate-pulse rounded-xl border border-border/60 bg-card/30" />
-        </div>
+        </main>
       </div>
     );
   }
@@ -374,557 +306,611 @@ export default function CanvasPage() {
   if (!canvasDoc) {
     return (
       <div className="nb-shell min-h-screen">
-        <div className="mx-auto max-w-xl px-5 py-24 text-center">
-          <p className="font-display text-[26px]">{t("vault.canvas.emptyState")}</p>
-          <Link to="/canvas" className="mt-4 inline-block font-mono text-[11px] uppercase tracking-[0.16em] text-primary">
-            {t("vault.canvas.backToCanvases")}
-          </Link>
-        </div>
+        <SpaceRail />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
+          <div className="mx-auto max-w-xl px-5 py-24 text-center">
+            <p className="font-display text-[26px]">{ct("emptyState.noCanvases")}</p>
+            <button
+              onClick={() => navigate("/canvas/new")}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-primary-foreground transition hover:bg-primary/90"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {ct("emptyState.newCanvas")}
+            </button>
+          </div>
+        </main>
       </div>
     );
   }
 
-  const strokes = canvasDoc.strokes || [];
-  const objects = canvasDoc.objects || [];
-  const selectedObjects = objects.filter((o) => selectedIds.includes(o.id));
-  const cards = objects.filter((o) => o.type === OBJECT_TYPES.CARD);
-  const connectors = objects.filter((o) => o.type === OBJECT_TYPES.CONNECTOR);
-
-  // Build toolbar items
-  const toolbarItems = toolGroups.flatMap((group) =>
-    group.tools.map((t) => ({
-      ...t,
-      group: group.name,
-      active: tool.mode === t.id,
-      onClick: () => selectTool(t.id),
-    }))
-  );
+  // Stats for status bar
+  const markCount = strokes.length;
+  const markLabel = markCount === 1 
+    ? ct("status.marks", { count: localDigits(markCount) }) 
+    : ct("status.marks_plural", { count: localDigits(markCount) });
 
   return (
     <div className="nb-shell min-h-screen">
       <SpaceRail />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
-        {/* Top bar */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <Link
-            to="/canvas"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label={t("vault.canvas.backToCanvases")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-          <input
-            value={canvasDoc.name}
-            onChange={(event) => saveCanvasDoc({ name: event.target.value })}
-            aria-label={t("vault.canvas.canvasName")}
-            className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[22px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
-          />
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            {t(`vault.canvas.status.${status}`)}
-          </span>
+        {/* Top row: back, name, status, moon - INSIDE NoteTopStack for sticky behavior */}
+        <NoteTopStack>
+          <div data-crumb data-testid="canvas-breadcrumb-area">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Link
+                to="/canvas"
+                className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+                aria-label={t("vault.canvas.backToCanvases")}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                {t("vault.canvas.backToCanvases")}
+              </Link>
+              <span className="text-[11px] text-muted-foreground/40">/</span>
 
-          {/* Mode switcher */}
-          <div className="flex items-center gap-1 rounded-lg bg-accent/50 p-1">
-            <button
-              type="button"
-              onClick={() => saveCanvasDoc({ kind: "canvas" })}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[11px] font-medium transition",
-                currentMode === "canvas"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t("vault.canvas.modeCanvas") || "Canvas"}
-            </button>
-            <button
-              type="button"
-              onClick={() => saveCanvasDoc({ kind: "ink" })}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[11px] font-medium transition",
-                currentMode === "ink"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t("vault.canvas.modeInk") || "Ink"}
-            </button>
-            <button
-              type="button"
-              onClick={() => saveCanvasDoc({ kind: "design" })}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-[11px] font-medium transition",
-                currentMode === "design"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t("vault.canvas.modeDesign") || "Design"}
-            </button>
+              {/* Editable canvas name */}
+              <input
+                value={canvasDoc.name}
+                onChange={(event) => saveCanvasDoc({ name: event.target.value })}
+                aria-label={t("vault.canvas.canvasName")}
+                className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[22px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
+              />
+
+              {/* Status */}
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {t(`canvas.status.${status}`)}
+              </span>
+
+              <div className="ml-auto flex items-center gap-1.5">
+                {/* ThemeToggle - one click light/dark */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Toggle theme via the same mechanism as ThemeToggle
+                    const root = document.documentElement;
+                    const isDark = root.classList.contains("dark");
+                    root.classList.toggle("dark", !isDark);
+                    root.classList.toggle("light", isDark);
+                    localStorage.setItem("themeMode", isDark ? "light" : "dark");
+                  }}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
+                  aria-label={t("settings.appearance.switchToLight") || "Switch theme"}
+                  title={t("settings.appearance.switchToLight") || "Switch theme"}
+                >
+                  {document.documentElement.classList.contains("dark") ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+
+                {/* FocusToggle removed per C19 */}
+              </div>
+            </div>
           </div>
 
-          <FocusToggle />
-        </div>
-
-        {/* Toolbar - redesigned with RibbonKit components */}
-        <div className="mb-4 flex flex-wrap items-stretch gap-1 p-1.5 rounded-lg border border-border/60 bg-card/50">
-          {/* Cards group */}
-          <RibbonGroup label="Cards" icon={Square} priority={70}>
-            <RibbonButton
-              id="select"
-              icon={MousePointer}
-              label="Select"
-              hint="Select and move cards"
-              active={tool.mode === "select"}
-              onClick={() => selectTool("select")}
-              keepFocus={false}
+          {/* Ribbon tab line + panel - SAME as note page */}
+          <RibbonPanelPopoverProvider>
+            <RibbonTabLine
+              tabs={CANVAS_TABS.map((item) => ({ ...item, label: t(item.label) }))}
+              tab={activeTab}
+              onTab={chooseTab}
+              leading={leading}
+              trailing={trailing}
+              isFirstTabActive={activeTab === "home"}
             />
-            <RibbonButton
-              id="addCard"
-              icon={Plus}
-              label="Add Card"
-              hint="Add a new card"
-              onClick={() => {
-                if (engineRef.current) {
-                  const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                  const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                  const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                  const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                  handleAddCard(centerX, centerY);
-                }
-              }}
-              keepFocus={false}
-            />
-            <RibbonButton
-              id="addConnector"
-              icon={LinkIcon}
-              label="Connect"
-              hint="Connect two cards"
-              active={tool.mode === "addConnector"}
-              disabled={!pendingConnectorFrom && selectedIds.length === 0}
-              onClick={() => selectTool("addConnector")}
-              keepFocus={false}
-            />
-          </RibbonGroup>
-
-          {/* Navigate group */}
-          <RibbonGroup label="Navigate" icon={MousePointer} priority={65}>
-            <RibbonButton
-              id="pan"
-              icon={Maximize2}
-              label="Pan"
-              hint="Pan the canvas"
-              active={tool.mode === "pan"}
-              onClick={() => selectTool("pan")}
-              keepFocus={false}
-            />
-            <RibbonButton
-              id="insertSpace"
-              icon={RotateCcw}
-              label="Insert Space"
-              hint="Insert vertical space"
-              active={tool.mode === "insertSpace"}
-              onClick={() => selectTool("insertSpace")}
-              keepFocus={false}
-            />
-          </RibbonGroup>
-
-          {/* Draw group (ink mode only) */}
-          {currentKind === "ink" && (
-            <RibbonGroup label="Draw" icon={PenLine} priority={60}>
-              <RibbonButton
-                id="draw"
-                icon={PenLine}
-                label="Pen"
-                hint="Freehand drawing"
-                active={tool.mode === "draw"}
-                onClick={() => selectTool("draw")}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="erase"
-                icon={Minus}
-                label="Erase"
-                hint="Erase strokes"
-                active={tool.mode === "erase"}
-                onClick={() => selectTool("erase")}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="lasso"
-                icon={Square}
-                label="Lasso"
-                hint="Select strokes"
-                active={tool.mode === "lasso"}
-                onClick={() => selectTool("lasso")}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="shape"
-                icon={Type}
-                label="Shapes"
-                hint="Draw shapes"
-                active={tool.mode === "shape"}
-                onClick={() => selectTool("shape")}
-                keepFocus={false}
-              />
-            </RibbonGroup>
-          )}
-
-          {/* Paper group (ink/design modes) */}
-          {(currentKind === "ink" || currentKind === "design") && (
-            <RibbonGroup label="Paper" icon={Layers} priority={55}>
-              <RibbonSelect
-                title={t("ink.paper.template") || "Template"}
-                value={paper.template || "grid"}
-                onChange={(template) => handlePaperChange({ template })}
-                options={[
-                  { value: "blank", label: "Blank" },
-                  { value: "ruled", label: "Ruled" },
-                  { value: "grid", label: "Grid" },
-                  { value: "dots", label: "Dots" },
-                  { value: "stave", label: "Stave" },
-                  { value: "iso", label: "Isometric" },
-                ]}
-              />
-              <RibbonSelect
-                title={t("ink.paper.size") || "Page Size"}
-                value={paper.size || "infinite"}
-                onChange={(size) => handlePaperChange({ size })}
-                options={[
-                  { value: "infinite", label: "Infinite" },
-                  { value: "a4", label: "A4" },
-                  { value: "letter", label: "Letter" },
-                  { value: "3:4", label: "3:4" },
-                  { value: "16:9", label: "16:9" },
-                  { value: "free", label: "Free" },
-                ]}
-              />
-              <RibbonSelect
-                title={t("ink.paper.tone") || "Tone"}
-                value={paper.tone || "dark"}
-                onChange={(tone) => handlePaperChange({ tone })}
-                options={[
-                  { value: "dark", label: "Dark" },
-                  { value: "light", label: "Light" },
-                ]}
-              />
-            </RibbonGroup>
-          )}
-
-          {/* Frames group (design mode only) */}
-          {currentKind === "design" && (
-            <RibbonGroup label="Frames" icon={Layout} priority={50}>
-              <RibbonMenu
-                icon={Layout}
-                label="Add Frame"
-                hint="Add a paper frame (A4, Letter, etc.)"
-                width={200}
-              >
-                {(close) => (
-                  <>
-                    <MenuLabel>{t("vault.canvas.addFrame") || "Add Frame"}</MenuLabel>
-                    {FRAME_TYPES.map((ft) => (
-                      <MenuItem
-                        key={ft.id}
-                        onClick={() => {
-                          if (engineRef.current) {
-                            const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                            const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                            const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                            const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                            handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
-                          }
-                          close();
-                        }}
-                      >
-                        {ft.label}
-                      </MenuItem>
-                    ))}
-                  </>
-                )}
-              </RibbonMenu>
-            </RibbonGroup>
-          )}
-
-          {/* Media group (design mode only) */}
-          {currentKind === "design" && (
-            <RibbonGroup label="Media" icon={Image} priority={45}>
-              <RibbonButton
-                id="addImage"
-                icon={Image}
-                label="Image"
-                hint="Add an image"
-                onClick={() => {
-                  if (engineRef.current) {
-                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                    handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
-                  }
-                }}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="addPdfPage"
-                icon={FileText}
-                label="PDF Page"
-                hint="Add a PDF page"
-                onClick={() => {
-                  if (engineRef.current) {
-                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                    handleAddDesignObject(OBJECT_TYPES.PDF_PAGE, centerX, centerY);
-                  }
-                }}
-                keepFocus={false}
-              />
-            </RibbonGroup>
-          )}
-
-          {/* Objects group (design mode only) */}
-          {currentKind === "design" && (
-            <RibbonGroup label="Objects" icon={Box} priority={40}>
-              <RibbonMenu
-                icon={Square}
-                label="Shapes"
-                hint="Add a shape"
-                width={200}
-              >
-                {(close) => (
-                  <>
-                    <MenuLabel>{t("ink.objects.shapes") || "Shapes"}</MenuLabel>
-                    {[
-                      { id: "rect", icon: Square, label: "Rectangle" },
-                      { id: "ellipse", icon: Type, label: "Circle/Ellipse" },
-                      { id: "line", icon: Minus, label: "Line" },
-                      { id: "arrow", icon: LinkIcon, label: "Arrow" },
-                      { id: "triangle", icon: RotateCcw, label: "Triangle" },
-                      { id: "polygon", icon: Layers, label: "Polygon" },
-                    ].map((shape) => {
-                      const Icon = shape.icon;
-                      return (
-                        <MenuItem
-                          key={shape.id}
-                          onClick={() => {
-                            if (engineRef.current) {
-                              const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                              const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                              const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                              const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                              handleAddDesignObject(OBJECT_TYPES.SHAPE, centerX, centerY, { shapeType: shape.id });
-                            }
-                            close();
-                          }}
-                        >
-                          <Icon className="h-4 w-4 mr-2" />
-                          {shape.label}
-                        </MenuItem>
-                      );
-                    })}
-                  </>
-                )}
-              </RibbonMenu>
-              <RibbonButton
-                id="addSticker"
-                icon={Image}
-                label="Sticker"
-                hint="Add a sticker"
-                onClick={() => {
-                  if (engineRef.current) {
-                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                    handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
-                  }
-                }}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="addTextBox"
-                icon={Type}
-                label="Text Box"
-                hint="Add a text box"
-                onClick={() => {
-                  if (engineRef.current) {
-                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                    handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
-                  }
-                }}
-                keepFocus={false}
-              />
-              <RibbonButton
-                id="addSticky"
-                icon={FileText}
-                label="Sticky Note"
-                hint="Add a sticky note"
-                onClick={() => {
-                  if (engineRef.current) {
-                    const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                    const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                    const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                    const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                    handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
-                  }
-                }}
-                keepFocus={false}
-              />
-            </RibbonGroup>
-          )}
-
-          {/* View group */}
-          <RibbonGroup label="View" icon={Maximize2} priority={30}>
-            <RibbonButton
-              icon={Maximize2}
-              label="Fit Page"
-              hint="Fit to page"
-              onClick={() => engineRef.current?.fitView?.()}
-              keepFocus={false}
-            />
-            <RibbonButton
-              icon={Square}
-              label="Fit Width"
-              hint="Fit to width"
-              onClick={() => engineRef.current?.fitWidth?.()}
-              keepFocus={false}
-            />
-            <RibbonButton
-              icon={Minus}
-              label="Zoom Out"
-              hint="Zoom out"
-              onClick={() => engineRef.current?.zoomBy?.(0.88)}
-              keepFocus={false}
-            />
-            <span className="self-center font-mono text-[10px] text-muted-foreground px-1">
-              {camera ? Math.round(camera.scale * 100) : 100}%
-            </span>
-            <RibbonButton
-              icon={Plus}
-              label="Zoom In"
-              hint="Zoom in"
-              onClick={() => engineRef.current?.zoomBy?.(1.12)}
-              keepFocus={false}
-            />
-            <RibbonButton
-              icon={RotateCcw}
-              label="Reset View"
-              hint="Reset view"
-              onClick={() => engineRef.current?.setCamera?.({ x: 0, y: 0, scale: 1 })}
-              keepFocus={false}
-            />
-          </RibbonGroup>
-
-          {/* Export/Import group */}
-          <RibbonGroup label="File" icon={Download} priority={20}>
-            <RibbonMenu
-              icon={Download}
-              label="Export"
-              hint="Export canvas"
-              width={240}
-            >
-              {(close) => (
+            <RibbonPanel isFirstTabActive={activeTab === "home"}>
+              {/* HOME TAB */}
+              {activeTab === "home" && (
                 <>
-                  <MenuLabel>{t("vault.canvas.export") || "Export"}</MenuLabel>
-                  <MenuItem
-                    onClick={() => {
-                      exportCanvasDoc(canvasDoc);
-                      close();
-                    }}
-                  >
-                    <FileTextIcon className="h-4 w-4 mr-2" />
-                    {t("vault.canvas.export") || "Export"} .lemoncanvas
-                  </MenuItem>
-                  <hr className="my-1 border-border" />
-                  <MenuLabel>{t("vault.canvas.exportPdf") || "Export as PDF"}</MenuLabel>
-                  <MenuItem
-                    onClick={() => {
-                      exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
-                      close();
-                    }}
-                  >
-                    <FileTextIcon className="h-4 w-4 mr-2" />
-                    {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PDF)
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                      if (frames.length === 1) {
-                        exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                      } else if (frames.length > 1) {
-                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                      } else {
-                        exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
-                      }
-                      close();
-                    }}
-                  >
-                    <FileTextIcon className="h-4 w-4 mr-2" />
-                    {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PDF)
-                  </MenuItem>
-                  <hr className="my-1 border-border" />
-                  <MenuLabel>{t("vault.canvas.exportPng") || "Export as PNG"}</MenuLabel>
-                  <MenuItem
-                    onClick={() => {
-                      exportCanvasToPng(canvasDoc, { wholeCanvas: true });
-                      close();
-                    }}
-                  >
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    {t("vault.canvas.exportWholeCanvas") || "Whole canvas"} (PNG)
-                  </MenuItem>
-                  <MenuItem
-                    onClick={() => {
-                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                      if (frames.length === 1) {
-                        exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                      } else if (frames.length > 1) {
-                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                      } else {
-                        exportCanvasToPng(canvasDoc, { wholeCanvas: true });
-                      }
-                      close();
-                    }}
-                  >
-                    <ImageIcon className="h-4 w-4 mr-2" />
-                    {t("vault.canvas.exportSelectedFrame") || "Selected frame"} (PNG)
-                  </MenuItem>
+                  {/* Select group */}
+                  <RibbonGroup label={ct("home.select.label")} icon={MousePointer} priority={70}>
+                    <RibbonButton
+                      id="select"
+                      icon={MousePointer}
+                      label={ct("home.select.select")}
+                      hint={ct("home.select.selectHint")}
+                      active={tool.mode === "select"}
+                      onClick={() => selectTool("select")}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="pan"
+                      icon={Maximize2}
+                      label={ct("home.select.pan")}
+                      hint={ct("home.select.panHint")}
+                      active={tool.mode === "pan"}
+                      onClick={() => selectTool("pan")}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+
+                  {/* Clipboard group - only Delete exists */}
+                  <RibbonGroup label={ct("home.clipboard.label")} icon={Square} priority={65}>
+                    <RibbonButton
+                      id="delete"
+                      icon={Minus}
+                      label={ct("home.clipboard.delete")}
+                      hint={ct("home.clipboard.deleteHint")}
+                      disabled={selectedIds.length === 0}
+                      onClick={() => {
+                        selectedIds.forEach((id) => handleDeleteObject(id));
+                      }}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+
+                  {/* Arrange group - not implemented */}
+                  <RibbonGroup label={ct("home.arrange.label")} icon={Layers} priority={60}>
+                    <RibbonButton
+                      id="bringForward"
+                      icon={ArrowLeft}
+                      label={ct("home.arrange.bringForward")}
+                      hint={ct("home.arrange.bringForwardHint")}
+                      disabled
+                      disabledReason={ct("home.arrange.notImplemented") || "Not implemented yet"}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="sendBackward"
+                      icon={ArrowLeft}
+                      label={ct("home.arrange.sendBackward")}
+                      hint={ct("home.arrange.sendBackwardHint")}
+                      disabled
+                      disabledReason={ct("home.arrange.notImplemented") || "Not implemented yet"}
+                      keepFocus={false}
+                      className="transform rotate-180"
+                    />
+                  </RibbonGroup>
                 </>
               )}
-            </RibbonMenu>
-            <RibbonButton
-              icon={Upload}
-              label="Import"
-              hint="Import .lemoncanvas file"
-              onClick={() => triggerImport(
-                (doc) => {
-                  navigate(`/canvas/${doc.id}`);
-                  toast.success(t("vault.canvas.importSuccess") || "Canvas imported successfully");
-                },
-                (error) => toast.error(error.message)
-              )}
-              keepFocus={false}
-            />
-          </RibbonGroup>
-        </div>
 
-        {/* Canvas area */}
+              {/* DRAW TAB */}
+              {activeTab === "draw" && (
+                <>
+                  {/* Tools group */}
+                  <RibbonGroup label={ct("draw.tools.label")} icon={PenLine} priority={70}>
+                    <RibbonButton
+                      id="draw"
+                      icon={PenLine}
+                      label={ct("draw.tools.pen")}
+                      hint={ct("draw.tools.penHint")}
+                      active={tool.mode === "draw"}
+                      onClick={() => selectTool("draw")}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="erase"
+                      icon={Minus}
+                      label={ct("draw.tools.eraser")}
+                      hint={ct("draw.tools.eraserHint")}
+                      active={tool.mode === "erase"}
+                      onClick={() => selectTool("erase")}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="lasso"
+                      icon={Square}
+                      label={ct("draw.tools.lasso")}
+                      hint={ct("draw.tools.lassoHint")}
+                      active={tool.mode === "lasso"}
+                      onClick={() => selectTool("lasso")}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="shape"
+                      icon={Type}
+                      label={ct("draw.tools.shape")}
+                      hint={ct("draw.tools.shapeHint")}
+                      active={tool.mode === "shape"}
+                      onClick={() => selectTool("shape")}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="shapeRecognition"
+                      icon={Type}
+                      label={ct("draw.tools.shapeRecognition")}
+                      hint={ct("draw.tools.shapeRecognitionHint")}
+                      active={tool.shapeRecognition === true}
+                      onClick={() => setTool((prev) => ({ ...prev, shapeRecognition: !prev.shapeRecognition }))}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+
+                  {/* Pen look group */}
+                  <RibbonGroup label={ct("draw.penLook.label")} icon={PenLine} priority={65}>
+                    <RibbonSelect
+                      title={ct("draw.penLook.colorHint")}
+                      value={tool.color || "#e9e2d0"}
+                      onChange={(color) => setTool((prev) => ({ ...prev, color }))}
+                      options={[
+                        { value: "#e9e2d0", label: "Default" },
+                        { value: "#000000", label: "Black" },
+                        { value: "#ffffff", label: "White" },
+                        { value: "#e5b567", label: "Amber" },
+                        { value: "#f87171", label: "Red" },
+                        { value: "#4ade80", label: "Green" },
+                        { value: "#60a5fa", label: "Blue" },
+                        { value: "#a78bfa", label: "Purple" },
+                      ]}
+                    />
+                    <RibbonSelect
+                      title={ct("draw.penLook.widthHint")}
+                      value={String(tool.width || 3)}
+                      onChange={(width) => setTool((prev) => ({ ...prev, width: Number(width) }))}
+                      options={[
+                        { value: "1", label: "1" },
+                        { value: "2", label: "2" },
+                        { value: "3", label: "3" },
+                        { value: "4", label: "4" },
+                        { value: "6", label: "6" },
+                        { value: "8", label: "8" },
+                        { value: "12", label: "12" },
+                      ]}
+                    />
+                  </RibbonGroup>
+                </>
+              )}
+
+              {/* INSERT TAB */}
+              {activeTab === "insert" && (
+                <>
+                  {/* Cards group */}
+                  <RibbonGroup label={ct("insert.cards.label")} icon={Square} priority={70}>
+                    <RibbonButton
+                      id="addCard"
+                      icon={Plus}
+                      label={ct("insert.cards.addCard")}
+                      hint={ct("insert.cards.addCardHint")}
+                      onClick={() => {
+                        if (engineRef.current) {
+                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                          handleAddCard(centerX, centerY);
+                        }
+                      }}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="addConnector"
+                      icon={LinkIcon}
+                      label={ct("insert.cards.connect")}
+                      hint={ct("insert.cards.connectHint")}
+                      active={tool.mode === "addConnector"}
+                      disabled={!pendingConnectorFrom && selectedIds.length === 0}
+                      onClick={() => selectTool("addConnector")}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+
+                  {/* Text & Notes group */}
+                  <RibbonGroup label={ct("insert.textNotes.label")} icon={FileText} priority={65}>
+                    <RibbonButton
+                      id="addTextBox"
+                      icon={Type}
+                      label={ct("insert.textNotes.textBox")}
+                      hint={ct("insert.textNotes.textBoxHint")}
+                      onClick={() => {
+                        if (engineRef.current) {
+                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                          handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
+                        }
+                      }}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="addSticky"
+                      icon={FileText}
+                      label={ct("insert.textNotes.stickyNote")}
+                      hint={ct("insert.textNotes.stickyNoteHint")}
+                      onClick={() => {
+                        if (engineRef.current) {
+                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                          handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
+                        }
+                      }}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+
+                  {/* Objects group */}
+                  <RibbonGroup label={ct("insert.objects.label")} icon={Layers} priority={60}>
+                    <RibbonMenu
+                      icon={Square}
+                      label={ct("insert.objects.shapes")}
+                      hint={ct("insert.objects.shapesHint")}
+                      width={200}
+                    >
+                      {(close) => (
+                        <>
+                          <MenuLabel>{ct("insert.objects.shapes")}</MenuLabel>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "rect" }); close(); }}>
+                            <Square className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.rectangle")}
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "ellipse" }); close(); }}>
+                            <Type className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.ellipse")}
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "line" }); close(); }}>
+                            <Minus className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.line")}
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "arrow" }); close(); }}>
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.arrow")}
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "triangle" }); close(); }}>
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.triangle")}
+                          </MenuItem>
+                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "polygon" }); close(); }}>
+                            <Layers className="h-4 w-4 mr-2" />
+                            {ct("insert.objects.polygon")}
+                          </MenuItem>
+                        </>
+                      )}
+                    </RibbonMenu>
+                  </RibbonGroup>
+
+                  {/* Media group */}
+                  <RibbonGroup label={ct("insert.media.label")} icon={Image} priority={55}>
+                    <RibbonButton
+                      id="addSticker"
+                      icon={Image}
+                      label={ct("insert.media.sticker")}
+                      hint={ct("insert.media.stickerHint")}
+                      onClick={() => {
+                        if (engineRef.current) {
+                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                          handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
+                        }
+                      }}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      id="addImage"
+                      icon={Image}
+                      label={ct("insert.media.image")}
+                      hint={ct("insert.media.imageHint")}
+                      onClick={() => {
+                        if (engineRef.current) {
+                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                          handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
+                        }
+                      }}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+                </>
+              )}
+
+              {/* PAGE TAB */}
+              {activeTab === "page" && (
+                <>
+                  {/* Frames group */}
+                  <RibbonGroup label={ct("page.frames.label")} icon={Layout} priority={70}>
+                    <RibbonMenu
+                      icon={Layout}
+                      label={ct("page.frames.addFrame")}
+                      hint={ct("page.frames.addFrameHint")}
+                      width={200}
+                    >
+                      {(close) => (
+                        <>
+                          <MenuLabel>{ct("page.frames.addFrame")}</MenuLabel>
+                          {FRAME_TYPES.map((ft) => (
+                            <MenuItem
+                              key={ft.id}
+                              onClick={() => {
+                                if (engineRef.current) {
+                                  const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                  const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                  const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                  const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                  handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
+                                }
+                                close();
+                              }}
+                            >
+                              {t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}
+                            </MenuItem>
+                          ))}
+                        </>
+                      )}
+                    </RibbonMenu>
+                  </RibbonGroup>
+
+                  {/* Paper group */}
+                  <RibbonGroup label={ct("page.paper.label")} icon={Layers} priority={65}>
+                    <RibbonSelect
+                      title={ct("page.paper.templateHint")}
+                      value={paper.template || "grid"}
+                      onChange={(template) => handlePaperChange({ template })}
+                      options={[
+                        { value: "blank", label: ct("page.paper.blank") },
+                        { value: "ruled", label: ct("page.paper.ruled") },
+                        { value: "grid", label: ct("page.paper.grid") },
+                        { value: "dots", label: ct("page.paper.dots") },
+                        { value: "stave", label: ct("page.paper.stave") },
+                        { value: "iso", label: ct("page.paper.iso") },
+                      ]}
+                    />
+                    <RibbonSelect
+                      title={ct("page.paper.sizeHint")}
+                      value={paper.size || "infinite"}
+                      onChange={(size) => handlePaperChange({ size })}
+                      options={[
+                        { value: "infinite", label: ct("page.paper.infinite") },
+                        { value: "a4", label: "A4" },
+                        { value: "letter", label: "Letter" },
+                        { value: "3:4", label: "3:4" },
+                        { value: "16:9", label: "16:9" },
+                        { value: "free", label: ct("page.paper.free") },
+                      ]}
+                    />
+                    <RibbonSelect
+                      title={ct("page.paper.toneHint")}
+                      value={paper.tone || "dark"}
+                      onChange={(tone) => handlePaperChange({ tone })}
+                      options={[
+                        { value: "dark", label: ct("page.paper.dark") },
+                        { value: "light", label: ct("page.paper.light") },
+                      ]}
+                    />
+                  </RibbonGroup>
+                </>
+              )}
+
+              {/* VIEW TAB */}
+              {activeTab === "view" && (
+                <>
+                  <RibbonGroup label={ct("view.label")} icon={Maximize2} priority={70}>
+                    <RibbonButton
+                      icon={Maximize2}
+                      label={ct("view.fitPage")}
+                      hint={ct("view.fitPageHint")}
+                      onClick={() => engineRef.current?.fitView?.()}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      icon={Square}
+                      label={ct("view.fitWidth")}
+                      hint={ct("view.fitWidthHint")}
+                      onClick={() => engineRef.current?.fitWidth?.()}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      icon={Minus}
+                      label={ct("view.zoomOut")}
+                      hint={ct("view.zoomOutHint")}
+                      onClick={() => engineRef.current?.zoomBy?.(0.88)}
+                      keepFocus={false}
+                    />
+                    <span className="self-center font-mono text-[10px] text-muted-foreground px-1">
+                      {ct("view.zoomPercent", { percent: Math.round(camera.scale * 100) })}
+                    </span>
+                    <RibbonButton
+                      icon={Plus}
+                      label={ct("view.zoomIn")}
+                      hint={ct("view.zoomInHint")}
+                      onClick={() => engineRef.current?.zoomBy?.(1.12)}
+                      keepFocus={false}
+                    />
+                    <RibbonButton
+                      icon={RotateCcw}
+                      label={ct("view.reset")}
+                      hint={ct("view.resetHint")}
+                      onClick={() => engineRef.current?.setCamera?.({ x: 0, y: 0, scale: 1 })}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+                </>
+              )}
+
+              {/* FILE TAB */}
+              {activeTab === "file" && (
+                <>
+                  <RibbonGroup label={ct("file.label")} icon={Download} priority={70}>
+                    <RibbonMenu
+                      icon={Download}
+                      label={ct("file.exportCanvas")}
+                      hint={ct("file.exportCanvasHint")}
+                      width={240}
+                    >
+                      {(close) => (
+                        <>
+                          <MenuLabel>{ct("file.exportCanvas")}</MenuLabel>
+                          <MenuItem onClick={() => { exportCanvasDoc(canvasDoc); close(); }}>
+                            <FileTextIcon className="h-4 w-4 mr-2" />
+                            {ct("file.exportCanvas")}
+                          </MenuItem>
+                          <hr className="my-1 border-border" />
+                          <MenuLabel>{ct("file.exportPdf")}</MenuLabel>
+                          <MenuItem onClick={() => { exportCanvasToPdf(canvasDoc, { wholeCanvas: true }); close(); }}>
+                            <FileTextIcon className="h-4 w-4 mr-2" />
+                            {ct("file.exportWholeCanvas")} (PDF)
+                          </MenuItem>
+                          <MenuItem onClick={() => {
+                            const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                            if (frames.length === 1) {
+                              exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                            } else if (frames.length > 1) {
+                              toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                            } else {
+                              exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
+                            }
+                            close();
+                          }}>
+                            <FileTextIcon className="h-4 w-4 mr-2" />
+                            {ct("file.exportSelectedFrame")} (PDF)
+                          </MenuItem>
+                          <hr className="my-1 border-border" />
+                          <MenuLabel>{ct("file.exportPng")}</MenuLabel>
+                          <MenuItem onClick={() => { exportCanvasToPng(canvasDoc, { wholeCanvas: true }); close(); }}>
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            {ct("file.exportWholeCanvas")} (PNG)
+                          </MenuItem>
+                          <MenuItem onClick={() => {
+                            const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                            if (frames.length === 1) {
+                              exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                            } else if (frames.length > 1) {
+                              toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                            } else {
+                              exportCanvasToPng(canvasDoc, { wholeCanvas: true });
+                            }
+                            close();
+                          }}>
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            {ct("file.exportSelectedFrame")} (PNG)
+                          </MenuItem>
+                        </>
+                      )}
+                    </RibbonMenu>
+                    <RibbonButton
+                      icon={Upload}
+                      label={ct("file.importCanvas")}
+                      hint={ct("file.importCanvasHint")}
+                      onClick={() => triggerImport(
+                        (doc) => {
+                          navigate(`/canvas/${doc.id}`);
+                          toast.success(t("vault.canvas.importSuccess") || "Canvas imported successfully");
+                        },
+                        (error) => toast.error(error.message)
+                      )}
+                      keepFocus={false}
+                    />
+                  </RibbonGroup>
+                </>
+              )}
+            </RibbonPanel>
+          </RibbonPanelPopoverProvider>
+        </NoteTopStack>
+
+        {/* Canvas area - fills remaining height */}
         <div
           className={cn(
             "relative rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
-            focus ? "lg:h-[calc(100vh-300px)]" : "lg:h-[calc(100vh-250px)]"
+            "min-h-0 flex-1",
+            focus ? "h-[calc(100vh-300px)]" : "h-[calc(100vh-250px)]"
           )}
         >
           <CanvasBoard
             ref={engineRef}
-            kind={currentMode}
+            className="h-full w-full"
+            kind="canvas"
             strokes={strokes}
             objects={objects}
             paper={paper}
@@ -955,7 +941,6 @@ export default function CanvasPage() {
                 if (!fromObj) return null;
                 const fromX = fromObj.x + fromObj.width / 2;
                 const fromY = fromObj.y + fromObj.height / 2;
-                // We can't easily get mouse position here without more refs, so skip preview for now
                 return null;
               })()}
             </svg>
@@ -965,7 +950,7 @@ export default function CanvasPage() {
         {/* Stats bar */}
         <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground font-mono">
           <span>{t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}</span>
-          <span>{strokes.length} {t("ink.tab.marks", { count: strokes.length }) || "strokes"}</span>
+          <span>{markLabel}</span>
           <span>{objects.length} objects</span>
         </div>
 
@@ -1006,7 +991,7 @@ export default function CanvasPage() {
                     {t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}
                   </p>
                   <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70" dir="auto">
-                    {strokes.length} strokes · {objects.length} objects
+                    {strokes.length} {t("ink.tab.marks", { count: strokes.length }) || "strokes"} · {objects.length} objects
                   </p>
                 </div>
               ),
@@ -1117,7 +1102,7 @@ function ObjectInspector({ object, objects, onChange, onDelete, t }) {
             <label className="block text-xs font-medium text-muted-foreground mb-1">Frame Type</label>
             <select value={object.frameType} onChange={(e) => onChange(object.id, { frameType: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm">
               {FRAME_TYPES.map((ft) => (
-                <option key={ft.id} value={ft.id}>{ft.label}</option>
+                <option key={ft.id} value={ft.id}>{t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}</option>
               ))}
             </select>
           </div>

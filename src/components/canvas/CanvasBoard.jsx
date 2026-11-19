@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { forwardRef, useEffect, useRef, useCallback, useMemo, useImperativeHandle } from "react";
 import InkEngine from "@/lib/canvas/engine";
 import FloatingObjects from "@/components/ink/FloatingObjects";
 import { useThemeRevision } from "@/lib/theme";
@@ -37,38 +37,37 @@ const DESIGN_TOOL_MODES = ["select", "addCard", "addConnector", "addFrame", "add
  * @param {string} kind - "ink" | "canvas" - determines default tool palette
  * @param {string} defaultTool - override default tool for this kind
  */
-export default function CanvasBoard({
-  kind = "ink",                    // "ink" | "canvas"
-  strokes,
-  objects = [],
-  paper,
-  tool,
-  initialCamera,
-  onCommit,
-  onReplace,
-  onSelection,
-  onCamera,
-  onPickColor,
-  onEngine,
-  onInsertSpaceLimited,
-  // Object callbacks
-  onSelectObject,
-  onUpdateObject,
-  onDeleteObject,
-  onBringToFront,
-  onSendToBack,
-  editingObjectId,
-  setEditingObjectId,
-  selectedObjectIds = [],
-  className,
-  height,
-  autoFit = false,
-  transparent = false,
-  // New: connector creation state
-  pendingConnectorFrom = null,
-  setPendingConnectorFrom,
+const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
+  const {
+    kind = "ink",
+    strokes,
+    objects = [],
+    paper,
+    tool,
+    initialCamera,
+    onCommit,
+    onReplace,
+    onSelection,
+    onCamera,
+    onPickColor,
+    onEngine,
+    onInsertSpaceLimited,
+    onSelectObject,
+    onUpdateObject,
+    onDeleteObject,
+    onBringToFront,
+    onSendToBack,
+    editingObjectId,
+    setEditingObjectId,
+    selectedObjectIds = [],
+    className,
+    height,
+    autoFit = false,
+    transparent = false,
+    pendingConnectorFrom = null,
+    setPendingConnectorFrom,
   onCreateConnector,
-}) {
+} = props;
   const wrapRef = useRef(null);
   const baseRef = useRef(null);
   const overlayRef = useRef(null);
@@ -389,6 +388,15 @@ export default function CanvasBoard({
     engine.pointerUp();
   }, [endInsertSpace]);
 
+  // Expose engine methods via forwardRef
+  useImperativeHandle(ref, () => ({
+    fitView: () => engineRef.current?.fitView?.(),
+    fitWidth: () => engineRef.current?.fitWidth?.(),
+    zoomBy: (factor) => engineRef.current?.zoomBy?.(factor),
+    setCamera: (camera) => engineRef.current?.setCamera?.(camera),
+    cancel: () => engineRef.current?.cancel?.(),
+  }), []);
+
   // Determine pointer events for overlay
   const isToolActive = live.current.kind === "canvas" 
     ? CANVAS_TOOL_MODES.includes(effectiveTool?.mode)
@@ -445,4 +453,8 @@ export default function CanvasBoard({
       />
     </div>
   );
-}
+});
+
+CanvasBoard.displayName = "CanvasBoard";
+
+export default CanvasBoard;

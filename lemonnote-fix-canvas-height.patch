@@ -1,0 +1,19 @@
+diff --git a/src/pages/CanvasPage.jsx b/src/pages/CanvasPage.jsx
+index 1507cbd..882a04a 100644
+--- a/src/pages/CanvasPage.jsx
++++ b/src/pages/CanvasPage.jsx
+@@ -919,11 +919,13 @@ export default function CanvasPage() {
+         <div
+           className={cn(
+             "relative rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
+-            focus ? "lg:h-[calc(100vh-300px)]" : "lg:h-[calc(100vh-250px)]"
++            "min-h-[420px]",
++            focus ? "h-[calc(100vh-300px)]" : "h-[calc(100vh-250px)]"
+           )}
+         >
+           <CanvasBoard
+             ref={engineRef}
++            className="h-full w-full"
+             kind={currentMode}
+             strokes={strokes}
+             objects={objects}

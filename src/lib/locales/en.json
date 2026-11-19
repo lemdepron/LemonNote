@@ -1803,6 +1803,153 @@
         "locked": "Text is locked because ink is drawn over it",
         "unlock": "Unlock",
         "unlockWarning": "Unlocking will allow editing, but ink strokes may no longer match the text content."
+      },
+      "tabs": {
+        "home": "Home",
+        "draw": "Draw",
+        "insert": "Insert",
+        "page": "Page",
+        "view": "View",
+        "file": "File"
+      },
+      "home": {
+        "select": {
+          "select": "Select",
+          "selectHint": "Select and move objects",
+          "pan": "Pan",
+          "panHint": "Pan the canvas"
+        },
+        "clipboard": {
+          "copy": "Copy",
+          "copyHint": "Copy selected objects",
+          "paste": "Paste",
+          "pasteHint": "Paste objects from clipboard",
+          "duplicate": "Duplicate",
+          "duplicateHint": "Duplicate selected objects",
+          "delete": "Delete",
+          "deleteHint": "Delete selected objects"
+        },
+        "arrange": {
+          "bringForward": "Bring Forward",
+          "bringForwardHint": "Move selected objects one layer forward",
+          "sendBackward": "Send Backward",
+          "sendBackwardHint": "Move selected objects one layer backward"
+        }
+      },
+      "draw": {
+        "tools": {
+          "pen": "Pen",
+          "penHint": "Freehand drawing",
+          "eraser": "Eraser",
+          "eraserHint": "Erase strokes",
+          "lasso": "Lasso",
+          "lassoHint": "Select strokes by circling them",
+          "shape": "Shapes",
+          "shapeHint": "Draw shapes",
+          "shapeRecognition": "Shape Recognition",
+          "shapeRecognitionHint": "Snap drawn shapes to perfect geometry"
+        },
+        "penLook": {
+          "color": "Color",
+          "colorHint": "Pen color",
+          "width": "Width",
+          "widthHint": "Pen width"
+        }
+      },
+      "insert": {
+        "cards": {
+          "addCard": "Add Card",
+          "addCardHint": "Add a new card",
+          "connect": "Connect",
+          "connectHint": "Connect two cards"
+        },
+        "textNotes": {
+          "textBox": "Text Box",
+          "textBoxHint": "Add a text box",
+          "stickyNote": "Sticky Note",
+          "stickyNoteHint": "Add a sticky note"
+        },
+        "objects": {
+          "shapes": "Shapes",
+          "shapesHint": "Add a shape",
+          "rectangle": "Rectangle",
+          "ellipse": "Circle / Ellipse",
+          "line": "Line",
+          "arrow": "Arrow",
+          "triangle": "Triangle",
+          "polygon": "Polygon"
+        },
+        "media": {
+          "sticker": "Sticker",
+          "stickerHint": "Add a sticker",
+          "image": "Image",
+          "imageHint": "Add an image"
+        }
+      },
+      "page": {
+        "frames": {
+          "addFrame": "Add Frame",
+          "addFrameHint": "Add a paper frame",
+          "a4": "A4",
+          "letter": "Letter",
+          "ratio34": "3:4",
+          "ratio43": "4:3",
+          "ratio169": "16:9",
+          "square": "Square",
+          "free": "Free"
+        },
+        "paper": {
+          "template": "Template",
+          "templateHint": "Paper template",
+          "size": "Page Size",
+          "sizeHint": "Page size",
+          "tone": "Tone",
+          "toneHint": "Paper tone",
+          "blank": "Blank",
+          "ruled": "Ruled",
+          "grid": "Grid",
+          "dots": "Dots",
+          "stave": "Stave",
+          "iso": "Isometric",
+          "infinite": "Infinite",
+          "dark": "Dark",
+          "light": "Light"
+        }
+      },
+      "view": {
+        "fitPage": "Fit to Page",
+        "fitPageHint": "Fit the canvas to the page",
+        "fitWidth": "Fit to Width",
+        "fitWidthHint": "Fit the canvas to the viewport width",
+        "zoomOut": "Zoom Out",
+        "zoomOutHint": "Zoom out",
+        "zoomIn": "Zoom In",
+        "zoomInHint": "Zoom in",
+        "reset": "Reset View",
+        "resetHint": "Reset zoom and position",
+        "zoomPercent": "{percent}%"
+      },
+      "file": {
+        "exportCanvas": "Export .lemoncanvas",
+        "exportCanvasHint": "Export canvas as .lemoncanvas file",
+        "exportPdf": "Export PDF",
+        "exportPdfHint": "Export canvas as PDF",
+        "exportPng": "Export PNG",
+        "exportPngHint": "Export canvas as PNG",
+        "importCanvas": "Import .lemoncanvas",
+        "importCanvasHint": "Import a .lemoncanvas file"
+      },
+      "status": {
+        "saving": "saving",
+        "saved": "saved",
+        "idle": "idle",
+        "marks": "{count} mark",
+        "marks_plural": "{count} marks"
+      },
+      "emptyState": {
+        "noCanvases": "No canvases yet",
+        "newCanvas": "New canvas",
+        "canvasGone": "This canvas is gone."
       }
     },
     "tables": {
