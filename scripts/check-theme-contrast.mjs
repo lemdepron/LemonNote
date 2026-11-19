@@ -138,6 +138,10 @@ const BAUHAUS_THEMES = extractArray("BAUHAUS_THEMES", source);
 const CLAYMORPHISM_THEMES = extractArray("CLAYMORPHISM_THEMES", source);
 const HIGH_CONTRAST_THEMES = extractArray("HIGH_CONTRAST_THEMES", source);
 const SKEUOMORPHIC_THEMES = extractArray("SKEUOMORPHIC_THEMES", source);
+const ORGANIC_THEMES = extractArray("ORGANIC_THEMES", source);
+const GEOMETRIC_THEMES = extractArray("GEOMETRIC_THEMES", source);
+const RETRO_THEMES = extractArray("RETRO_THEMES", source);
+const ZEN_THEMES = extractArray("ZEN_THEMES", source);
 
 const ALL_THEMES = [
   ...GLASS_LIGHT_THEMES,
@@ -152,6 +156,10 @@ const ALL_THEMES = [
   ...CLAYMORPHISM_THEMES,
   ...HIGH_CONTRAST_THEMES,
   ...SKEUOMORPHIC_THEMES,
+  ...ORGANIC_THEMES,
+  ...GEOMETRIC_THEMES,
+  ...RETRO_THEMES,
+  ...ZEN_THEMES,
 ];
 
 console.log(`Found ${ALL_THEMES.length} themes (excluding notecraft default)`);
@@ -167,6 +175,10 @@ console.log(`  Bauhaus: ${BAUHAUS_THEMES.length}`);
 console.log(`  Claymorphism: ${CLAYMORPHISM_THEMES.length}`);
 console.log(`  High Contrast: ${HIGH_CONTRAST_THEMES.length}`);
 console.log(`  Skeuomorphic: ${SKEUOMORPHIC_THEMES.length}`);
+console.log(`  Organic: ${ORGANIC_THEMES.length}`);
+console.log(`  Geometric: ${GEOMETRIC_THEMES.length}`);
+console.log(`  Retro: ${RETRO_THEMES.length}`);
+console.log(`  Zen: ${ZEN_THEMES.length}`);
 
 // Color utilities
 function parseHSL(str) {
