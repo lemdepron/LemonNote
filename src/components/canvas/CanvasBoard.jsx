@@ -1,9 +1,8 @@
 import { forwardRef, useEffect, useRef, useCallback, useMemo, useImperativeHandle } from "react";
 import InkEngine from "@/lib/canvas/engine";
 import FloatingObjects from "@/components/ink/FloatingObjects";
-import { useThemeRevision } from "@/lib/theme";
+import { useThemeRevision, tokenColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { OBJECT_TYPES } from "@/lib/canvas/objects";
 
 const CURSORS = {
   draw: "cursor-crosshair",
@@ -27,14 +26,17 @@ const CURSORS = {
 };
 
 // Tool modes that should receive pointer events on the overlay
-const INK_TOOL_MODES = ["draw", "erase", "lasso", "shape", "eyedropper", "pan", "insertSpace", "select"];
-const CANVAS_TOOL_MODES = ["select", "addCard", "addConnector", "pan", "insertSpace"];
-const DESIGN_TOOL_MODES = ["select", "addCard", "addConnector", "addFrame", "addTextFrame", "addImage", "addPdfPage", "addShape", "addSticker", "addTextBox", "addSticky", "pan", "insertSpace", "draw", "erase", "lasso", "shape"];
+// Single unified list for all kinds (ink, canvas, design)
+const ALL_TOOL_MODES = [
+  "select", "pan", "draw", "erase", "lasso", "shape", "eyedropper", "insertSpace",
+  "addCard", "addConnector", "addFrame", "addTextFrame", "addImage", "addPdfPage",
+  "addShape", "addSticker", "addTextBox", "addSticky"
+];
 
 /**
  * Unified canvas board supporting both ink and card/canvas modes.
  * 
- * @param {string} kind - "ink" | "canvas" - determines default tool palette
+ * @param {string} kind - "ink" | "canvas" | "design" - determines default tool palette (stored but not used for tool gating)
  * @param {string} defaultTool - override default tool for this kind
  */
 const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
@@ -85,7 +87,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
 
   // Merge incoming tool with defaults
   const effectiveTool = useMemo(() => {
-    const base = { mode: defaultToolForKind, brush: "fountain", color: "#e9e2d0", alpha: 1, width: 3, size: 26 };
+    const base = { mode: defaultToolForKind, brush: "fountain", color: tokenColor("--ink-light") || "#e9e2d0", alpha: 1, width: 3, size: 26 };
     return { ...base, ...tool };
   }, [tool, defaultToolForKind]);
 
@@ -229,7 +231,6 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     if (!engine) return;
 
     const mode = live.current.tool?.mode;
-    const currentKind = live.current.kind;
 
     // Handle insertSpace mode (shared)
     if (mode === "insertSpace") {
@@ -243,90 +244,82 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       return;
     }
 
-    // Handle canvas/design-specific modes
-    if (currentKind === "canvas" || currentKind === "design") {
+    // Object creation tools - work in all kinds
+    const creationTools = [
+      "addCard", "addFrame", "addTextFrame", "addImage", "addPdfPage",
+      "addShape", "addSticker", "addTextBox", "addSticky"
+    ];
+    if (creationTools.includes(mode)) {
       const input = pointFrom(event);
       const world = engine.worldFromScreen(input.x, input.y);
-
-      // Handle addCard (works in both canvas and design)
-      if (mode === "addCard") {
-        const { createObject, getDefaultSize } = await import("@/lib/canvas/objects");
-        const size = getDefaultSize(OBJECT_TYPES.CARD);
-        const newCard = createObject(OBJECT_TYPES.CARD, world.x - size.width / 2, world.y - size.height / 2, size.width, size.height);
-        live.current.onUpdateObject?.(newCard.id, newCard);
-        engine.setTool({ ...engine.tool, mode: "select" });
-        live.current.onEngine?.(engine);
-        return;
+      const { createObject, getDefaultSize, OBJECT_TYPES: LocalOBJECT_TYPES } = await import("@/lib/canvas/objects");
+      
+      let type, shapeType, frameType;
+      switch (mode) {
+        case "addCard":
+          type = LocalOBJECT_TYPES.CARD;
+          break;
+        case "addFrame":
+          type = LocalOBJECT_TYPES.FRAME;
+          frameType = "a4";
+          break;
+        case "addTextFrame":
+          type = LocalOBJECT_TYPES.TEXT_FRAME;
+          break;
+        case "addImage":
+          type = LocalOBJECT_TYPES.IMAGE;
+          break;
+        case "addPdfPage":
+          type = LocalOBJECT_TYPES.PDF_PAGE;
+          break;
+        case "addShape":
+          type = LocalOBJECT_TYPES.SHAPE;
+          shapeType = "rect";
+          break;
+        case "addSticker":
+          type = LocalOBJECT_TYPES.STICKER;
+          break;
+        case "addTextBox":
+          type = LocalOBJECT_TYPES.TEXTBOX;
+          break;
+        case "addSticky":
+          type = LocalOBJECT_TYPES.STICKY;
+          break;
       }
-
-      // Handle design mode object creation tools
-      if (currentKind === "design") {
-        const designTools = ["addFrame", "addTextFrame", "addImage", "addPdfPage", "addShape", "addSticker", "addTextBox", "addSticky"];
-        if (designTools.includes(mode)) {
-          const { createObject, getDefaultSize, OBJECT_TYPES: LocalOBJECT_TYPES } = await import("@/lib/canvas/objects");
-          
-          let type, shapeType, frameType;
-          switch (mode) {
-            case "addFrame":
-              type = LocalOBJECT_TYPES.FRAME;
-              frameType = "a4";
-              break;
-            case "addTextFrame":
-              type = LocalOBJECT_TYPES.TEXT_FRAME;
-              break;
-            case "addImage":
-              type = LocalOBJECT_TYPES.IMAGE;
-              break;
-            case "addPdfPage":
-              type = LocalOBJECT_TYPES.PDF_PAGE;
-              break;
-            case "addShape":
-              type = LocalOBJECT_TYPES.SHAPE;
-              shapeType = "rect";
-              break;
-            case "addSticker":
-              type = LocalOBJECT_TYPES.STICKER;
-              break;
-            case "addTextBox":
-              type = LocalOBJECT_TYPES.TEXTBOX;
-              break;
-            case "addSticky":
-              type = LocalOBJECT_TYPES.STICKY;
-              break;
-          }
-          
-          const size = getDefaultSize(type, shapeType || frameType);
-          const overrides = {};
-          if (frameType) overrides.frameType = frameType;
-          if (shapeType) overrides.shapeType = shapeType;
-          
-          const newObject = createObject(type, world.x - size.width / 2, world.y - size.height / 2, size.width, size.height, overrides);
-          live.current.onUpdateObject?.(newObject.id, newObject);
-          engine.setTool({ ...engine.tool, mode: "select" });
-          live.current.onEngine?.(engine);
-          return;
-        }
-      }
-
-      if (mode === "addConnector") {
-        // Start connector from clicked object or point
-        const hitObject = live.current.objects?.find(obj => {
-          // Simple hit test
-          return world.x >= obj.x && world.x <= obj.x + obj.width &&
-                 world.y >= obj.y && world.y <= obj.y + obj.height;
-        });
-        
-        if (hitObject) {
-          live.current.setPendingConnectorFrom?.(hitObject.id);
-        } else {
-          // Clicked empty space - cancel pending
-          live.current.setPendingConnectorFrom?.(null);
-        }
-        return;
-      }
+      
+      const size = getDefaultSize(type, shapeType || frameType);
+      const overrides = {};
+      if (frameType) overrides.frameType = frameType;
+      if (shapeType) overrides.shapeType = shapeType;
+      
+      const newObject = createObject(type, world.x - size.width / 2, world.y - size.height / 2, size.width, size.height, overrides);
+      live.current.onUpdateObject?.(newObject.id, newObject);
+      engine.setTool({ ...engine.tool, mode: "select" });
+      live.current.onEngine?.(engine);
+      return;
     }
 
-    // Default: let ink engine handle it
+    // Handle addConnector
+    if (mode === "addConnector") {
+      const input = pointFrom(event);
+      const world = engine.worldFromScreen(input.x, input.y);
+      // Start connector from clicked object or point
+      const hitObject = live.current.objects?.find(obj => {
+        // Simple hit test
+        return world.x >= obj.x && world.x <= obj.x + obj.width &&
+               world.y >= obj.y && world.y <= obj.y + obj.height;
+      });
+      
+      if (hitObject) {
+        live.current.setPendingConnectorFrom?.(hitObject.id);
+      } else {
+        // Clicked empty space - cancel pending
+        live.current.setPendingConnectorFrom?.(null);
+      }
+      return;
+    }
+
+    // Default: let ink engine handle it (draw, erase, lasso, shape, pan, etc.)
     engine.pointerDown(pointFrom(event));
   }, [pointFrom]);
 
@@ -336,7 +329,6 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     if (!engine) return;
     
     const mode = live.current.tool?.mode;
-    const currentKind = live.current.kind;
 
     // Handle insertSpace drag
     if (mode === "insertSpace" && insertSpaceDrag.current?.dragging) {
@@ -349,8 +341,8 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       return;
     }
 
-    // Handle connector preview in canvas mode
-    if (currentKind === "canvas" && mode === "addConnector" && live.current.pendingConnectorFrom) {
+    // Handle connector preview (all kinds)
+    if (mode === "addConnector" && live.current.pendingConnectorFrom) {
       // Could show preview line here
       engine.dirtyOverlay = true;
       engine.schedule();
@@ -381,8 +373,17 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
   const endStroke = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    if (live.current.tool?.mode === "insertSpace") {
+    const mode = live.current.tool?.mode;
+    // Skip ink engine pointerUp for object creation tools and connector - they handle their own logic
+    const creationTools = [
+      "addCard", "addFrame", "addTextFrame", "addImage", "addPdfPage",
+      "addShape", "addSticker", "addTextBox", "addSticky", "addConnector"
+    ];
+    if (mode === "insertSpace") {
       endInsertSpace();
+      return;
+    }
+    if (creationTools.includes(mode)) {
       return;
     }
     engine.pointerUp();
@@ -397,12 +398,8 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     cancel: () => engineRef.current?.cancel?.(),
   }), []);
 
-  // Determine pointer events for overlay
-  const isToolActive = live.current.kind === "canvas" 
-    ? CANVAS_TOOL_MODES.includes(effectiveTool?.mode)
-    : live.current.kind === "design"
-    ? DESIGN_TOOL_MODES.includes(effectiveTool?.mode)
-    : INK_TOOL_MODES.includes(effectiveTool?.mode);
+  // Determine pointer events for overlay - all tools active for all kinds
+  const isToolActive = ALL_TOOL_MODES.includes(effectiveTool?.mode);
   const overlayPointerEvents = isToolActive ? "auto" : "none";
 
   // Select object helper

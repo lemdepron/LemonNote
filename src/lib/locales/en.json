@@ -1814,12 +1814,14 @@
       },
       "home": {
         "select": {
+          "label": "Select",
           "select": "Select",
           "selectHint": "Select and move objects",
           "pan": "Pan",
           "panHint": "Pan the canvas"
         },
         "clipboard": {
+          "label": "Clipboard",
           "copy": "Copy",
           "copyHint": "Copy selected objects",
           "paste": "Paste",
@@ -1830,14 +1832,17 @@
           "deleteHint": "Delete selected objects"
         },
         "arrange": {
+          "label": "Arrange",
           "bringForward": "Bring Forward",
           "bringForwardHint": "Move selected objects one layer forward",
           "sendBackward": "Send Backward",
-          "sendBackwardHint": "Move selected objects one layer backward"
+          "sendBackwardHint": "Move selected objects one layer backward",
+          "notImplemented": "Not implemented yet"
         }
       },
       "draw": {
         "tools": {
+          "label": "Tools",
           "pen": "Pen",
           "penHint": "Freehand drawing",
           "eraser": "Eraser",
@@ -1850,6 +1855,7 @@
           "shapeRecognitionHint": "Snap drawn shapes to perfect geometry"
         },
         "penLook": {
+          "label": "Pen Look",
           "color": "Color",
           "colorHint": "Pen color",
           "width": "Width",
@@ -1858,18 +1864,21 @@
       },
       "insert": {
         "cards": {
+          "label": "Cards",
           "addCard": "Add Card",
           "addCardHint": "Add a new card",
           "connect": "Connect",
           "connectHint": "Connect two cards"
         },
         "textNotes": {
+          "label": "Text & Notes",
           "textBox": "Text Box",
           "textBoxHint": "Add a text box",
           "stickyNote": "Sticky Note",
           "stickyNoteHint": "Add a sticky note"
         },
         "objects": {
+          "label": "Objects",
           "shapes": "Shapes",
           "shapesHint": "Add a shape",
           "rectangle": "Rectangle",
@@ -1880,6 +1889,7 @@
           "polygon": "Polygon"
         },
         "media": {
+          "label": "Media",
           "sticker": "Sticker",
           "stickerHint": "Add a sticker",
           "image": "Image",
@@ -1888,6 +1898,7 @@
       },
       "page": {
         "frames": {
+          "label": "Frames",
           "addFrame": "Add Frame",
           "addFrameHint": "Add a paper frame",
           "a4": "A4",
@@ -1899,6 +1910,7 @@
           "free": "Free"
         },
         "paper": {
+          "label": "Paper",
           "template": "Template",
           "templateHint": "Paper template",
           "size": "Page Size",
@@ -1913,10 +1925,12 @@
           "iso": "Isometric",
           "infinite": "Infinite",
           "dark": "Dark",
-          "light": "Light"
+          "light": "Light",
+          "free": "Free"
         }
       },
       "view": {
+        "label": "View",
         "fitPage": "Fit to Page",
         "fitPageHint": "Fit the canvas to the page",
         "fitWidth": "Fit to Width",
@@ -1930,6 +1944,7 @@
         "zoomPercent": "{percent}%"
       },
       "file": {
+        "label": "File",
         "exportCanvas": "Export .lemoncanvas",
         "exportCanvasHint": "Export canvas as .lemoncanvas file",
         "exportPdf": "Export PDF",
@@ -1939,6 +1954,11 @@
         "importCanvas": "Import .lemoncanvas",
         "importCanvasHint": "Import a .lemoncanvas file"
       },
+      "toolbar": {
+        "label": "Canvas tools"
+      },
+      "stats": "{cards} cards · {connections} connections",
+      "selectObject": "Select an object to edit",
       "status": {
         "saving": "saving",
         "saved": "saved",

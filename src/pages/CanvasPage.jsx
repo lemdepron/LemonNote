@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Moon, Sun, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Download, Upload, FileText as FileTextIcon, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Info, Plus, SlidersHorizontal, PenLine, MousePointer, Link as LinkIcon, Minus, Maximize2, RotateCcw, Layers, Square, Type, Image, FileText, Layout, Upload, FileText as FileTextIcon, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import { db } from "@/api/localDb";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
 import EdgeDock from "@/components/shell/EdgeDock";
@@ -10,33 +10,27 @@ import { useI18n } from "@/lib/i18n";
 import { OBJECT_TYPES, FRAME_TYPES, createObject, getDefaultSize } from "@/lib/canvas/objects";
 import { exportCanvasDoc, triggerImport, exportCanvasToPdf, exportCanvasToPng } from "@/lib/canvas/export";
 import { toast } from "@/lib/toast";
-import RibbonGroup from "@/components/ribbon/RibbonGroup";
 import RibbonButton from "@/components/ribbon/RibbonButton";
 import { RibbonSelect, RibbonMenu, MenuItem, MenuLabel } from "@/components/ribbon/RibbonKit";
-import { RibbonTabLine, RibbonPanel, RibbonPanelPopoverProvider } from "@/components/ribbon/RibbonKit";
 import SpaceRail from "@/components/shell/SpaceRail";
 import CommandPalette from "@/components/shell/CommandPalette";
-import ThemeToggle from "@/components/shell/ThemeToggle";
-import { readPref, writePref } from "@/lib/preferences";
 import { NoteTopStack } from "@/lib/ScrollContext";
 import { t } from "@/lib/i18n";
 
 // Local t function that prefixes with vault.canvas
 const ct = (key, params) => t(`vault.canvas.${key}`, params);
 
-const CANVAS_TABS = [
-  { id: "home", label: "tabs.home", icon: PenLine },
-  { id: "draw", label: "tabs.draw", icon: PenLine },
-  { id: "insert", label: "tabs.insert", icon: Plus },
-  { id: "page", label: "tabs.page", icon: Layout },
-  { id: "view", label: "tabs.view", icon: Maximize2 },
-  { id: "file", label: "tabs.file", icon: Download },
+const PEN_COLORS = [
+  { value: "#000000", label: "Black" },
+  { value: "#e5b567", label: "Amber" },
+  { value: "#f87171", label: "Red" },
+  { value: "#4ade80", label: "Green" },
+  { value: "#60a5fa", label: "Blue" },
+  { value: "#a78bfa", label: "Purple" },
+  { value: "#ffffff", label: "White" },
 ];
 
-function initialCanvasTab() {
-  const saved = readPref("canvasRibbonTab", "home");
-  return CANVAS_TABS.some((item) => item.id === saved) ? saved : "home";
-}
+const PEN_WIDTHS = [1, 2, 3, 4, 6, 8, 12];
 
 export default function CanvasPage() {
   const { t, localDigits } = useI18n();
@@ -48,11 +42,11 @@ export default function CanvasPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [pendingConnectorFrom, setPendingConnectorFrom] = useState(null);
   const [status, setStatus] = useState("idle");
-  const [tool, setTool] = useState({ mode: "select" });
+  const [tool, setTool] = useState({ mode: "select", color: "#000000", width: 3 });
   const [paper, setPaper] = useState({ template: "grid", size: "infinite", tone: "dark" });
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => initialCanvasTab());
+  const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const dirty = useRef(false);
   const engineRef = useRef(null);
 
@@ -109,6 +103,17 @@ export default function CanvasPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Close popovers on outside click
+  useEffect(() => {
+    const onClick = (event) => {
+      if (fileMenuOpen && !event.target.closest('[data-file-menu]')) {
+        setFileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [fileMenuOpen]);
+
   // Save canvas doc
   const saveCanvasDoc = useCallback(async (updates) => {
     if (!canvasDoc) return;
@@ -131,7 +136,7 @@ export default function CanvasPage() {
   // Tool selection
   const selectTool = useCallback((mode) => {
     setTool((prev) => ({ ...prev, mode }));
-    if (mode === "addCard") {
+    if (mode === "addCard" || mode === "addConnector") {
       setPendingConnectorFrom(null);
     }
   }, []);
@@ -252,51 +257,77 @@ export default function CanvasPage() {
   const cards = objects.filter((o) => o.type === OBJECT_TYPES.CARD);
   const connectors = objects.filter((o) => o.type === OBJECT_TYPES.CONNECTOR);
 
-  // Tab change handler
-  const chooseTab = (tabId) => {
-    writePref("canvasRibbonTab", tabId);
-    setActiveTab(tabId);
-  };
+  // Stats for status bar
+  const markCount = strokes.length;
+  const markLabel = markCount === 1 
+    ? ct("status.marks", { count: localDigits(markCount) }) 
+    : ct("status.marks_plural", { count: localDigits(markCount) });
 
-  // Leading: Undo/Redo (disabled for now - engine doesn't support it)
-  const leading = (
-    <>
-      <RibbonButton
-        id="undo"
-        icon={RotateCcw}
-        label={t("ribbon.home.undo")}
-        hint={t("ribbon.home.undoHint")}
-        disabled
-        disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
-        keepFocus={false}
-      />
-      <RibbonButton
-        id="redo"
-        icon={RotateCcw}
-        label={t("ribbon.home.redo")}
-        hint={t("ribbon.home.redoHint")}
-        disabled
-        disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
-        keepFocus={false}
-        className="transform rotate-180"
-      />
-    </>
-  );
+  // Tool groups for compact bar row 2
+  const isPenActive = tool.mode === "draw";
+  const isEraserActive = tool.mode === "erase";
+  const isShapeActive = tool.mode === "shape";
+  const showPenControls = isPenActive || isEraserActive || isShapeActive;
 
-  // Trailing: ThemeToggle + FocusToggle
-  const trailing = (
-    <>
-      <ThemeToggle />
-      {/* FocusToggle removed from CanvasPage per C19 */}
-    </>
-  );
+  // Row 2 button groups
+  const row2Groups = useMemo(() => [
+    // Navigation group
+    {
+      separator: false,
+      buttons: [
+        { id: "select", icon: MousePointer, mode: "select", label: ct("home.select.select"), hint: ct("home.select.selectHint") },
+        { id: "pan", icon: Maximize2, mode: "pan", label: ct("home.select.pan"), hint: ct("home.select.panHint") },
+      ]
+    },
+    // Drawing tools group
+    {
+      separator: true,
+      buttons: [
+        { id: "draw", icon: PenLine, mode: "draw", label: ct("draw.tools.pen"), hint: ct("draw.tools.penHint") },
+        { id: "erase", icon: Minus, mode: "erase", label: ct("draw.tools.eraser"), hint: ct("draw.tools.eraserHint") },
+        { id: "lasso", icon: Square, mode: "lasso", label: ct("draw.tools.lasso"), hint: ct("draw.tools.lassoHint") },
+        { id: "shape", icon: Type, mode: "shape", label: ct("draw.tools.shape"), hint: ct("draw.tools.shapeHint") },
+        { id: "shapeRecognition", icon: Type, mode: "shapeRecognition", toggle: true, label: ct("draw.tools.shapeRecognition"), hint: ct("draw.tools.shapeRecognitionHint") },
+      ]
+    },
+    // Insert objects group
+    {
+      separator: true,
+      buttons: [
+        { id: "addCard", icon: Plus, action: "addCard", label: ct("insert.cards.addCard"), hint: ct("insert.cards.addCardHint") },
+        { id: "addConnector", icon: LinkIcon, mode: "addConnector", label: ct("insert.cards.connect"), hint: ct("insert.cards.connectHint"), disabled: !pendingConnectorFrom && selectedIds.length === 0 },
+        { id: "addTextBox", icon: Type, action: "addTextBox", label: ct("insert.textNotes.textBox"), hint: ct("insert.textNotes.textBoxHint") },
+        { id: "addSticky", icon: FileText, action: "addSticky", label: ct("insert.textNotes.stickyNote"), hint: ct("insert.textNotes.stickyNoteHint") },
+        { id: "addShapeMenu", icon: Square, action: "addShapeMenu", label: ct("insert.objects.shapes"), hint: ct("insert.objects.shapesHint") },
+        { id: "addSticker", icon: Image, action: "addSticker", label: ct("insert.media.sticker"), hint: ct("insert.media.stickerHint") },
+        { id: "addImage", icon: Image, action: "addImage", label: ct("insert.media.image"), hint: ct("insert.media.imageHint") },
+      ]
+    },
+    // Page/Frame group
+    {
+      separator: true,
+      buttons: [
+        { id: "addFrameMenu", icon: Layout, action: "addFrameMenu", label: ct("page.frames.addFrame"), hint: ct("page.frames.addFrameHint") },
+        { id: "paperMenu", icon: Layers, action: "paperMenu", label: ct("page.paper.label"), hint: ct("page.paper.label") },
+      ]
+    },
+    // Arrange group
+    {
+      separator: true,
+      buttons: [
+        { id: "bringForward", icon: ArrowLeft, action: "bringForward", label: ct("home.arrange.bringForward"), hint: ct("home.arrange.bringForwardHint"), disabled: true, disabledReason: ct("home.arrange.notImplemented") },
+        { id: "sendBackward", icon: ArrowLeft, action: "sendBackward", label: ct("home.arrange.sendBackward"), hint: ct("home.arrange.sendBackwardHint"), disabled: true, disabledReason: ct("home.arrange.notImplemented"), className: "transform rotate-180" },
+        { id: "delete", icon: Minus, action: "delete", label: ct("home.clipboard.delete"), hint: ct("home.clipboard.deleteHint"), disabled: selectedIds.length === 0 },
+      ]
+    },
+  ], [tool.mode, tool.shapeRecognition, pendingConnectorFrom, selectedIds.length]);
 
   if (loading) {
     return (
       <div className="nb-shell min-h-screen">
         <SpaceRail />
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
+        <main className={cn("mx-auto px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
           <div className="h-[60vh] animate-pulse rounded-xl border border-border/60 bg-card/30" />
         </main>
       </div>
@@ -308,7 +339,7 @@ export default function CanvasPage() {
       <div className="nb-shell min-h-screen">
         <SpaceRail />
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
+        <main className={cn("mx-auto px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
           <div className="mx-auto max-w-xl px-5 py-24 text-center">
             <p className="font-display text-[26px]">{ct("emptyState.noCanvases")}</p>
             <button
@@ -324,593 +355,540 @@ export default function CanvasPage() {
     );
   }
 
-  // Stats for status bar
-  const markCount = strokes.length;
-  const markLabel = markCount === 1 
-    ? ct("status.marks", { count: localDigits(markCount) }) 
-    : ct("status.marks_plural", { count: localDigits(markCount) });
-
   return (
     <div className="nb-shell min-h-screen">
       <SpaceRail />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <main className={cn("mx-auto max-w-[1400px] px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
-        {/* Top row: back, name, status, moon - INSIDE NoteTopStack for sticky behavior */}
+      <main className={cn("mx-auto px-4 pb-10 pt-5 sm:px-6", focus && "pr-12")}>
+        {/* Compact toolbar - two rows inside NoteTopStack for sticky behavior */}
         <NoteTopStack>
-          <div data-crumb data-testid="canvas-breadcrumb-area">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
+          <div data-crumb data-testid="canvas-toolbar-area">
+            {/* Row 1: Back, name, status, actions */}
+            <div className="flex items-center gap-2 h-9 px-2 border-b border-border/40">
               <Link
                 to="/canvas"
-                className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+                className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground transition hover:text-foreground shrink-0"
                 aria-label={t("vault.canvas.backToCanvases")}
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 {t("vault.canvas.backToCanvases")}
               </Link>
-              <span className="text-[11px] text-muted-foreground/40">/</span>
+              <span className="text-[11px] text-muted-foreground/40 shrink-0">/</span>
 
-              {/* Editable canvas name */}
+              {/* Editable canvas name - width fits content */}
               <input
                 value={canvasDoc.name}
                 onChange={(event) => saveCanvasDoc({ name: event.target.value })}
                 aria-label={t("vault.canvas.canvasName")}
-                className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1 py-1 font-display text-[22px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
+                className="max-w-[28ch] min-w-[8ch] rounded-md border border-transparent bg-transparent px-1 py-0.5 font-display text-[16px] tracking-tight text-foreground outline-none transition hover:border-border/60 focus:border-primary/40"
+                style={{ width: `${Math.min(Math.max(canvasDoc.name.length, 8), 28)}ch` }}
               />
 
               {/* Status */}
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {t(`canvas.status.${status}`)}
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground shrink-0">
+                {t(`vault.canvas.status.${status}`)}
               </span>
 
-              <div className="ml-auto flex items-center gap-1.5">
-                {/* ThemeToggle - one click light/dark */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Toggle theme via the same mechanism as ThemeToggle
-                    const root = document.documentElement;
-                    const isDark = root.classList.contains("dark");
-                    root.classList.toggle("dark", !isDark);
-                    root.classList.toggle("light", isDark);
-                    localStorage.setItem("themeMode", isDark ? "light" : "dark");
-                  }}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                  aria-label={t("settings.appearance.switchToLight") || "Switch theme"}
-                  title={t("settings.appearance.switchToLight") || "Switch theme"}
-                >
-                  {document.documentElement.classList.contains("dark") ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
+              <div className="flex-1" />
 
-                {/* FocusToggle removed per C19 */}
+              {/* Undo/Redo */}
+              <RibbonButton
+                id="undo"
+                icon={RotateCcw}
+                label={t("ribbon.home.undo")}
+                hint={t("ribbon.home.undoHint")}
+                disabled
+                disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
+                keepFocus={false}
+                className="h-8 w-8"
+              />
+              <RibbonButton
+                id="redo"
+                icon={RotateCcw}
+                label={t("ribbon.home.redo")}
+                hint={t("ribbon.home.redoHint")}
+                disabled
+                disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
+                keepFocus={false}
+                className="h-8 w-8 transform rotate-180"
+              />
+
+              {/* Zoom controls */}
+              <div className="flex items-center gap-1 border-l border-border/40 pl-2 ml-2">
+                <RibbonButton
+                  icon={Minus}
+                  label={ct("view.zoomOut")}
+                  hint={ct("view.zoomOutHint")}
+                  onClick={() => engineRef.current?.zoomBy?.(0.88)}
+                  keepFocus={false}
+                  className="h-8 w-8"
+                />
+                <span className="self-center font-mono text-[10px] text-muted-foreground px-1 min-w-[3.5ch] text-center">
+                  {ct("view.zoomPercent", { percent: Math.round(camera.scale * 100) })}
+                </span>
+                <RibbonButton
+                  icon={Plus}
+                  label={ct("view.zoomIn")}
+                  hint={ct("view.zoomInHint")}
+                  onClick={() => engineRef.current?.zoomBy?.(1.12)}
+                  keepFocus={false}
+                  className="h-8 w-8"
+                />
+                <RibbonButton
+                  icon={Maximize2}
+                  label={ct("view.fitWidth")}
+                  hint={ct("view.fitWidthHint")}
+                  onClick={() => engineRef.current?.fitWidth?.()}
+                  keepFocus={false}
+                  className="h-8 w-8"
+                />
+              </div>
+
+              {/* Theme toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  const root = document.documentElement;
+                  const isDark = root.classList.contains("dark");
+                  root.classList.toggle("dark", !isDark);
+                  root.classList.toggle("light", isDark);
+                  localStorage.setItem("themeMode", isDark ? "light" : "dark");
+                }}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground ml-2"
+                aria-label={t("settings.appearance.switchToLight") || "Switch theme"}
+                title={t("settings.appearance.switchToLight") || "Switch theme"}
+              >
+                {document.documentElement.classList.contains("dark") ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+
+              {/* File menu */}
+              <div className="relative" data-file-menu>
+                <RibbonButton
+                  icon={MoreHorizontal}
+                  label={ct("file.label")}
+                  hint={ct("file.label")}
+                  onClick={() => setFileMenuOpen(!fileMenuOpen)}
+                  keepFocus={false}
+                  className="h-8 w-8"
+                />
+                {fileMenuOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-md border border-border bg-popover p-1 shadow-lg">
+                    <MenuItem onClick={() => { exportCanvasDoc(canvasDoc); setFileMenuOpen(false); }}>
+                      <FileTextIcon className="h-4 w-4 mr-2" />
+                      {ct("file.exportCanvas")}
+                    </MenuItem>
+                    <hr className="my-1 border-border" />
+                    <MenuLabel>{ct("file.exportPdf")}</MenuLabel>
+                    <MenuItem onClick={() => { exportCanvasToPdf(canvasDoc, { wholeCanvas: true }); setFileMenuOpen(false); }}>
+                      <FileTextIcon className="h-4 w-4 mr-2" />
+                      {ct("file.exportWholeCanvas")} (PDF)
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                      if (frames.length === 1) {
+                        exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                      } else if (frames.length > 1) {
+                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                      } else {
+                        exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
+                      }
+                      setFileMenuOpen(false);
+                    }}>
+                      <FileTextIcon className="h-4 w-4 mr-2" />
+                      {ct("file.exportSelectedFrame")} (PDF)
+                    </MenuItem>
+                    <hr className="my-1 border-border" />
+                    <MenuLabel>{ct("file.exportPng")}</MenuLabel>
+                    <MenuItem onClick={() => { exportCanvasToPng(canvasDoc, { wholeCanvas: true }); setFileMenuOpen(false); }}>
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      {ct("file.exportWholeCanvas")} (PNG)
+                    </MenuItem>
+                    <MenuItem onClick={() => {
+                      const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
+                      if (frames.length === 1) {
+                        exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
+                      } else if (frames.length > 1) {
+                        toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
+                      } else {
+                        exportCanvasToPng(canvasDoc, { wholeCanvas: true });
+                      }
+                      setFileMenuOpen(false);
+                    }}>
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      {ct("file.exportSelectedFrame")} (PNG)
+                    </MenuItem>
+                    <hr className="my-1 border-border" />
+                    <MenuItem onClick={() => { triggerImport(
+                      (doc) => { navigate(`/canvas/${doc.id}`); toast.success(t("vault.canvas.importSuccess") || "Canvas imported successfully"); },
+                      (error) => toast.error(error.message)
+                    ); setFileMenuOpen(false); }}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {ct("file.importCanvas")}
+                    </MenuItem>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Row 2: Icon-only tool groups */}
+            <div className="flex items-center gap-1 h-10 px-2 overflow-x-auto pb-1 border-b border-border/40" role="toolbar" aria-label={ct("toolbar.label") || "Canvas tools"}>
+              {row2Groups.map((group, groupIdx) => (
+                <React.Fragment key={groupIdx}>
+                  {group.separator && <div className="w-px h-6 bg-border/40 mx-1" />}
+                  <div className="flex items-center gap-0.5">
+                    {group.buttons.map((btn) => (
+                      <React.Fragment key={btn.id}>
+                        {btn.action === "addShapeMenu" && (
+                          <RibbonMenu
+                            icon={Square}
+                            label={btn.label}
+                            hint={btn.hint}
+                            width={200}
+                          >
+                            {(close) => (
+                              <>
+                                <MenuLabel>{ct("insert.objects.shapes")}</MenuLabel>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "rect" }); close(); }}>
+                                  <Square className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.rectangle")}
+                                </MenuItem>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "ellipse" }); close(); }}>
+                                  <Type className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.ellipse")}
+                                </MenuItem>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "line" }); close(); }}>
+                                  <Minus className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.line")}
+                                </MenuItem>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "arrow" }); close(); }}>
+                                  <LinkIcon className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.arrow")}
+                                </MenuItem>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "triangle" }); close(); }}>
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.triangle")}
+                                </MenuItem>
+                                <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "polygon" }); close(); }}>
+                                  <Layers className="h-4 w-4 mr-2" />
+                                  {ct("insert.objects.polygon")}
+                                </MenuItem>
+                              </>
+                            )}
+                          </RibbonMenu>
+                        )}
+                        {btn.action === "addFrameMenu" && (
+                          <RibbonMenu
+                            icon={Layout}
+                            label={btn.label}
+                            hint={btn.hint}
+                            width={200}
+                          >
+                            {(close) => (
+                              <>
+                                <MenuLabel>{ct("page.frames.addFrame")}</MenuLabel>
+                                {FRAME_TYPES.map((ft) => (
+                                  <MenuItem
+                                    key={ft.id}
+                                    onClick={() => {
+                                      if (engineRef.current) {
+                                        const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                        const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                        const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                        const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                        handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
+                                      }
+                                      close();
+                                    }}
+                                  >
+                                    {t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}
+                                  </MenuItem>
+                                ))}
+                              </>
+                            )}
+                          </RibbonMenu>
+                        )}
+                        {btn.action === "paperMenu" && (
+                          <RibbonMenu
+                            icon={Layers}
+                            label={btn.label}
+                            hint={btn.hint}
+                            width={200}
+                          >
+                            {(close) => (
+                              <>
+                                <MenuLabel>{ct("page.paper.label")}</MenuLabel>
+                                <hr className="my-1 border-border" />
+                                <MenuLabel>{ct("page.paper.templateHint")}</MenuLabel>
+                                {[
+                                  { value: "blank", label: ct("page.paper.blank") },
+                                  { value: "ruled", label: ct("page.paper.ruled") },
+                                  { value: "grid", label: ct("page.paper.grid") },
+                                  { value: "dots", label: ct("page.paper.dots") },
+                                  { value: "stave", label: ct("page.paper.stave") },
+                                  { value: "iso", label: ct("page.paper.iso") },
+                                ].map((opt) => (
+                                  <MenuItem
+                                    key={opt.value}
+                                    onClick={() => { handlePaperChange({ template: opt.value }); close(); }}
+                                  >
+                                    {opt.label}
+                                  </MenuItem>
+                                ))}
+                                <hr className="my-1 border-border" />
+                                <MenuLabel>{ct("page.paper.sizeHint")}</MenuLabel>
+                                {[
+                                  { value: "infinite", label: ct("page.paper.infinite") },
+                                  { value: "a4", label: "A4" },
+                                  { value: "letter", label: "Letter" },
+                                  { value: "3:4", label: "3:4" },
+                                  { value: "16:9", label: "16:9" },
+                                  { value: "free", label: ct("page.paper.free") },
+                                ].map((opt) => (
+                                  <MenuItem
+                                    key={opt.value}
+                                    onClick={() => { handlePaperChange({ size: opt.value }); close(); }}
+                                  >
+                                    {opt.label}
+                                  </MenuItem>
+                                ))}
+                                <hr className="my-1 border-border" />
+                                <MenuLabel>{ct("page.paper.toneHint")}</MenuLabel>
+                                {[
+                                  { value: "dark", label: ct("page.paper.dark") },
+                                  { value: "light", label: ct("page.paper.light") },
+                                ].map((opt) => (
+                                  <MenuItem
+                                    key={opt.value}
+                                    onClick={() => { handlePaperChange({ tone: opt.value }); close(); }}
+                                  >
+                                    {opt.label}
+                                  </MenuItem>
+                                ))}
+                              </>
+                            )}
+                          </RibbonMenu>
+                        )}
+                        {btn.action === "addCard" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            onClick={() => {
+                              if (engineRef.current) {
+                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                handleAddCard(centerX, centerY);
+                              }
+                            }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.action === "addTextBox" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            onClick={() => {
+                              if (engineRef.current) {
+                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
+                              }
+                            }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.action === "addSticky" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            onClick={() => {
+                              if (engineRef.current) {
+                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
+                              }
+                            }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.action === "addSticker" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            onClick={() => {
+                              if (engineRef.current) {
+                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
+                              }
+                            }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.action === "addImage" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            onClick={() => {
+                              if (engineRef.current) {
+                                const viewport = engineRef.current.viewport || { w: 800, h: 600 };
+                                const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
+                                const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
+                                const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
+                                handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
+                              }
+                            }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.action === "bringForward" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            disabled={btn.disabled}
+                            disabledReason={btn.disabledReason}
+                            keepFocus={false}
+                            className={`h-8 w-8 ${btn.className || ""}`}
+                          />
+                        )}
+                        {btn.action === "sendBackward" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            disabled={btn.disabled}
+                            disabledReason={btn.disabledReason}
+                            keepFocus={false}
+                            className={`h-8 w-8 ${btn.className || ""}`}
+                          />
+                        )}
+                        {btn.action === "delete" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            disabled={btn.disabled}
+                            onClick={() => { selectedIds.forEach((id) => handleDeleteObject(id)); }}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.mode && !btn.action && !btn.toggle && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            active={tool.mode === btn.mode}
+                            disabled={btn.disabled}
+                            onClick={() => selectTool(btn.mode)}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.mode === "addConnector" && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            active={tool.mode === "addConnector"}
+                            disabled={btn.disabled}
+                            onClick={() => selectTool("addConnector")}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                        {btn.toggle && (
+                          <RibbonButton
+                            icon={btn.icon}
+                            label={btn.label}
+                            hint={btn.hint}
+                            active={tool.shapeRecognition === true}
+                            onClick={() => setTool((prev) => ({ ...prev, shapeRecognition: !prev.shapeRecognition }))}
+                            keepFocus={false}
+                            className="h-8 w-8"
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </React.Fragment>
+              ))}
+
+              {/* Pen controls (color + width) - shown when pen/eraser/shape active */}
+              {showPenControls && (
+                <React.Fragment>
+                  <div className="w-px h-6 bg-border/40 mx-1" />
+                  <div className="flex items-center gap-1">
+                    {/* Color swatches */}
+                    <div className="flex items-center gap-0.5" role="group" aria-label={ct("draw.penLook.color")}>
+                      {PEN_COLORS.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => setTool((prev) => ({ ...prev, color: c.value }))}
+                          className={`w-6 h-6 rounded border-2 transition ${tool.color === c.value ? "border-primary scale-110" : "border-transparent hover:border-border/40"}`}
+                          style={{ backgroundColor: c.value }}
+                          aria-label={c.label}
+                          title={c.label}
+                        />
+                      ))}
+                    </div>
+                    <div className="w-px h-6 bg-border/40 mx-1" />
+                    {/* Width control with preview */}
+                    <div className="flex items-center gap-1" role="group" aria-label={ct("draw.penLook.width")}>
+                      <span className="w-6 h-6 flex items-center justify-center">
+                        <span
+                          className="rounded-full bg-current"
+                          style={{
+                            width: `${Math.max(4, tool.width * 2)}px`,
+                            height: `${Math.max(4, tool.width * 2)}px`,
+                          }}
+                        />
+                      </span>
+                      <RibbonSelect
+                        value={String(tool.width || 3)}
+                        onChange={(width) => setTool((prev) => ({ ...prev, width: Number(width) }))}
+                        options={PEN_WIDTHS.map((w) => ({ value: String(w), label: String(w) }))}
+                        className="w-16"
+                      />
+                    </div>
+                  </div>
+                </React.Fragment>
+              )}
+            </div>
           </div>
-
-          {/* Ribbon tab line + panel - SAME as note page */}
-          <RibbonPanelPopoverProvider>
-            <RibbonTabLine
-              tabs={CANVAS_TABS.map((item) => ({ ...item, label: t(item.label) }))}
-              tab={activeTab}
-              onTab={chooseTab}
-              leading={leading}
-              trailing={trailing}
-              isFirstTabActive={activeTab === "home"}
-            />
-            <RibbonPanel isFirstTabActive={activeTab === "home"}>
-              {/* HOME TAB */}
-              {activeTab === "home" && (
-                <>
-                  {/* Select group */}
-                  <RibbonGroup label={ct("home.select.label")} icon={MousePointer} priority={70}>
-                    <RibbonButton
-                      id="select"
-                      icon={MousePointer}
-                      label={ct("home.select.select")}
-                      hint={ct("home.select.selectHint")}
-                      active={tool.mode === "select"}
-                      onClick={() => selectTool("select")}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="pan"
-                      icon={Maximize2}
-                      label={ct("home.select.pan")}
-                      hint={ct("home.select.panHint")}
-                      active={tool.mode === "pan"}
-                      onClick={() => selectTool("pan")}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-
-                  {/* Clipboard group - only Delete exists */}
-                  <RibbonGroup label={ct("home.clipboard.label")} icon={Square} priority={65}>
-                    <RibbonButton
-                      id="delete"
-                      icon={Minus}
-                      label={ct("home.clipboard.delete")}
-                      hint={ct("home.clipboard.deleteHint")}
-                      disabled={selectedIds.length === 0}
-                      onClick={() => {
-                        selectedIds.forEach((id) => handleDeleteObject(id));
-                      }}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-
-                  {/* Arrange group - not implemented */}
-                  <RibbonGroup label={ct("home.arrange.label")} icon={Layers} priority={60}>
-                    <RibbonButton
-                      id="bringForward"
-                      icon={ArrowLeft}
-                      label={ct("home.arrange.bringForward")}
-                      hint={ct("home.arrange.bringForwardHint")}
-                      disabled
-                      disabledReason={ct("home.arrange.notImplemented") || "Not implemented yet"}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="sendBackward"
-                      icon={ArrowLeft}
-                      label={ct("home.arrange.sendBackward")}
-                      hint={ct("home.arrange.sendBackwardHint")}
-                      disabled
-                      disabledReason={ct("home.arrange.notImplemented") || "Not implemented yet"}
-                      keepFocus={false}
-                      className="transform rotate-180"
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-
-              {/* DRAW TAB */}
-              {activeTab === "draw" && (
-                <>
-                  {/* Tools group */}
-                  <RibbonGroup label={ct("draw.tools.label")} icon={PenLine} priority={70}>
-                    <RibbonButton
-                      id="draw"
-                      icon={PenLine}
-                      label={ct("draw.tools.pen")}
-                      hint={ct("draw.tools.penHint")}
-                      active={tool.mode === "draw"}
-                      onClick={() => selectTool("draw")}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="erase"
-                      icon={Minus}
-                      label={ct("draw.tools.eraser")}
-                      hint={ct("draw.tools.eraserHint")}
-                      active={tool.mode === "erase"}
-                      onClick={() => selectTool("erase")}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="lasso"
-                      icon={Square}
-                      label={ct("draw.tools.lasso")}
-                      hint={ct("draw.tools.lassoHint")}
-                      active={tool.mode === "lasso"}
-                      onClick={() => selectTool("lasso")}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="shape"
-                      icon={Type}
-                      label={ct("draw.tools.shape")}
-                      hint={ct("draw.tools.shapeHint")}
-                      active={tool.mode === "shape"}
-                      onClick={() => selectTool("shape")}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="shapeRecognition"
-                      icon={Type}
-                      label={ct("draw.tools.shapeRecognition")}
-                      hint={ct("draw.tools.shapeRecognitionHint")}
-                      active={tool.shapeRecognition === true}
-                      onClick={() => setTool((prev) => ({ ...prev, shapeRecognition: !prev.shapeRecognition }))}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-
-                  {/* Pen look group */}
-                  <RibbonGroup label={ct("draw.penLook.label")} icon={PenLine} priority={65}>
-                    <RibbonSelect
-                      title={ct("draw.penLook.colorHint")}
-                      value={tool.color || "#e9e2d0"}
-                      onChange={(color) => setTool((prev) => ({ ...prev, color }))}
-                      options={[
-                        { value: "#e9e2d0", label: "Default" },
-                        { value: "#000000", label: "Black" },
-                        { value: "#ffffff", label: "White" },
-                        { value: "#e5b567", label: "Amber" },
-                        { value: "#f87171", label: "Red" },
-                        { value: "#4ade80", label: "Green" },
-                        { value: "#60a5fa", label: "Blue" },
-                        { value: "#a78bfa", label: "Purple" },
-                      ]}
-                    />
-                    <RibbonSelect
-                      title={ct("draw.penLook.widthHint")}
-                      value={String(tool.width || 3)}
-                      onChange={(width) => setTool((prev) => ({ ...prev, width: Number(width) }))}
-                      options={[
-                        { value: "1", label: "1" },
-                        { value: "2", label: "2" },
-                        { value: "3", label: "3" },
-                        { value: "4", label: "4" },
-                        { value: "6", label: "6" },
-                        { value: "8", label: "8" },
-                        { value: "12", label: "12" },
-                      ]}
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-
-              {/* INSERT TAB */}
-              {activeTab === "insert" && (
-                <>
-                  {/* Cards group */}
-                  <RibbonGroup label={ct("insert.cards.label")} icon={Square} priority={70}>
-                    <RibbonButton
-                      id="addCard"
-                      icon={Plus}
-                      label={ct("insert.cards.addCard")}
-                      hint={ct("insert.cards.addCardHint")}
-                      onClick={() => {
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddCard(centerX, centerY);
-                        }
-                      }}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="addConnector"
-                      icon={LinkIcon}
-                      label={ct("insert.cards.connect")}
-                      hint={ct("insert.cards.connectHint")}
-                      active={tool.mode === "addConnector"}
-                      disabled={!pendingConnectorFrom && selectedIds.length === 0}
-                      onClick={() => selectTool("addConnector")}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-
-                  {/* Text & Notes group */}
-                  <RibbonGroup label={ct("insert.textNotes.label")} icon={FileText} priority={65}>
-                    <RibbonButton
-                      id="addTextBox"
-                      icon={Type}
-                      label={ct("insert.textNotes.textBox")}
-                      hint={ct("insert.textNotes.textBoxHint")}
-                      onClick={() => {
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddDesignObject(OBJECT_TYPES.TEXTBOX, centerX, centerY);
-                        }
-                      }}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="addSticky"
-                      icon={FileText}
-                      label={ct("insert.textNotes.stickyNote")}
-                      hint={ct("insert.textNotes.stickyNoteHint")}
-                      onClick={() => {
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddDesignObject(OBJECT_TYPES.STICKY, centerX, centerY);
-                        }
-                      }}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-
-                  {/* Objects group */}
-                  <RibbonGroup label={ct("insert.objects.label")} icon={Layers} priority={60}>
-                    <RibbonMenu
-                      icon={Square}
-                      label={ct("insert.objects.shapes")}
-                      hint={ct("insert.objects.shapesHint")}
-                      width={200}
-                    >
-                      {(close) => (
-                        <>
-                          <MenuLabel>{ct("insert.objects.shapes")}</MenuLabel>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "rect" }); close(); }}>
-                            <Square className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.rectangle")}
-                          </MenuItem>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "ellipse" }); close(); }}>
-                            <Type className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.ellipse")}
-                          </MenuItem>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "line" }); close(); }}>
-                            <Minus className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.line")}
-                          </MenuItem>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "arrow" }); close(); }}>
-                            <LinkIcon className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.arrow")}
-                          </MenuItem>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "triangle" }); close(); }}>
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.triangle")}
-                          </MenuItem>
-                          <MenuItem onClick={() => { handleAddDesignObject(OBJECT_TYPES.SHAPE, 0, 0, { shapeType: "polygon" }); close(); }}>
-                            <Layers className="h-4 w-4 mr-2" />
-                            {ct("insert.objects.polygon")}
-                          </MenuItem>
-                        </>
-                      )}
-                    </RibbonMenu>
-                  </RibbonGroup>
-
-                  {/* Media group */}
-                  <RibbonGroup label={ct("insert.media.label")} icon={Image} priority={55}>
-                    <RibbonButton
-                      id="addSticker"
-                      icon={Image}
-                      label={ct("insert.media.sticker")}
-                      hint={ct("insert.media.stickerHint")}
-                      onClick={() => {
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddDesignObject(OBJECT_TYPES.STICKER, centerX, centerY);
-                        }
-                      }}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      id="addImage"
-                      icon={Image}
-                      label={ct("insert.media.image")}
-                      hint={ct("insert.media.imageHint")}
-                      onClick={() => {
-                        if (engineRef.current) {
-                          const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                          const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                          const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                          const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                          handleAddDesignObject(OBJECT_TYPES.IMAGE, centerX, centerY);
-                        }
-                      }}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-
-              {/* PAGE TAB */}
-              {activeTab === "page" && (
-                <>
-                  {/* Frames group */}
-                  <RibbonGroup label={ct("page.frames.label")} icon={Layout} priority={70}>
-                    <RibbonMenu
-                      icon={Layout}
-                      label={ct("page.frames.addFrame")}
-                      hint={ct("page.frames.addFrameHint")}
-                      width={200}
-                    >
-                      {(close) => (
-                        <>
-                          <MenuLabel>{ct("page.frames.addFrame")}</MenuLabel>
-                          {FRAME_TYPES.map((ft) => (
-                            <MenuItem
-                              key={ft.id}
-                              onClick={() => {
-                                if (engineRef.current) {
-                                  const viewport = engineRef.current.viewport || { w: 800, h: 600 };
-                                  const camera = engineRef.current.camera || { x: 0, y: 0, scale: 1 };
-                                  const centerX = -camera.x / camera.scale + viewport.w / (2 * camera.scale);
-                                  const centerY = -camera.y / camera.scale + viewport.h / (2 * camera.scale);
-                                  handleAddDesignObject(OBJECT_TYPES.FRAME, centerX, centerY, { frameType: ft.id });
-                                }
-                                close();
-                              }}
-                            >
-                              {t(`vault.canvas.frameTypes.${ft.id}`) || ft.label}
-                            </MenuItem>
-                          ))}
-                        </>
-                      )}
-                    </RibbonMenu>
-                  </RibbonGroup>
-
-                  {/* Paper group */}
-                  <RibbonGroup label={ct("page.paper.label")} icon={Layers} priority={65}>
-                    <RibbonSelect
-                      title={ct("page.paper.templateHint")}
-                      value={paper.template || "grid"}
-                      onChange={(template) => handlePaperChange({ template })}
-                      options={[
-                        { value: "blank", label: ct("page.paper.blank") },
-                        { value: "ruled", label: ct("page.paper.ruled") },
-                        { value: "grid", label: ct("page.paper.grid") },
-                        { value: "dots", label: ct("page.paper.dots") },
-                        { value: "stave", label: ct("page.paper.stave") },
-                        { value: "iso", label: ct("page.paper.iso") },
-                      ]}
-                    />
-                    <RibbonSelect
-                      title={ct("page.paper.sizeHint")}
-                      value={paper.size || "infinite"}
-                      onChange={(size) => handlePaperChange({ size })}
-                      options={[
-                        { value: "infinite", label: ct("page.paper.infinite") },
-                        { value: "a4", label: "A4" },
-                        { value: "letter", label: "Letter" },
-                        { value: "3:4", label: "3:4" },
-                        { value: "16:9", label: "16:9" },
-                        { value: "free", label: ct("page.paper.free") },
-                      ]}
-                    />
-                    <RibbonSelect
-                      title={ct("page.paper.toneHint")}
-                      value={paper.tone || "dark"}
-                      onChange={(tone) => handlePaperChange({ tone })}
-                      options={[
-                        { value: "dark", label: ct("page.paper.dark") },
-                        { value: "light", label: ct("page.paper.light") },
-                      ]}
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-
-              {/* VIEW TAB */}
-              {activeTab === "view" && (
-                <>
-                  <RibbonGroup label={ct("view.label")} icon={Maximize2} priority={70}>
-                    <RibbonButton
-                      icon={Maximize2}
-                      label={ct("view.fitPage")}
-                      hint={ct("view.fitPageHint")}
-                      onClick={() => engineRef.current?.fitView?.()}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      icon={Square}
-                      label={ct("view.fitWidth")}
-                      hint={ct("view.fitWidthHint")}
-                      onClick={() => engineRef.current?.fitWidth?.()}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      icon={Minus}
-                      label={ct("view.zoomOut")}
-                      hint={ct("view.zoomOutHint")}
-                      onClick={() => engineRef.current?.zoomBy?.(0.88)}
-                      keepFocus={false}
-                    />
-                    <span className="self-center font-mono text-[10px] text-muted-foreground px-1">
-                      {ct("view.zoomPercent", { percent: Math.round(camera.scale * 100) })}
-                    </span>
-                    <RibbonButton
-                      icon={Plus}
-                      label={ct("view.zoomIn")}
-                      hint={ct("view.zoomInHint")}
-                      onClick={() => engineRef.current?.zoomBy?.(1.12)}
-                      keepFocus={false}
-                    />
-                    <RibbonButton
-                      icon={RotateCcw}
-                      label={ct("view.reset")}
-                      hint={ct("view.resetHint")}
-                      onClick={() => engineRef.current?.setCamera?.({ x: 0, y: 0, scale: 1 })}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-
-              {/* FILE TAB */}
-              {activeTab === "file" && (
-                <>
-                  <RibbonGroup label={ct("file.label")} icon={Download} priority={70}>
-                    <RibbonMenu
-                      icon={Download}
-                      label={ct("file.exportCanvas")}
-                      hint={ct("file.exportCanvasHint")}
-                      width={240}
-                    >
-                      {(close) => (
-                        <>
-                          <MenuLabel>{ct("file.exportCanvas")}</MenuLabel>
-                          <MenuItem onClick={() => { exportCanvasDoc(canvasDoc); close(); }}>
-                            <FileTextIcon className="h-4 w-4 mr-2" />
-                            {ct("file.exportCanvas")}
-                          </MenuItem>
-                          <hr className="my-1 border-border" />
-                          <MenuLabel>{ct("file.exportPdf")}</MenuLabel>
-                          <MenuItem onClick={() => { exportCanvasToPdf(canvasDoc, { wholeCanvas: true }); close(); }}>
-                            <FileTextIcon className="h-4 w-4 mr-2" />
-                            {ct("file.exportWholeCanvas")} (PDF)
-                          </MenuItem>
-                          <MenuItem onClick={() => {
-                            const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                            if (frames.length === 1) {
-                              exportCanvasToPdf(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                            } else if (frames.length > 1) {
-                              toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                            } else {
-                              exportCanvasToPdf(canvasDoc, { wholeCanvas: true });
-                            }
-                            close();
-                          }}>
-                            <FileTextIcon className="h-4 w-4 mr-2" />
-                            {ct("file.exportSelectedFrame")} (PDF)
-                          </MenuItem>
-                          <hr className="my-1 border-border" />
-                          <MenuLabel>{ct("file.exportPng")}</MenuLabel>
-                          <MenuItem onClick={() => { exportCanvasToPng(canvasDoc, { wholeCanvas: true }); close(); }}>
-                            <ImageIcon className="h-4 w-4 mr-2" />
-                            {ct("file.exportWholeCanvas")} (PNG)
-                          </MenuItem>
-                          <MenuItem onClick={() => {
-                            const frames = canvasDoc.objects?.filter(o => o.type === "frame") || [];
-                            if (frames.length === 1) {
-                              exportCanvasToPng(canvasDoc, { wholeCanvas: false, selectedFrameId: frames[0].id });
-                            } else if (frames.length > 1) {
-                              toast.info(t("vault.canvas.selectFrameFirst") || "Select a frame first");
-                            } else {
-                              exportCanvasToPng(canvasDoc, { wholeCanvas: true });
-                            }
-                            close();
-                          }}>
-                            <ImageIcon className="h-4 w-4 mr-2" />
-                            {ct("file.exportSelectedFrame")} (PNG)
-                          </MenuItem>
-                        </>
-                      )}
-                    </RibbonMenu>
-                    <RibbonButton
-                      icon={Upload}
-                      label={ct("file.importCanvas")}
-                      hint={ct("file.importCanvasHint")}
-                      onClick={() => triggerImport(
-                        (doc) => {
-                          navigate(`/canvas/${doc.id}`);
-                          toast.success(t("vault.canvas.importSuccess") || "Canvas imported successfully");
-                        },
-                        (error) => toast.error(error.message)
-                      )}
-                      keepFocus={false}
-                    />
-                  </RibbonGroup>
-                </>
-              )}
-            </RibbonPanel>
-          </RibbonPanelPopoverProvider>
         </NoteTopStack>
 
-        {/* Canvas area - fills remaining height */}
+        {/* Canvas area - fills remaining height, full width */}
         <div
           className={cn(
             "relative rounded-2xl border border-border/70 bg-[hsl(var(--paper-outside))] shadow-inner shadow-[hsl(var(--shadow)/0.4)]",
             "min-h-0 flex-1",
-            focus ? "h-[calc(100vh-300px)]" : "h-[calc(100vh-250px)]"
+            focus ? "h-[calc(100vh-130px)]" : "h-[calc(100vh-80px)]"
           )}
         >
           <CanvasBoard
             ref={engineRef}
             className="h-full w-full"
-            kind="canvas"
+            kind="design"
             strokes={strokes}
             objects={objects}
             paper={paper}
@@ -945,13 +923,13 @@ export default function CanvasPage() {
               })()}
             </svg>
           )}
-        </div>
 
-        {/* Stats bar */}
-        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground font-mono">
-          <span>{t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}</span>
-          <span>{markLabel}</span>
-          <span>{objects.length} objects</span>
+          {/* Stats overlay in bottom corner */}
+          <div className="absolute bottom-2 right-2 flex items-center gap-2 text-[10px] text-muted-foreground font-mono bg-background/80 backdrop-blur px-2 py-1 rounded border border-border/40 pointer-events-none">
+            <span>{t("vault.canvas.stats", { cards: localDigits(cards.length), connections: localDigits(connectors.length) })}</span>
+            <span>{markLabel}</span>
+            <span>{objects.length} objects</span>
+          </div>
         </div>
 
         {/* Edge dock panels */}
@@ -1109,12 +1087,126 @@ function ObjectInspector({ object, objects, onChange, onDelete, t }) {
           {commonProps}
         </div>
       );
+    case "textbox":
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Text</label>
+            <textarea value={object.text || ""} onChange={(e) => onChange(object.id, { text: e.target.value })} rows={3} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm resize-y" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Font Size</label>
+            <input type="number" value={object.fontSize || 16} onChange={(e) => onChange(object.id, { fontSize: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Color</label>
+            <input type="color" value={object.color || "#e9e2d0"} onChange={(e) => onChange(object.id, { color: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
+          </div>
+          {commonProps}
+        </div>
+      );
+    case "sticky":
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Text</label>
+            <textarea value={object.text || ""} onChange={(e) => onChange(object.id, { text: e.target.value })} rows={3} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm resize-y" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Font Size</label>
+            <input type="number" value={object.fontSize || 14} onChange={(e) => onChange(object.id, { fontSize: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Background</label>
+            <input type="color" value={object.background || "#fef08a"} onChange={(e) => onChange(object.id, { background: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
+          </div>
+          {commonProps}
+        </div>
+      );
     case "text-frame":
       return (
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Markdown</label>
-            <textarea value={object.markdown} onChange={(e) => onChange(object.id, { markdown: e.target.value })} rows={4} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm font-mono resize-y" />
+            <textarea value={object.markdown || ""} onChange={(e) => onChange(object.id, { markdown: e.target.value })} rows={4} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm resize-y font-mono text-xs" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Font Size</label>
+            <input type="number" value={object.fontSize || 16} onChange={(e) => onChange(object.id, { fontSize: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Color</label>
+            <input type="color" value={object.color || "#e9e2d0"} onChange={(e) => onChange(object.id, { color: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
+          </div>
+          {commonProps}
+        </div>
+      );
+    case "shape":
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Shape Type</label>
+            <select value={object.shapeType || "rect"} onChange={(e) => onChange(object.id, { shapeType: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm">
+              <option value="rect">Rectangle</option>
+              <option value="rounded-rect">Rounded Rectangle</option>
+              <option value="ellipse">Ellipse</option>
+              <option value="line">Line</option>
+              <option value="arrow">Arrow</option>
+              <option value="triangle">Triangle</option>
+              <option value="star">Star</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Fill</label>
+            <input type="color" value={object.fill || "none"} onChange={(e) => onChange(object.id, { fill: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Stroke</label>
+            <input type="color" value={object.stroke || "#e9e2d0"} onChange={(e) => onChange(object.id, { stroke: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Stroke Width</label>
+            <input type="number" value={object.strokeWidth || 2} onChange={(e) => onChange(object.id, { strokeWidth: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+          </div>
+          {commonProps}
+        </div>
+      );
+    case "sticker":
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Sticker</label>
+            <select value={object.stickerId || "star-1"} onChange={(e) => onChange(object.id, { stickerId: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm">
+              <option value="star-1">Star</option>
+              <option value="heart">Heart</option>
+              <option value="smile">Smile</option>
+              <option value="thumbs-up">Thumbs Up</option>
+              <option value="lightning">Lightning</option>
+              <option value="cloud">Cloud</option>
+              <option value="sun">Sun</option>
+              <option value="moon">Moon</option>
+              <option value="flower">Flower</option>
+              <option value="music">Music</option>
+              <option value="camera">Camera</option>
+              <option value="bookmark">Bookmark</option>
+              <option value="flag">Flag</option>
+              <option value="tag">Tag</option>
+              <option value="paperclip">Paperclip</option>
+              <option value="bell">Bell</option>
+              <option value="gift">Gift</option>
+              <option value="cake">Cake</option>
+              <option value="rocket">Rocket</option>
+              <option value="leaf">Leaf</option>
+              <option value="fire">Fire</option>
+              <option value="diamond">Diamond</option>
+              <option value="sparkles">Sparkles</option>
+              <option value="check">Check</option>
+              <option value="star-outline">Star Outline</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Color</label>
+            <input type="color" value={object.color || "#e9e2d0"} onChange={(e) => onChange(object.id, { color: e.target.value })} className="w-full h-8 px-2 py-1 rounded bg-background border border-border/60" />
           </div>
           {commonProps}
         </div>
@@ -1124,11 +1216,11 @@ function ObjectInspector({ object, objects, onChange, onDelete, t }) {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Source</label>
-            <input value={object.src} onChange={(e) => onChange(object.id, { src: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+            <input value={object.src || ""} onChange={(e) => onChange(object.id, { src: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" placeholder="local:..." />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Alt Text</label>
-            <input value={object.alt} onChange={(e) => onChange(object.id, { alt: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+            <input value={object.alt || ""} onChange={(e) => onChange(object.id, { alt: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
           </div>
           {commonProps}
         </div>
@@ -1138,21 +1230,16 @@ function ObjectInspector({ object, objects, onChange, onDelete, t }) {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">File ID</label>
-            <input value={object.fileId} onChange={(e) => onChange(object.id, { fileId: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+            <input value={object.fileId || ""} onChange={(e) => onChange(object.id, { fileId: e.target.value })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" placeholder="local:..." />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Page Number</label>
-            <input type="number" value={object.pageNumber} onChange={(e) => onChange(object.id, { pageNumber: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" />
+            <input type="number" value={object.pageNumber || 1} onChange={(e) => onChange(object.id, { pageNumber: Number(e.target.value) })} className="w-full px-2 py-1 rounded bg-background border border-border/60 text-sm" min="1" />
           </div>
           {commonProps}
         </div>
       );
     default:
-      return (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Type: {object.type}</p>
-          {commonProps}
-        </div>
-      );
+      return commonProps;
   }
 }

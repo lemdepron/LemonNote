@@ -234,7 +234,12 @@ export function getDefaultSize(type, shapeType) {
 }
 
 /** Hit test: check if point is inside object bounds (with rotation) */
-export function hitTestObject(object, x, y) {
+export function hitTestObject(object, x, y, allObjects = []) {
+  // Special handling for connectors (line-based hit test)
+  if (object.type === OBJECT_TYPES.CONNECTOR) {
+    return hitTestConnector(object, x, y, allObjects);
+  }
+  
   // Transform point to object's local coordinates
   const cx = object.x + object.width / 2;
   const cy = object.y + object.height / 2;
@@ -249,6 +254,55 @@ export function hitTestObject(object, x, y) {
          localX <= object.x + object.width &&
          localY >= object.y &&
          localY <= object.y + object.height;
+}
+
+/** Hit test for connector (line with arrow) */
+function hitTestConnector(connector, x, y, allObjects) {
+  const { from, to, style = "straight" } = connector;
+  if (!from || !to) return false;
+  
+  const fromObj = allObjects.find(o => o.id === from);
+  const toObj = allObjects.find(o => o.id === to);
+  if (!fromObj || !toObj) return false;
+  
+  const fromX = fromObj.x + fromObj.width / 2;
+  const fromY = fromObj.y + fromObj.height / 2;
+  const toX = toObj.x + toObj.width / 2;
+  const toY = toObj.y + toObj.height / 2;
+  
+  const threshold = 8; // pixels
+  
+  if (style === "straight") {
+    return pointToLineDistance(x, y, fromX, fromY, toX, toY) <= threshold;
+  } else if (style === "elbow") {
+    const midX = (fromX + toX) / 2;
+    // Check both segments
+    return pointToLineDistance(x, y, fromX, fromY, midX, fromY) <= threshold ||
+           pointToLineDistance(x, y, midX, fromY, midX, toY) <= threshold ||
+           pointToLineDistance(x, y, midX, toY, toX, toY) <= threshold;
+  } else if (style === "curved") {
+    // Simplified: check distance to straight line as approximation
+    return pointToLineDistance(x, y, fromX, fromY, toX, toY) <= threshold * 2;
+  }
+  return false;
+}
+
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  let param = -1;
+  if (lenSq !== 0) param = dot / lenSq;
+  let xx, yy;
+  if (param < 0) { xx = x1; yy = y1; }
+  else if (param > 1) { xx = x2; yy = y2; }
+  else { xx = x1 + param * C; yy = y1 + param * D; }
+  const dx = px - xx;
+  const dy = py - yy;
+  return Math.sqrt(dx * dx + dy * dy);
 }
 
 /** Get handle at position (for resize/rotate) */
@@ -1143,3 +1197,6 @@ export function deleteGroup(objects, groupId) {
 
 /** Parse markdown into structured blocks for rendering */
 export { parseMarkdown, parseInlines, renderMarkdownBlocks, wrapText };
+
+// Re-export additional renderers
+export { renderFrame, renderCard, renderConnector, renderImage, renderPdfPage } from "./renderers";

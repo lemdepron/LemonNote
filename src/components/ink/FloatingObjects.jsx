@@ -5,6 +5,11 @@ import {
   renderTextBox,
   renderSticky,
   renderTextFrame,
+  renderFrame,
+  renderCard,
+  renderConnector,
+  renderImage,
+  renderPdfPage,
   hitTestObject,
   getHandleAt,
   transformObject,
@@ -185,6 +190,21 @@ export default function FloatingObjects({
         case OBJECT_TYPES.TEXT_FRAME:
           renderTextFrame(ctx, object, scale, isEditing);
           break;
+        case OBJECT_TYPES.FRAME:
+          renderFrame(ctx, object, scale);
+          break;
+        case OBJECT_TYPES.CARD:
+          renderCard(ctx, object, scale);
+          break;
+        case OBJECT_TYPES.CONNECTOR:
+          renderConnector(ctx, object, scale, objects);
+          break;
+        case OBJECT_TYPES.IMAGE:
+          renderImage(ctx, object, scale);
+          break;
+        case OBJECT_TYPES.PDF_PAGE:
+          renderPdfPage(ctx, object, scale);
+          break;
       }
 
       // Draw selection handles
@@ -196,6 +216,9 @@ export default function FloatingObjects({
 
   // Draw selection handles for an object
   const drawHandles = (ctx, object, scale) => {
+    // Connectors have no size - skip handles
+    if (object.type === OBJECT_TYPES.CONNECTOR) return;
+
     const { x, y, width, height, rotation, frameType, locked } = object;
     const cx = x + width / 2;
     const cy = y + height / 2;
@@ -291,7 +314,7 @@ export default function FloatingObjects({
     // Check in reverse z-order (top first)
     const sortedObjects = [...objects].sort((a, b) => (b.zOrder || 0) - (a.zOrder || 0));
     for (const object of sortedObjects) {
-      if (hitTestObject(object, world.x, world.y)) {
+      if (hitTestObject(object, world.x, world.y, objects)) {
         return object;
       }
     }
@@ -309,9 +332,9 @@ export default function FloatingObjects({
     // If editing, don't handle canvas clicks (let overlay handle it)
     if (editingObjectId) return;
 
-    // Check for handle hit first
+    // Check for handle hit first (skip for connectors)
     const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
-    if (selectedObject && !editingObjectId) {
+    if (selectedObject && !editingObjectId && selectedObject.type !== OBJECT_TYPES.CONNECTOR) {
       const world = screenToWorld(screenX, screenY);
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
       // Ignore corner handles for non-Free frames
@@ -365,7 +388,7 @@ export default function FloatingObjects({
 
     // Update hover handle cursor
     const selectedObject = selectedObjectIds.length > 0 ? objects.find((o) => selectedObjectIds.includes(o.id)) : null;
-    if (selectedObject && !editingObjectId && !dragStateRef.current) {
+    if (selectedObject && !editingObjectId && !dragStateRef.current && selectedObject.type !== OBJECT_TYPES.CONNECTOR) {
       const isFreeFrame = selectedObject.type === OBJECT_TYPES.FRAME && selectedObject.frameType === "free";
       const showCornerHandles = selectedObject.type !== OBJECT_TYPES.FRAME || isFreeFrame;
       const handle = getHandleAt(selectedObject, world.x, world.y, HANDLE_SIZE / camera.scale);
