@@ -77,6 +77,8 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     onTool,
   } = props;
   const wrapRef = useRef(null);
+  const [wrapEl, setWrapEl] = useState(null);
+  const setWrapNode = useCallback((node) => { wrapRef.current = node; setWrapEl(node); }, []);
   const baseRef = useRef(null);
   const overlayRef = useRef(null);
   const engineRef = useRef(null);
@@ -193,20 +195,23 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
     return () => observer.disconnect();
   }, []);
 
-  // Wheel/keyboard handlers (for non-transparent)
+  // Wheel zoom and Escape. These must also run when the board is transparent (the canvas page uses it that way).
   useEffect(() => {
-    if (transparent) return undefined;
     const canvas = overlayRef.current;
-    const wheelTarget = wrapRef.current || canvas; // the wrapper also sees wheel events when the overlay is click-through (Select mode)
+    const wheelTarget = wrapEl || canvas; // the wrapper also sees wheel events when the overlay is click-through (Select mode)
     if (!canvas || !wheelTarget) return undefined;
     const onWheel = (event) => {
       event.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      if (event.ctrlKey || event.metaKey) {
-        engineRef.current?.zoomAt(event.clientX - rect.left, event.clientY - rect.top, event.deltaY < 0 ? 1.12 : 0.9);
-      } else {
-        engineRef.current?.panBy(-event.deltaX, -event.deltaY);
+      if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        // Shift + wheel moves the page sideways
+        engineRef.current?.panBy(-(event.deltaX || event.deltaY), 0);
+        return;
       }
+      // Plain wheel (also Ctrl + wheel and trackpad pinch) zooms around the mouse pointer
+      const raw = event.deltaMode === 1 ? event.deltaY * 33 : event.deltaY;
+      const delta = Math.max(-240, Math.min(240, raw));
+      engineRef.current?.zoomAt(event.clientX - rect.left, event.clientY - rect.top, Math.exp(-delta * 0.0022));
     };
     const onKey = (event) => {
       if (event.key === "Escape") {
@@ -225,7 +230,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
       wheelTarget.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     };
-  }, [transparent]);
+  }, [wrapEl]);
 
   // Theme change repaint
   useEffect(() => { engineRef.current?.invalidate(); }, [themeRevision]);
@@ -519,7 +524,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
 
   return (
     <div
-      ref={wrapRef}
+      ref={setWrapNode}
       style={height ? { height } : undefined}
       className={wrapperClass}
     >

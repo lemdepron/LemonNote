@@ -158,57 +158,85 @@ export function renderCard(ctx, object, scale = 1) {
   ctx.rotate(rotation);
   ctx.translate(-cx, -cy);
 
-  // Card background
-  ctx.fillStyle = "#fffef0";
-  ctx.strokeStyle = "#d4a843";
-  ctx.lineWidth = 1.5 / Math.max(0.15, scale);
-  const radius = 8;
+  // Card sizes are in world units, so the text scales together with the card when you zoom.
+  const edge = 1.5 / Math.max(0.15, scale); // border stays thin on screen
+  const radius = 12;
+  const titleHeight = 34;
+  const pad = 14;
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+  const palette = isDark
+    ? { body: "#2a2722", head: "#3a3426", line: "#6b5a2c", title: "#f3e7b8", text: "#e8e2d2", shadow: "rgba(0,0,0,0.45)" }
+    : { body: "#fffdf4", head: "#f7e9ac", line: "#d9b44a", title: "#5a4500", text: "#3a3320", shadow: "rgba(90,69,0,0.22)" };
+
+  // Card background with a soft shadow
+  ctx.save();
+  ctx.shadowColor = palette.shadow;
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = palette.body;
   ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(x, y, w, h, radius);
-  } else {
-    ctx.rect(x, y, w, h);
-  }
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, radius);
+  else ctx.rect(x, y, w, h);
   ctx.fill();
-  ctx.stroke();
+  ctx.restore();
 
   // Title bar
-  const titleHeight = 28;
-  ctx.fillStyle = "#f5e6a0";
+  ctx.fillStyle = palette.head;
   ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(x, y, w, titleHeight, { upperLeft: radius, upperRight: radius, lowerLeft: 0, lowerRight: 0 });
-  } else {
-    ctx.rect(x, y, w, titleHeight);
-  }
+  if (ctx.roundRect) ctx.roundRect(x, y, w, titleHeight, { upperLeft: radius, upperRight: radius, lowerLeft: 0, lowerRight: 0 });
+  else ctx.rect(x, y, w, titleHeight);
   ctx.fill();
+
+  // Outline and divider
+  ctx.strokeStyle = palette.line;
+  ctx.lineWidth = edge;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, radius);
+  else ctx.rect(x, y, w, h);
+  ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(x, y + titleHeight);
   ctx.lineTo(x + w, y + titleHeight);
-  ctx.strokeStyle = "#d4a843";
-  ctx.lineWidth = 1 / Math.max(0.15, scale);
   ctx.stroke();
 
-  // Title text
-  ctx.fillStyle = "#5c4a00";
-  ctx.font = `bold ${13 / Math.max(0.15, scale)}px "Inter", ui-sans-serif, system-ui, sans-serif`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  const titlePadding = 10;
-  const maxTitleWidth = w - titlePadding * 2;
-  ctx.fillText(title, x + titlePadding, y + 6, maxTitleWidth);
+  // Text helper: wrap words to the card width, never squeeze letters
+  const wrap = (text, maxWidth) => {
+    const out = [];
+    String(text).split("\n").forEach((paragraph) => {
+      const words = paragraph.split(/\s+/).filter(Boolean);
+      if (!words.length) { out.push(""); return; }
+      let line = words[0];
+      for (let i = 1; i < words.length; i += 1) {
+        const test = `${line} ${words[i]}`;
+        if (ctx.measureText(test).width <= maxWidth) line = test;
+        else { out.push(line); line = words[i]; }
+      }
+      out.push(line);
+    });
+    return out;
+  };
+  const clip = (text, maxWidth) => {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let t = text;
+    while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) t = t.slice(0, -1);
+    return `${t}…`;
+  };
 
-  // Body text
-  ctx.fillStyle = "#3d3300";
-  ctx.font = `${12 / Math.max(0.15, scale)}px "Inter", ui-sans-serif, system-ui, sans-serif`;
-  const lines = body ? body.split("\n") : [""];
-  const lineHeight = (12 / Math.max(0.15, scale)) * 1.4;
-  const startX = x + titlePadding;
-  const startY = y + titleHeight + 8;
-  const maxWidth = w - titlePadding * 2;
-  
-  lines.slice(0, 8).forEach((line, i) => {
-    ctx.fillText(line, startX, startY + i * lineHeight, maxWidth);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = palette.title;
+  ctx.font = `600 15px "Inter", ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillText(clip(title || "", w - pad * 2), x + pad, y + titleHeight / 2 + 1);
+
+  ctx.textBaseline = "top";
+  ctx.fillStyle = palette.text;
+  ctx.font = `13px "Inter", ui-sans-serif, system-ui, sans-serif`;
+  const lineHeight = 13 * 1.5;
+  const lines = wrap(body || "", w - pad * 2);
+  const room = Math.max(1, Math.floor((h - titleHeight - pad * 2 + 4) / lineHeight));
+  lines.slice(0, room).forEach((line, i) => {
+    const isLast = i === room - 1 && lines.length > room;
+    ctx.fillText(isLast ? clip(`${line} …`, w - pad * 2) : line, x + pad, y + titleHeight + pad - 2 + i * lineHeight);
   });
 
   ctx.restore();

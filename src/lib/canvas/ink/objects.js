@@ -542,16 +542,22 @@ export function renderSticker(ctx, object, scale = 1) {
   ctx.rotate(rotation);
   ctx.translate(-cx, -cy);
   
-  // Scale sticker to fit object bounds
+  // The sticker paths are drawn in a 24x24 box that starts at (0, 0).
+  // Move that box to the middle of the object first, then scale it to fit the object.
   const stickerSize = Math.min(w, h);
-  const stickerScale = stickerSize / 24; // SVGs are 24x24 viewBox
+  const stickerScale = stickerSize / 24;
   
-  ctx.translate(cx, cy);
+  ctx.translate(cx - stickerSize / 2, cy - stickerSize / 2);
   ctx.scale(stickerScale, stickerScale);
-  ctx.translate(-cx, -cy);
   
-  ctx.fillStyle = color || "#e9e2d0";
-  ctx.lineWidth = 1.5 / stickerScale;
+  // Default colour follows the theme so a new sticker is always visible.
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+  const ink = color || (isDark ? "#f1ead6" : "#2b2622");
+  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.lineWidth = 1.5;
   
   for (const path of sticker.paths) {
     const p = new Path2D(path);

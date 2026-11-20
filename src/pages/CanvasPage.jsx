@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { db } from "@/api/localDb";
 import CanvasBoard from "@/components/canvas/CanvasBoard";
+import ThemeToggle from "@/components/shell/ThemeToggle";
 import { useFocusMode } from "@/lib/focusMode";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -175,8 +176,25 @@ export default function CanvasPage() {
   }, [fileMenuOpen]);
 
   // Save canvas doc
-  const saveCanvasDoc = useCallback(async (updates) => {
+  // Undo / redo history. Every content change (strokes or objects) goes through saveCanvasDoc,
+  // so one snapshot per gesture is kept here. Changes that arrive within 350 ms of each other
+  // (a drag, a pen stroke) count as one step.
+  const historyRef = useRef({ past: [], future: [], lastSave: 0 });
+  const [histCounts, setHistCounts] = useState({ u: 0, r: 0 });
+
+  const saveCanvasDoc = useCallback(async (updates, options = {}) => {
     if (!canvasDoc) return;
+    const h = historyRef.current;
+    if (options.history !== false && ("strokes" in updates || "objects" in updates)) {
+      const now = Date.now();
+      if (now - h.lastSave > 350) {
+        h.past.push({ strokes: canvasDoc.strokes || [], objects: canvasDoc.objects || [] });
+        if (h.past.length > 80) h.past.shift();
+        h.future = [];
+        setHistCounts({ u: h.past.length, r: 0 });
+      }
+      h.lastSave = now;
+    }
     dirty.current = true;
     setStatus("saving");
     const updated = { ...canvasDoc, ...updates };
@@ -192,6 +210,22 @@ export default function CanvasPage() {
       }
     }, 650);
   }, [canvasDoc, id]);
+
+  const applyHistory = useCallback((direction) => {
+    if (!canvasDoc) return;
+    const h = historyRef.current;
+    const from = direction === "undo" ? h.past : h.future;
+    const to = direction === "undo" ? h.future : h.past;
+    if (!from.length) return;
+    const snapshot = from.pop();
+    to.push({ strokes: canvasDoc.strokes || [], objects: canvasDoc.objects || [] });
+    h.lastSave = 0;
+    setSelectedIds([]);
+    setHistCounts({ u: h.past.length, r: h.future.length });
+    saveCanvasDoc({ strokes: snapshot.strokes, objects: snapshot.objects }, { history: false });
+  }, [canvasDoc, saveCanvasDoc]);
+  const undoHistory = useCallback(() => applyHistory("undo"), [applyHistory]);
+  const redoHistory = useCallback(() => applyHistory("redo"), [applyHistory]);
 
   // Tool selection
   const selectTool = useCallback((mode) => {
@@ -549,15 +583,15 @@ export default function CanvasPage() {
         selectedIds.forEach((id) => handleDeleteObject(id));
         break;
       case "undo":
-        // TODO: implement undo
+        undoHistory();
         break;
       case "redo":
-        // TODO: implement redo
+        redoHistory();
         break;
       default:
         break;
     }
-  }, [engineRef, objects, selectedIds, saveCanvasDoc, clipboard, handleAddCard, handleAddDesignObject, handleDeleteObject, handleAddImage, handleStickerSelect]);
+  }, [engineRef, objects, selectedIds, saveCanvasDoc, clipboard, handleAddCard, handleAddDesignObject, handleDeleteObject, handleAddImage, handleStickerSelect, undoHistory, redoHistory]);
 
   // Tool groups for compact bar row 2 - from tool-defs.js
   const isPenActive = tool.mode === "draw";
@@ -601,12 +635,11 @@ export default function CanvasPage() {
           disabledReason = ct("home.clipboard.selectFirst") || "Select an object first";
         }
       }
-      // Undo/Redo are always disabled for now (not implemented)
       if (toolDef.id === "undo" || toolDef.id === "redo") {
-        disabled = true;
-        disabledReason = toolDef.id === "undo" 
-          ? (ct("home.undoDisabled") || "Undo not available yet")
-          : (ct("home.redoDisabled") || "Redo not available yet");
+        disabled = toolDef.id === "undo" ? histCounts.u === 0 : histCounts.r === 0;
+        disabledReason = toolDef.id === "undo"
+          ? (ct("home.undoDisabled") || "Nothing to undo")
+          : (ct("home.redoDisabled") || "Nothing to redo");
       }
 
       groups[toolDef.group].buttons.push({
@@ -662,8 +695,15 @@ export default function CanvasPage() {
             event.preventDefault();
             handleToolAction(getToolById("sendBackward"));
             return;
-          case "z": // Ctrl+Z - Undo (handled by browser)
-          case "y": // Ctrl+Y - Redo (handled by browser)
+          case "z": // Ctrl+Z undo, Ctrl+Shift+Z redo
+            if (isTyping) return;
+            event.preventDefault();
+            if (isShift) redoHistory(); else undoHistory();
+            return;
+          case "y": // Ctrl+Y redo
+            if (isTyping) return;
+            event.preventDefault();
+            redoHistory();
             return;
         }
       }
@@ -857,8 +897,9 @@ export default function CanvasPage() {
                 icon={Undo2}
                 label={ct("ribbon.home.undo")}
                 hint={ct("ribbon.home.undoHint")}
-                disabled
-                disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
+                onClick={undoHistory}
+                disabled={histCounts.u === 0}
+                disabledReason={ct("home.undoDisabled") || "Nothing to undo"}
                 keepFocus={false}
                 className="h-8 w-8"
               />
@@ -867,10 +908,11 @@ export default function CanvasPage() {
                 icon={Redo2}
                 label={ct("ribbon.home.redo")}
                 hint={ct("ribbon.home.redoHint")}
-                disabled
-                disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
+                onClick={redoHistory}
+                disabled={histCounts.r === 0}
+                disabledReason={ct("home.redoDisabled") || "Nothing to redo"}
                 keepFocus={false}
-                className="h-8 w-8 transform rotate-180"
+                className="h-8 w-8"
               />
 
               {/* Zoom controls */}
@@ -904,22 +946,8 @@ export default function CanvasPage() {
                 />
               </div>
 
-              {/* Theme toggle */}
-              <button
-                type="button"
-                onClick={() => {
-                  const root = document.documentElement;
-                  const isDark = root.classList.contains("dark");
-                  root.classList.toggle("dark", !isDark);
-                  root.classList.toggle("light", isDark);
-                  localStorage.setItem("themeMode", isDark ? "light" : "dark");
-                }}
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground ml-2"
-                aria-label={t("settings.appearance.switchToLight") || "Switch theme"}
-                title={t("settings.appearance.switchToLight") || "Switch theme"}
-              >
-                {document.documentElement.classList.contains("dark") ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
+              {/* Theme toggle: the same menu as the note page (Light / Dark / System) */}
+              <ThemeToggle />
 
               {/* File menu */}
               <div className="relative" data-file-menu>

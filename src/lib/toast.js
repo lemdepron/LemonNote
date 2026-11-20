@@ -96,4 +96,9 @@ export function toast({ text, type = "info", actionLabel, onAction, duration = D
   return store.add({ type, text, actionLabel, onAction, duration });
 }
 
+// Short forms used by the canvas page: toast.success("text"), toast.error("text"), toast.info("text")
+toast.success = (text, options = {}) => toast({ ...options, text: String(text), type: "success" });
+toast.error = (text, options = {}) => toast({ ...options, text: String(text), type: "error" });
+toast.info = (text, options = {}) => toast({ ...options, text: String(text), type: "info" });
+
 export { store as _store };

@@ -1785,6 +1785,9 @@
       "backToVault": "Back to vault"
     },
     "canvas": {
+      "clipboard": {
+        "copied": "Copied to clipboard"
+      },
       "label": "Infinite canvas",
       "hint": "pan, zoom, wire cards",
       "heroTitle": "Think in space.",
@@ -1891,8 +1894,8 @@
           "sendBackwardHint": "Move selected objects one layer backward",
           "notImplemented": "Not implemented yet"
         },
-        "undoDisabled": "Undo not available yet",
-        "redoDisabled": "Redo not available yet"
+        "undoDisabled": "Nothing to undo",
+        "redoDisabled": "Nothing to redo"
       },
       "draw": {
         "tools": {

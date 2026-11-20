@@ -1,0 +1,431 @@
+diff --git a/src/components/canvas/CanvasBoard.jsx b/src/components/canvas/CanvasBoard.jsx
+index 4f5b5ba..1580c2a 100644
+--- a/src/components/canvas/CanvasBoard.jsx
++++ b/src/components/canvas/CanvasBoard.jsx
+@@ -77,6 +77,8 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
+     onTool,
+   } = props;
+   const wrapRef = useRef(null);
++  const [wrapEl, setWrapEl] = useState(null);
++  const setWrapNode = useCallback((node) => { wrapRef.current = node; setWrapEl(node); }, []);
+   const baseRef = useRef(null);
+   const overlayRef = useRef(null);
+   const engineRef = useRef(null);
+@@ -193,20 +195,23 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
+     return () => observer.disconnect();
+   }, []);
+ 
+-  // Wheel/keyboard handlers (for non-transparent)
++  // Wheel zoom and Escape. These must also run when the board is transparent (the canvas page uses it that way).
+   useEffect(() => {
+-    if (transparent) return undefined;
+     const canvas = overlayRef.current;
+-    const wheelTarget = wrapRef.current || canvas; // the wrapper also sees wheel events when the overlay is click-through (Select mode)
++    const wheelTarget = wrapEl || canvas; // the wrapper also sees wheel events when the overlay is click-through (Select mode)
+     if (!canvas || !wheelTarget) return undefined;
+     const onWheel = (event) => {
+       event.preventDefault();
+       const rect = canvas.getBoundingClientRect();
+-      if (event.ctrlKey || event.metaKey) {
+-        engineRef.current?.zoomAt(event.clientX - rect.left, event.clientY - rect.top, event.deltaY < 0 ? 1.12 : 0.9);
+-      } else {
+-        engineRef.current?.panBy(-event.deltaX, -event.deltaY);
++      if (event.shiftKey && !event.ctrlKey && !event.metaKey) {
++        // Shift + wheel moves the page sideways
++        engineRef.current?.panBy(-(event.deltaX || event.deltaY), 0);
++        return;
+       }
++      // Plain wheel (also Ctrl + wheel and trackpad pinch) zooms around the mouse pointer
++      const raw = event.deltaMode === 1 ? event.deltaY * 33 : event.deltaY;
++      const delta = Math.max(-240, Math.min(240, raw));
++      engineRef.current?.zoomAt(event.clientX - rect.left, event.clientY - rect.top, Math.exp(-delta * 0.0022));
+     };
+     const onKey = (event) => {
+       if (event.key === "Escape") {
+@@ -225,7 +230,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
+       wheelTarget.removeEventListener("wheel", onWheel);
+       window.removeEventListener("keydown", onKey);
+     };
+-  }, [transparent]);
++  }, [wrapEl]);
+ 
+   // Theme change repaint
+   useEffect(() => { engineRef.current?.invalidate(); }, [themeRevision]);
+@@ -519,7 +524,7 @@ const CanvasBoard = forwardRef(function CanvasBoard(props, ref) {
+ 
+   return (
+     <div
+-      ref={wrapRef}
++      ref={setWrapNode}
+       style={height ? { height } : undefined}
+       className={wrapperClass}
+     >
+diff --git a/src/lib/canvas/ink/objects.js b/src/lib/canvas/ink/objects.js
+index 1cab7e0..fa29b62 100644
+--- a/src/lib/canvas/ink/objects.js
++++ b/src/lib/canvas/ink/objects.js
+@@ -542,16 +542,22 @@ export function renderSticker(ctx, object, scale = 1) {
+   ctx.rotate(rotation);
+   ctx.translate(-cx, -cy);
+   
+-  // Scale sticker to fit object bounds
++  // The sticker paths are drawn in a 24x24 box that starts at (0, 0).
++  // Move that box to the middle of the object first, then scale it to fit the object.
+   const stickerSize = Math.min(w, h);
+-  const stickerScale = stickerSize / 24; // SVGs are 24x24 viewBox
++  const stickerScale = stickerSize / 24;
+   
+-  ctx.translate(cx, cy);
++  ctx.translate(cx - stickerSize / 2, cy - stickerSize / 2);
+   ctx.scale(stickerScale, stickerScale);
+-  ctx.translate(-cx, -cy);
+   
+-  ctx.fillStyle = color || "#e9e2d0";
+-  ctx.lineWidth = 1.5 / stickerScale;
++  // Default colour follows the theme so a new sticker is always visible.
++  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
++  const ink = color || (isDark ? "#f1ead6" : "#2b2622");
++  ctx.fillStyle = ink;
++  ctx.strokeStyle = ink;
++  ctx.lineJoin = "round";
++  ctx.lineCap = "round";
++  ctx.lineWidth = 1.5;
+   
+   for (const path of sticker.paths) {
+     const p = new Path2D(path);
+diff --git a/src/lib/canvas/ink/renderers.js b/src/lib/canvas/ink/renderers.js
+index 08d6758..0a576bb 100644
+--- a/src/lib/canvas/ink/renderers.js
++++ b/src/lib/canvas/ink/renderers.js
+@@ -158,57 +158,85 @@ export function renderCard(ctx, object, scale = 1) {
+   ctx.rotate(rotation);
+   ctx.translate(-cx, -cy);
+ 
+-  // Card background
+-  ctx.fillStyle = "#fffef0";
+-  ctx.strokeStyle = "#d4a843";
+-  ctx.lineWidth = 1.5 / Math.max(0.15, scale);
+-  const radius = 8;
++  // Card sizes are in world units, so the text scales together with the card when you zoom.
++  const edge = 1.5 / Math.max(0.15, scale); // border stays thin on screen
++  const radius = 12;
++  const titleHeight = 34;
++  const pad = 14;
++  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
++  const palette = isDark
++    ? { body: "#2a2722", head: "#3a3426", line: "#6b5a2c", title: "#f3e7b8", text: "#e8e2d2", shadow: "rgba(0,0,0,0.45)" }
++    : { body: "#fffdf4", head: "#f7e9ac", line: "#d9b44a", title: "#5a4500", text: "#3a3320", shadow: "rgba(90,69,0,0.22)" };
++
++  // Card background with a soft shadow
++  ctx.save();
++  ctx.shadowColor = palette.shadow;
++  ctx.shadowBlur = 14;
++  ctx.shadowOffsetY = 3;
++  ctx.fillStyle = palette.body;
+   ctx.beginPath();
+-  if (ctx.roundRect) {
+-    ctx.roundRect(x, y, w, h, radius);
+-  } else {
+-    ctx.rect(x, y, w, h);
+-  }
++  if (ctx.roundRect) ctx.roundRect(x, y, w, h, radius);
++  else ctx.rect(x, y, w, h);
+   ctx.fill();
+-  ctx.stroke();
++  ctx.restore();
+ 
+   // Title bar
+-  const titleHeight = 28;
+-  ctx.fillStyle = "#f5e6a0";
++  ctx.fillStyle = palette.head;
+   ctx.beginPath();
+-  if (ctx.roundRect) {
+-    ctx.roundRect(x, y, w, titleHeight, { upperLeft: radius, upperRight: radius, lowerLeft: 0, lowerRight: 0 });
+-  } else {
+-    ctx.rect(x, y, w, titleHeight);
+-  }
++  if (ctx.roundRect) ctx.roundRect(x, y, w, titleHeight, { upperLeft: radius, upperRight: radius, lowerLeft: 0, lowerRight: 0 });
++  else ctx.rect(x, y, w, titleHeight);
+   ctx.fill();
++
++  // Outline and divider
++  ctx.strokeStyle = palette.line;
++  ctx.lineWidth = edge;
++  ctx.beginPath();
++  if (ctx.roundRect) ctx.roundRect(x, y, w, h, radius);
++  else ctx.rect(x, y, w, h);
++  ctx.stroke();
+   ctx.beginPath();
+   ctx.moveTo(x, y + titleHeight);
+   ctx.lineTo(x + w, y + titleHeight);
+-  ctx.strokeStyle = "#d4a843";
+-  ctx.lineWidth = 1 / Math.max(0.15, scale);
+   ctx.stroke();
+ 
+-  // Title text
+-  ctx.fillStyle = "#5c4a00";
+-  ctx.font = `bold ${13 / Math.max(0.15, scale)}px "Inter", ui-sans-serif, system-ui, sans-serif`;
++  // Text helper: wrap words to the card width, never squeeze letters
++  const wrap = (text, maxWidth) => {
++    const out = [];
++    String(text).split("\n").forEach((paragraph) => {
++      const words = paragraph.split(/\s+/).filter(Boolean);
++      if (!words.length) { out.push(""); return; }
++      let line = words[0];
++      for (let i = 1; i < words.length; i += 1) {
++        const test = `${line} ${words[i]}`;
++        if (ctx.measureText(test).width <= maxWidth) line = test;
++        else { out.push(line); line = words[i]; }
++      }
++      out.push(line);
++    });
++    return out;
++  };
++  const clip = (text, maxWidth) => {
++    if (ctx.measureText(text).width <= maxWidth) return text;
++    let t = text;
++    while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) t = t.slice(0, -1);
++    return `${t}…`;
++  };
++
+   ctx.textAlign = "left";
++  ctx.textBaseline = "middle";
++  ctx.fillStyle = palette.title;
++  ctx.font = `600 15px "Inter", ui-sans-serif, system-ui, sans-serif`;
++  ctx.fillText(clip(title || "", w - pad * 2), x + pad, y + titleHeight / 2 + 1);
++
+   ctx.textBaseline = "top";
+-  const titlePadding = 10;
+-  const maxTitleWidth = w - titlePadding * 2;
+-  ctx.fillText(title, x + titlePadding, y + 6, maxTitleWidth);
+-
+-  // Body text
+-  ctx.fillStyle = "#3d3300";
+-  ctx.font = `${12 / Math.max(0.15, scale)}px "Inter", ui-sans-serif, system-ui, sans-serif`;
+-  const lines = body ? body.split("\n") : [""];
+-  const lineHeight = (12 / Math.max(0.15, scale)) * 1.4;
+-  const startX = x + titlePadding;
+-  const startY = y + titleHeight + 8;
+-  const maxWidth = w - titlePadding * 2;
+-  
+-  lines.slice(0, 8).forEach((line, i) => {
+-    ctx.fillText(line, startX, startY + i * lineHeight, maxWidth);
++  ctx.fillStyle = palette.text;
++  ctx.font = `13px "Inter", ui-sans-serif, system-ui, sans-serif`;
++  const lineHeight = 13 * 1.5;
++  const lines = wrap(body || "", w - pad * 2);
++  const room = Math.max(1, Math.floor((h - titleHeight - pad * 2 + 4) / lineHeight));
++  lines.slice(0, room).forEach((line, i) => {
++    const isLast = i === room - 1 && lines.length > room;
++    ctx.fillText(isLast ? clip(`${line} …`, w - pad * 2) : line, x + pad, y + titleHeight + pad - 2 + i * lineHeight);
+   });
+ 
+   ctx.restore();
+diff --git a/src/lib/locales/en.json b/src/lib/locales/en.json
+index f349659..f589e6e 100644
+--- a/src/lib/locales/en.json
++++ b/src/lib/locales/en.json
+@@ -1785,6 +1785,9 @@
+       "backToVault": "Back to vault"
+     },
+     "canvas": {
++      "clipboard": {
++        "copied": "Copied to clipboard"
++      },
+       "label": "Infinite canvas",
+       "hint": "pan, zoom, wire cards",
+       "heroTitle": "Think in space.",
+@@ -1891,8 +1894,8 @@
+           "sendBackwardHint": "Move selected objects one layer backward",
+           "notImplemented": "Not implemented yet"
+         },
+-        "undoDisabled": "Undo not available yet",
+-        "redoDisabled": "Redo not available yet"
++        "undoDisabled": "Nothing to undo",
++        "redoDisabled": "Nothing to redo"
+       },
+       "draw": {
+         "tools": {
+diff --git a/src/lib/toast.js b/src/lib/toast.js
+index a303efc..2b6c355 100644
+--- a/src/lib/toast.js
++++ b/src/lib/toast.js
+@@ -96,4 +96,9 @@ export function toast({ text, type = "info", actionLabel, onAction, duration = D
+   return store.add({ type, text, actionLabel, onAction, duration });
+ }
+ 
++// Short forms used by the canvas page: toast.success("text"), toast.error("text"), toast.info("text")
++toast.success = (text, options = {}) => toast({ ...options, text: String(text), type: "success" });
++toast.error = (text, options = {}) => toast({ ...options, text: String(text), type: "error" });
++toast.info = (text, options = {}) => toast({ ...options, text: String(text), type: "info" });
++
+ export { store as _store };
+\ No newline at end of file
+diff --git a/src/pages/CanvasPage.jsx b/src/pages/CanvasPage.jsx
+index 7504506..7282f26 100644
+--- a/src/pages/CanvasPage.jsx
++++ b/src/pages/CanvasPage.jsx
+@@ -50,6 +50,7 @@ import {
+ } from "lucide-react";
+ import { db } from "@/api/localDb";
+ import CanvasBoard from "@/components/canvas/CanvasBoard";
++import ThemeToggle from "@/components/shell/ThemeToggle";
+ import { useFocusMode } from "@/lib/focusMode";
+ import { cn } from "@/lib/utils";
+ import { useI18n } from "@/lib/i18n";
+@@ -175,8 +176,25 @@ export default function CanvasPage() {
+   }, [fileMenuOpen]);
+ 
+   // Save canvas doc
+-  const saveCanvasDoc = useCallback(async (updates) => {
++  // Undo / redo history. Every content change (strokes or objects) goes through saveCanvasDoc,
++  // so one snapshot per gesture is kept here. Changes that arrive within 350 ms of each other
++  // (a drag, a pen stroke) count as one step.
++  const historyRef = useRef({ past: [], future: [], lastSave: 0 });
++  const [histCounts, setHistCounts] = useState({ u: 0, r: 0 });
++
++  const saveCanvasDoc = useCallback(async (updates, options = {}) => {
+     if (!canvasDoc) return;
++    const h = historyRef.current;
++    if (options.history !== false && ("strokes" in updates || "objects" in updates)) {
++      const now = Date.now();
++      if (now - h.lastSave > 350) {
++        h.past.push({ strokes: canvasDoc.strokes || [], objects: canvasDoc.objects || [] });
++        if (h.past.length > 80) h.past.shift();
++        h.future = [];
++        setHistCounts({ u: h.past.length, r: 0 });
++      }
++      h.lastSave = now;
++    }
+     dirty.current = true;
+     setStatus("saving");
+     const updated = { ...canvasDoc, ...updates };
+@@ -193,6 +211,22 @@ export default function CanvasPage() {
+     }, 650);
+   }, [canvasDoc, id]);
+ 
++  const applyHistory = useCallback((direction) => {
++    if (!canvasDoc) return;
++    const h = historyRef.current;
++    const from = direction === "undo" ? h.past : h.future;
++    const to = direction === "undo" ? h.future : h.past;
++    if (!from.length) return;
++    const snapshot = from.pop();
++    to.push({ strokes: canvasDoc.strokes || [], objects: canvasDoc.objects || [] });
++    h.lastSave = 0;
++    setSelectedIds([]);
++    setHistCounts({ u: h.past.length, r: h.future.length });
++    saveCanvasDoc({ strokes: snapshot.strokes, objects: snapshot.objects }, { history: false });
++  }, [canvasDoc, saveCanvasDoc]);
++  const undoHistory = useCallback(() => applyHistory("undo"), [applyHistory]);
++  const redoHistory = useCallback(() => applyHistory("redo"), [applyHistory]);
++
+   // Tool selection
+   const selectTool = useCallback((mode) => {
+     setTool((prev) => ({ ...prev, mode }));
+@@ -549,15 +583,15 @@ export default function CanvasPage() {
+         selectedIds.forEach((id) => handleDeleteObject(id));
+         break;
+       case "undo":
+-        // TODO: implement undo
++        undoHistory();
+         break;
+       case "redo":
+-        // TODO: implement redo
++        redoHistory();
+         break;
+       default:
+         break;
+     }
+-  }, [engineRef, objects, selectedIds, saveCanvasDoc, clipboard, handleAddCard, handleAddDesignObject, handleDeleteObject, handleAddImage, handleStickerSelect]);
++  }, [engineRef, objects, selectedIds, saveCanvasDoc, clipboard, handleAddCard, handleAddDesignObject, handleDeleteObject, handleAddImage, handleStickerSelect, undoHistory, redoHistory]);
+ 
+   // Tool groups for compact bar row 2 - from tool-defs.js
+   const isPenActive = tool.mode === "draw";
+@@ -601,12 +635,11 @@ export default function CanvasPage() {
+           disabledReason = ct("home.clipboard.selectFirst") || "Select an object first";
+         }
+       }
+-      // Undo/Redo are always disabled for now (not implemented)
+       if (toolDef.id === "undo" || toolDef.id === "redo") {
+-        disabled = true;
+-        disabledReason = toolDef.id === "undo" 
+-          ? (ct("home.undoDisabled") || "Undo not available yet")
+-          : (ct("home.redoDisabled") || "Redo not available yet");
++        disabled = toolDef.id === "undo" ? histCounts.u === 0 : histCounts.r === 0;
++        disabledReason = toolDef.id === "undo"
++          ? (ct("home.undoDisabled") || "Nothing to undo")
++          : (ct("home.redoDisabled") || "Nothing to redo");
+       }
+ 
+       groups[toolDef.group].buttons.push({
+@@ -662,8 +695,15 @@ export default function CanvasPage() {
+             event.preventDefault();
+             handleToolAction(getToolById("sendBackward"));
+             return;
+-          case "z": // Ctrl+Z - Undo (handled by browser)
+-          case "y": // Ctrl+Y - Redo (handled by browser)
++          case "z": // Ctrl+Z undo, Ctrl+Shift+Z redo
++            if (isTyping) return;
++            event.preventDefault();
++            if (isShift) redoHistory(); else undoHistory();
++            return;
++          case "y": // Ctrl+Y redo
++            if (isTyping) return;
++            event.preventDefault();
++            redoHistory();
+             return;
+         }
+       }
+@@ -857,8 +897,9 @@ export default function CanvasPage() {
+                 icon={Undo2}
+                 label={ct("ribbon.home.undo")}
+                 hint={ct("ribbon.home.undoHint")}
+-                disabled
+-                disabledReason={ct("home.undoDisabled") || "Undo not available yet"}
++                onClick={undoHistory}
++                disabled={histCounts.u === 0}
++                disabledReason={ct("home.undoDisabled") || "Nothing to undo"}
+                 keepFocus={false}
+                 className="h-8 w-8"
+               />
+@@ -867,10 +908,11 @@ export default function CanvasPage() {
+                 icon={Redo2}
+                 label={ct("ribbon.home.redo")}
+                 hint={ct("ribbon.home.redoHint")}
+-                disabled
+-                disabledReason={ct("home.redoDisabled") || "Redo not available yet"}
++                onClick={redoHistory}
++                disabled={histCounts.r === 0}
++                disabledReason={ct("home.redoDisabled") || "Nothing to redo"}
+                 keepFocus={false}
+-                className="h-8 w-8 transform rotate-180"
++                className="h-8 w-8"
+               />
+ 
+               {/* Zoom controls */}
+@@ -904,22 +946,8 @@ export default function CanvasPage() {
+                 />
+               </div>
+ 
+-              {/* Theme toggle */}
+-              <button
+-                type="button"
+-                onClick={() => {
+-                  const root = document.documentElement;
+-                  const isDark = root.classList.contains("dark");
+-                  root.classList.toggle("dark", !isDark);
+-                  root.classList.toggle("light", isDark);
+-                  localStorage.setItem("themeMode", isDark ? "light" : "dark");
+-                }}
+-                className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-foreground ml-2"
+-                aria-label={t("settings.appearance.switchToLight") || "Switch theme"}
+-                title={t("settings.appearance.switchToLight") || "Switch theme"}
+-              >
+-                {document.documentElement.classList.contains("dark") ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+-              </button>
++              {/* Theme toggle: the same menu as the note page (Light / Dark / System) */}
++              <ThemeToggle />
+ 
+               {/* File menu */}
+               <div className="relative" data-file-menu>
